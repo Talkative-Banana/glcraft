@@ -196,7 +196,7 @@ void World::Update_queue(glm::vec3 playerpos) {
   for (auto &biome : render_queue) biome->Update_queue(playerpos);
 }
 
-void World::save_model(std::shared_ptr<Chunk> chunk) {
+void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
   std::vector<glm::ivec3> ref_array;
   for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
     for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
@@ -213,7 +213,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk) {
     std::cerr << "Reference blocks are not 2, ignoring model save\n";
   } else {
     std::cout << "Saving Model\n";
-    std::ofstream save_model("models/tree.bin", std::ios::binary | std::ios::trunc);
+    std::ofstream save_model("models/" + name + ".bin", std::ios::binary | std::ios::trunc);
     int countx = (ref_array[1].x - ref_array[0].x + 1),
         county = (ref_array[1].y - ref_array[0].y + 1),
         countz = (ref_array[1].z - ref_array[0].z + 1);

@@ -24,7 +24,8 @@ constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
 constexpr static float GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
-constexpr static int BLOCK_TYPES = 6;
+constexpr static int BLOCK_TYPES = 8;
+constexpr static int MODEL_TYPES = 2;
 
 constexpr static int BACK_FACE = 1 << 17;
 constexpr static int FRONT_FACE = 1 << 18;
@@ -41,4 +42,6 @@ static int SCREEN_HEIGHT = 640;
 static int SCREEN_WIDTH = 640;
 
 static std::array<std::string, BLOCK_TYPES> BLOCK_ARRAY =
-    {"GRASS", "DIRT", "STONE", "BARK", "LEAF", "REF"};
+    {"GRASS", "DIRT", "STONE", "BARK", "LEAF", "REF", "IRON", "WOOD"};
+
+static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {"tree", "tree_std"};

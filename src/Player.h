@@ -32,7 +32,7 @@ class Player {
   char textKeyDescription[IMGUI_TEXT_CAPACITY];
   int display_w, display_h;
   GLFWwindow* window;
-  GLuint bltype = 0, Nokeypressed = 0;
+  GLuint bltype = 0, mdtype = 0, Nokeypressed = 0;
 
  public:
   std::unique_ptr<CameraController> m_cameracontroller;

@@ -75,59 +75,40 @@ void Player::handle_input() {
     }
   }
 
-  if (Input::IsKeyPressed(GLFW_KEY_UP)) {
-    m_position = m_position + m_up * m_speed;
-  } else if (Input::IsKeyPressed(GLFW_KEY_DOWN)) {
-    m_position = m_position - m_up * m_speed;
+
+  // Floating only possible in case gravity is not available
+  if (!enable_gravity) {
+    if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
+      m_position = m_position + m_up * m_speed;
+    } else if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+      m_position = m_position - m_up * m_speed;
+    }
   }
 
-  if (Input::IsKeyPressed(GLFW_KEY_X)) {
-    m_position = glm::vec3(0.0f, 0.0f, -80.0f);
-    m_forward = glm::vec3(-1.0f, 0.0f, 0.0f);
-  }
-
-  if (Input::IsKeyPressed(GLFW_KEY_Y)) {
-    m_position = glm::vec3(0.0f, -80.0f, 1.0f);
-    m_forward = glm::vec3(0.0f, 1.0f, 0.0f);
-  }
-
-  if (Input::IsKeyPressed(GLFW_KEY_Z)) {
-    m_position = glm::vec3(0.0f, 0.0f, -80.0f);
-    m_forward = glm::vec3(0.0f, 0.0f, 1.0f);
-  }
-
-  if (Input::WasKeyPressed(GLFW_KEY_G)) {
-    enable_gravity = !enable_gravity;
-  }
 
   auto [x, y] = Input::GetMousePosition();
   float rotx = m_sensitivity * (float)(y - MousePos.y);
   float roty = m_sensitivity * (float)(x - MousePos.x);
   MousePos = glm::vec2(x, y);
 
-  if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-    glm::vec3 right = glm::normalize(glm::cross(m_forward, m_up));
+  ImGuiIO &io = ImGui::GetIO();
+  if (!io.WantCaptureMouse) {
+    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+      glm::vec3 right = glm::normalize(glm::cross(m_forward, m_up));
 
-    // glm::quat qx = glm::normalize(
-    //    glm::cross(glm::angleAxis(-rotx, right), glm::angleAxis(roty, m_Camera->GetUp())));
-    // m_Camera->SetOrientation(glm::normalize(qx * m_Camera->GetOrientation()));
+      // glm::quat qx = glm::normalize(
+      //    glm::cross(glm::angleAxis(-rotx, right), glm::angleAxis(roty, m_Camera->GetUp())));
+      // m_Camera->SetOrientation(glm::normalize(qx * m_Camera->GetOrientation()));
 
-    glm::quat qx = glm::angleAxis(-rotx, right);
-    glm::quat qy = glm::angleAxis(-roty, m_up);
-    glm::quat rotation = glm::normalize(qy * qx);
-    m_forward = glm::normalize(rotation * m_forward);
+      glm::quat qx = glm::angleAxis(-rotx, right);
+      glm::quat qy = glm::angleAxis(-roty, m_up);
+      glm::quat rotation = glm::normalize(qy * qx);
+      m_forward = glm::normalize(rotation * m_forward);
+    }
   }
-
 
   // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-
-  if (Input::WasKeyPressed(GLFW_KEY_TAB)) {
-    strcpy(textKeyStatus, "TAB");
-    strcpy(textKeyDescription, "Switching Mode");
-    wireframemode ^= 1;
-    Nokeypressed = 0;
-  }
 
   auto get_neighbors = [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
     std::shared_ptr<Chunk> left, front, right, back;
@@ -142,7 +123,7 @@ void Player::handle_input() {
     return {left, front, right, back};
   };
 
-  if (!Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT) &&
+  if (!Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) &&
       Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
     strcpy(textKeyStatus, "Right click");
     strcpy(textKeyDescription, "Casting ray");
@@ -217,7 +198,7 @@ void Player::handle_input() {
       std::cout << "Ray didn't hit any block\n";
     }
   } else if (
-      !Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT) &&
+      !Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) &&
       Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {  // Add a block
     strcpy(textKeyStatus, "Middle click");
     strcpy(textKeyDescription, "Casting ray");
@@ -292,26 +273,7 @@ void Player::handle_input() {
     }
   }
 
-  if (Input::WasKeyPressed(GLFW_KEY_0)) {
-    bltype += 1;
-    bltype %= BLOCK_TYPES;
-  } else if (Input::WasKeyPressed(GLFW_KEY_9)) {
-    bltype -= 1 + BLOCK_TYPES;
-    bltype %= BLOCK_TYPES;
-  }
-
-  if (Input::WasKeyPressed(GLFW_KEY_1)) {
-    // Save the model in chunk 0 included between ref
-    auto chunk = world->get_chunk_by_center(
-        glm::ivec3(
-            CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE,
-            HALF_BLOCK_SIZE,
-            CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE));
-
-    world->save_model(chunk);
-  }
-
-  if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
+  if (Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL)) {
     if (Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {
       double mouseX, mouseY;
       glfwGetCursorPos(window, &mouseX, &mouseY);
@@ -322,7 +284,9 @@ void Player::handle_input() {
         std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x << " "
                   << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
         auto chunk = world->get_chunk_by_center(ray.m_hitcords);
-        world->load_model(ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0), "models/tree.bin");
+        world->load_model(
+            ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0),
+            "models/" + MODEL_ARRAY[mdtype] + ".bin");
       }
     }
   }
@@ -355,6 +319,74 @@ void Player::handle_stats() {
         m_cameracontroller->GetCamera()->GetPosition().y,
         m_cameracontroller->GetCamera()->GetPosition().z);
   }
+
+  // Enable Physics
+  ImGui::BeginChild("Child##Physics", ImVec2(400, 60), true);
+  ImGui::Text("Physics");
+  ImGui::Checkbox("Enable physics", &enable_gravity);
+  ImGui::EndChild();
+
+  // Display Mode
+  ImGui::BeginChild("Child##Rendering", ImVec2(400, 80), true);
+
+  ImGui::Text("Rendering");
+  ImGui::RadioButton("Fill Mode", (int *)&wireframemode, 0);
+  ImGui::RadioButton("Wireframe Mode", (int *)&wireframemode, 1);
+  ImGui::EndChild();
+
+  // Selected Block
+  // Begin a child region with fixed height and automatic scrollbar
+  ImGui::BeginChild("Selected Block", ImVec2(400, 75), true, ImGuiWindowFlags_HorizontalScrollbar);
+
+  ImGui::Text("Selected Block");
+  for (int i = 0; i < BLOCK_TYPES; i++) {
+    if (ImGui::RadioButton(BLOCK_ARRAY[i].c_str(), (int *)&bltype, i)) {
+    }
+  }
+
+  ImGui::EndChild();
+
+  // Selected Model
+  // Begin a child region with fixed height and automatic scrollbar
+  ImGui::BeginChild("Selected Model", ImVec2(400, 75), true, ImGuiWindowFlags_HorizontalScrollbar);
+
+  ImGui::Text("Selected Model");
+  for (int i = 0; i < MODEL_TYPES; i++) {
+    if (ImGui::RadioButton(MODEL_ARRAY[i].c_str(), (int *)&mdtype, i)) {
+    }
+  }
+
+  ImGui::EndChild();
+
+
+  // Save Model
+  ImGui::BeginChild("Save", ImVec2(400, 150), true, ImGuiWindowFlags_HorizontalScrollbar);
+  static int X = 0;
+  static int Y = 0;
+  static char model_name[32];
+
+  ImGui::Text("Save Model");
+  // Input fields
+  ImGui::InputInt("Chunk X", &X);
+  ImGui::InputInt("Chunk Y", &Y);
+
+  // Clamp negative values
+  if (X < 0) X = 0;
+  if (Y < 0) Y = 0;
+  ImGui::InputText("Model Name", model_name, IM_ARRAYSIZE(model_name));
+
+  if (ImGui::Button("Save")) {
+    // Save the model in chunk 0 included between ref
+    auto chunk = world->get_chunk_by_center(
+        glm::ivec3(
+            X * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE,
+            HALF_BLOCK_SIZE,
+            Y * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE));
+
+    world->save_model(chunk, std::string(model_name));
+  };
+
+  ImGui::EndChild();
   ImGui::End();
 
   // Rendering
