@@ -19,7 +19,7 @@ constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
 constexpr static float GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
-constexpr static int BLOCK_TYPES = 8;
+constexpr static int BLOCK_TYPES = 9;
 constexpr static int MODEL_TYPES = 2;
 
 constexpr static int BACK_FACE = 1 << 17;
@@ -36,11 +36,17 @@ constexpr static int IMGUI_TEXT_CAPACITY = 256;
 static int SCREEN_HEIGHT = 640;
 static int SCREEN_WIDTH = 640;
 
-constexpr static int GRASS_BLOCK = 0;
+constexpr static int REF_BLOCK = 0;
 constexpr static int DIRT_BLOCK = 1;
 constexpr static int STONE_BLOCK = 2;
+constexpr static int BARK_BLOCK = 3;
+constexpr static int LEAF_BLOCK = 4;
+constexpr static int GRASS_BLOCK = 5;
+constexpr static int IRON_BLOCK = 6;
+constexpr static int WOOD_BLOCK = 7;
+constexpr static int WATER_BLOCK = 8;
 
 static std::array<std::string, BLOCK_TYPES> BLOCK_ARRAY =
-    {"GRASS", "DIRT", "STONE", "BARK", "LEAF", "REF", "IRON", "WOOD"};
+    {"REF", "DIRT", "STONE", "BARK", "LEAF", "GRASS", "IRON", "WOOD", "WATER"};
 
 static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {"tree", "tree_std"};
