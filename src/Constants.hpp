@@ -14,12 +14,7 @@ constexpr static int BIOME_COUNTX = 1024;
 constexpr static int CHUNK_COUNTZ = 4;
 constexpr static int BIOME_COUNTZ = 1024;
 constexpr static int CHUNK_BLOCK_COUNT = 32;
-constexpr static int DEFAULT_TEXTURE = 0;
-constexpr static int GRASS_BLOCK = 1;
-constexpr static int DIRT_BLOCK = 2;
-constexpr static int SAND_BLOCK = 3;
-constexpr static int COBBOLESTONE_BLOCK = 4;
-constexpr static int SNOW_BLOCK = 5;
+
 constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
 constexpr static float GRAVITY = 0.98f;
@@ -40,6 +35,10 @@ constexpr static int IMGUI_TEXT_CAPACITY = 256;
 // Non const
 static int SCREEN_HEIGHT = 640;
 static int SCREEN_WIDTH = 640;
+
+constexpr static int GRASS_BLOCK = 0;
+constexpr static int DIRT_BLOCK = 1;
+constexpr static int STONE_BLOCK = 2;
 
 static std::array<std::string, BLOCK_TYPES> BLOCK_ARRAY =
     {"GRASS", "DIRT", "STONE", "BARK", "LEAF", "REF", "IRON", "WOOD"};

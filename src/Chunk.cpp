@@ -32,7 +32,9 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean disp
     blocks = loaded_chunk.blocks;
     dirtybit = true;
   } else {
-    Setup_Landscape(position.x, position.z);
+    Setup_Landscape(
+        position.x + (_biomepos.z / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)),
+        position.z + (_biomepos.x / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
     dirtybit = false;
   }
 }
@@ -94,15 +96,13 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
 
 void Chunk::Setup_Landscape(GLint X, GLint Z) {
   // Generate a random seed
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<int> dist(0, 1000000);
-  int randomSeed = dist(gen);
+  int randomSeed = world->getSeed();
 
   // 4 5 6 7
   // 0 1 2 3
   noise::module::RidgedMulti mountainTerrain;
   mountainTerrain.SetSeed(randomSeed);  // Set random seed for mountains
+
   noise::module::Billow baseFlatTerrain;
   baseFlatTerrain.SetFrequency(2.0);
   baseFlatTerrain.SetSeed(randomSeed);  // Set random seed for flat terrain
@@ -113,10 +113,11 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
   noise::utils::NoiseMap heightMap;
   noise::utils::NoiseMapBuilderPlane heightMapBuilder;
-  heightMapBuilder.SetSourceModule(flatTerrain);
+  heightMapBuilder.SetSourceModule(mountainTerrain);
   heightMapBuilder.SetDestNoiseMap(heightMap);
-  heightMapBuilder.SetDestSize(256, 256);
-  heightMapBuilder.SetBounds(4.0 * Z, 4.0 * (Z + 1), 4.0 * X, 4.0 * (X + 1));
+  heightMapBuilder.SetDestSize(128, 128);
+  int biomex = X / 4, biomez = Z / 4;
+  heightMapBuilder.SetBounds(biomex, biomex + 1, biomez, biomez + 1);
   heightMapBuilder.Build();
 
   noise::utils::RendererImage renderer;
@@ -127,13 +128,15 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
   noise::utils::WriterBMP writer;
   writer.SetSourceImage(image);
-  writer.SetDestFilename("maps/tutorial" + std::to_string(4 * X + Z) + ".bmp");
+  writer.SetDestFilename("maps/tutorial" + std::to_string((4 * X + Z) / 16) + ".bmp");
+  X %= 4, Z %= 4;
   writer.WriteDestFile();
 
   for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
     for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
       // Use the noise library to get the height value of x, z
-      noise::utils::Color color = image.GetValue(x, z);
+      noise::utils::Color color =
+          image.GetValue(CHUNK_BLOCK_COUNT * Z + x, CHUNK_BLOCK_COUNT * X + z);
       // Extract the height value from the color's red channel (assuming height
       // is encoded in the red channel)
       int height = std::max(1, static_cast<int>((color.blue / 255.0f) * 32.0f));

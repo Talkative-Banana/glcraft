@@ -49,4 +49,5 @@ class World {
   void Draw();
   void Update_queue(glm::vec3 playerpos);
   void save();
+  int getSeed();
 };

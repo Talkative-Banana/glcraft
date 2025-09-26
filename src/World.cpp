@@ -365,3 +365,7 @@ void World::save() {
   }
   std::cout << "Game Saved\n";
 }
+
+int World::getSeed() {
+  return m_seed;
+}
