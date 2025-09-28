@@ -143,9 +143,9 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
       // Use the height map texture to get the height value of x, z
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
-        GLuint bltype = 1;
-        if (y == height - 1) bltype = 0;
-        if (y <= 10) bltype = 2;
+        GLuint bltype = DIRT_BLOCK;
+        if (y == height - 1) bltype = GRASS_BLOCK;
+        if (y <= 10) bltype = STONE_BLOCK;
         blocks[z][y][x] = Block(ofs, y < height, bltype);  // mark them solid
       }
     }

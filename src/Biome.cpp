@@ -111,15 +111,17 @@ void Biome::Update_queue(glm::vec3 playerpos) {
 
       // If not displaying currently
       if (render_queue.find(chunk) == render_queue.end()) {
-        int X = playerpos.x - cpos.x, Z = playerpos.z - cpos.z;
+        int X = abs(static_cast<int>(playerpos.x - cpos.x)),
+            Z = abs(static_cast<int>(playerpos.z - cpos.z));
         if (X <= RENDER_DISTANCE || (Z <= RENDER_DISTANCE)) {
           chunk->displaychunk = 1;
         } else {
           chunk->displaychunk = 0;  // Do not display farther than RENDER_DISTANCE
         }
       } else {  // If diplaying currently
-        int X = playerpos.x - cpos.x, Z = playerpos.z - cpos.z;
-        if ((X > RENDER_DISTANCE) && (Z > RENDER_DISTANCE)) {
+        int X = abs(static_cast<int>(playerpos.x - cpos.x)),
+            Z = abs(static_cast<int>(playerpos.z - cpos.z));
+        if ((X > RENDER_DISTANCE) || (Z > RENDER_DISTANCE)) {
           chunk->displaychunk = 0;
         } else {
           chunk->displaychunk = 1;  // Keep displaying near than RENDER_DISTANCE
