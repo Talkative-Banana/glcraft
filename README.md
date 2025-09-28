@@ -5,7 +5,7 @@ Minecraft clone in C++ with OpenGL.
 
 **Added perlin noise for terrain generation**
 
-![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/image.png)
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Terrain_Generation.png)
 
 **Multiple types of blocks in a Chunk**
 
