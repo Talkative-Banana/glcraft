@@ -2,27 +2,28 @@
 
 layout(location = 0) in uint vVertex;
 
-uint blocks_X[256];
-uint blocks_Y[256];
+const uint REF_BLOCK_X  = (6u) | (6u << 4u) | (6u << 8u) | (6u << 12u) | (6u << 16u) | (6u << 20u);
+const uint REF_BLOCK_Y  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
+const uint DIRT_BLOCK_X  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
+const uint DIRT_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
+const uint STONE_BLOCK_X  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint STONE_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
+const uint TREE_BLOCK_X  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (5u << 16u) | (5u << 20u);
+const uint TREE_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint LEAF_BLOCK_X  = (5u) | (5u << 4u) | (5u << 8u) | (5u << 12u) | (5u << 16u) | (5u << 20u);
+const uint LEAF_BLOCK_Y  = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (3u << 16u) | (3u << 20u);
+const uint GRASS_BLOCK_X = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (0u << 16u) | (2u << 20u);
+const uint GRASS_BLOCK_Y = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
+const uint IRON_BLOCK_X  = (6u) | (6u << 4u) | (6u << 8u) | (6u << 12u) | (6u << 16u) | (6u << 20u);
+const uint IRON_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint WOOD_BLOCK_X  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (4u << 16u) | (4u << 20u);
+const uint WOOD_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
+const uint WATER_BLOCK_X  = (14u) | (14u << 4u) | (14u << 8u) | (14u << 12u) | (14u << 16u) | (14u << 20u);
+const uint WATER_BLOCK_Y  = (12u) | (12u << 4u) | (12u << 8u) | (12u << 12u) | (12u << 16u) | (12u << 20u);
 
-uint REF_BLOCK_X  = (6u) | (6u << 4u) | (6u << 8u) | (6u << 12u) | (6u << 16u) | (6u << 20u);
-uint REF_BLOCK_Y  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
-uint DIRT_BLOCK_X  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
-uint DIRT_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
-uint STONE_BLOCK_X  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
-uint STONE_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
-uint TREE_BLOCK_X  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (5u << 16u) | (5u << 20u);
-uint TREE_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
-uint LEAF_BLOCK_X  = (5u) | (5u << 4u) | (5u << 8u) | (5u << 12u) | (5u << 16u) | (5u << 20u);
-uint LEAF_BLOCK_Y  = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (3u << 16u) | (3u << 20u);
-uint GRASS_BLOCK_X = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (0u << 16u) | (2u << 20u);
-uint GRASS_BLOCK_Y = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
-uint IRON_BLOCK_X  = (6u) | (6u << 4u) | (6u << 8u) | (6u << 12u) | (6u << 16u) | (6u << 20u);
-uint IRON_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
-uint WOOD_BLOCK_X  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (4u << 16u) | (4u << 20u);
-uint WOOD_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
-uint WATER_BLOCK_X  = (14u) | (14u << 4u) | (14u << 8u) | (14u << 12u) | (14u << 16u) | (14u << 20u);
-uint WATER_BLOCK_Y  = (12u) | (12u << 4u) | (12u << 8u) | (12u << 12u) | (12u << 16u) | (12u << 20u);
+// Pack block arrays as const arrays (faster, not re-written per-vertex).
+const uint blocks_X[9] = uint[9](REF_BLOCK_X, DIRT_BLOCK_X, STONE_BLOCK_X, TREE_BLOCK_X, LEAF_BLOCK_X, GRASS_BLOCK_X, IRON_BLOCK_X, WOOD_BLOCK_X, WATER_BLOCK_X);
+const uint blocks_Y[9] = uint[9](REF_BLOCK_Y, DIRT_BLOCK_Y, STONE_BLOCK_Y, TREE_BLOCK_Y, LEAF_BLOCK_Y, GRASS_BLOCK_Y, IRON_BLOCK_Y, WOOD_BLOCK_Y, WATER_BLOCK_Y);
 
 uniform float side;
 uniform vec3 chunkpos;
@@ -104,42 +105,44 @@ void setup_textures(ivec3 _NormalDir, uint vVertex, uint centeroff){
 	uint rightx = (blocks_X[blktype] >> 12u) & 15u;
 	uint righty = (blocks_Y[blktype] >> 12u) & 15u;
 
+	vec2 uv;
 	if (_NormalDir.z != 0) {
 		// Z face → use (x,y)
+		uv = vec2((centeroff & 4u) >> 2, (centeroff & 2u) >> 1);
 		if(_NormalDir.z > 0){ // Front Face
 			tile.x = frontx;
 			tile.y = fronty;
-			TexCoord = vec2((centeroff & 4u) >> 2, (centeroff & 2u) >> 1);
 		} else { // Back Face
 			tile.x = backx;
 			tile.y = backy;
-			TexCoord = vec2((centeroff & 4u) >> 2, (centeroff & 2u) >> 1);
+			uv.x = 1.0 - uv.x;
 		}
 	}
 	else if (_NormalDir.y != 0) {
 		// Y face → use (x,z)
+		uv = vec2((centeroff & 4u) >> 2, (centeroff & 1u));
 		if(_NormalDir.y > 0){ // Top Face
 			tile.x = topx;
 			tile.y = topy;
-			TexCoord = vec2((centeroff & 4u) >> 2, (centeroff & 1u));
 		} else { // Bottom Face
 			tile.x = bottomx;
 			tile.y = bottomy;
-			TexCoord = vec2((centeroff & 4u) >> 2, (centeroff & 1u));
+			uv.x = 1.0 - uv.x;
 		}
 	}
 	else {
 		// X face → use (z,y)
+		uv = vec2((centeroff & 1u), (centeroff & 2u) >> 1);
 		if(_NormalDir.x < 0){ // Left Face
 			tile.x = leftx;
 			tile.y = lefty;
-			TexCoord = vec2((centeroff & 1u), (centeroff & 2u) >> 1);
-		} else { // Right Face
+		} else { // Right Face	
 			tile.x = rightx;
 			tile.y = righty;
-			TexCoord = vec2((centeroff & 1u), (centeroff & 2u) >> 1);
+			uv.x = 1.0 - uv.x;
 		}
 	}
+	TexCoord = uv;
 }
 
 void main() {
@@ -166,33 +169,9 @@ void main() {
 	vec3 centercord = Center(pos, centeroff);
 	gl_Position = vProjection * vView * vModel * vec4(pos + chunkpos, 1.0);
 
-	vec3 texcoord = pos - centercord; 
 	ivec3 _NormalDir = Normal(normaldir);
 
 	NormalDir = _NormalDir;
-
-	// X Axis
-	blocks_X[0] = REF_BLOCK_X;
-	blocks_X[1] = DIRT_BLOCK_X;
-	blocks_X[2] = STONE_BLOCK_X;
-	blocks_X[3] = TREE_BLOCK_X;
-	blocks_X[4] = LEAF_BLOCK_X;
-	blocks_X[5] = GRASS_BLOCK_X;
-	blocks_X[6] = IRON_BLOCK_X;
-	blocks_X[7] = WOOD_BLOCK_X;
-	blocks_X[8] = WATER_BLOCK_X;
-
-
-	// Y Axis
-	blocks_Y[0] = REF_BLOCK_Y;
-	blocks_Y[1] = DIRT_BLOCK_Y;
-	blocks_Y[2] = STONE_BLOCK_Y;
-	blocks_Y[3] = TREE_BLOCK_Y;
-	blocks_Y[4] = LEAF_BLOCK_Y;
-	blocks_Y[5] = GRASS_BLOCK_Y;
-	blocks_Y[6] = IRON_BLOCK_Y;
-	blocks_Y[7] = WOOD_BLOCK_Y;
-	blocks_Y[8] = WATER_BLOCK_Y;
 
 	setup_textures(_NormalDir, vVertex, centeroff);
 	// figure out which 2D coords to use based on face
