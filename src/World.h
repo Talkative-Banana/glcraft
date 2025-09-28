@@ -48,6 +48,6 @@ class World {
   void RenderWorld(bool firstRun);
   void Draw();
   void Update_queue(glm::vec3 playerpos);
-  void save();
+  void save(std::string save_file);
   int getSeed();
 };

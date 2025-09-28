@@ -20,10 +20,16 @@ const uint WOOD_BLOCK_X  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (4u <<
 const uint WOOD_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
 const uint WATER_BLOCK_X  = (14u) | (14u << 4u) | (14u << 8u) | (14u << 12u) | (14u << 16u) | (14u << 20u);
 const uint WATER_BLOCK_Y  = (12u) | (12u << 4u) | (12u << 8u) | (12u << 12u) | (12u << 16u) | (12u << 20u);
+const uint GRAVEL_BLOCK_X  = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (3u << 16u) | (3u << 20u);
+const uint GRAVEL_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint SAND_BLOCK_X  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
+const uint SAND_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint BEDROCK_BLOCK_X  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint BEDROCK_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
 
 // Pack block arrays as const arrays (faster, not re-written per-vertex).
-const uint blocks_X[9] = uint[9](REF_BLOCK_X, DIRT_BLOCK_X, STONE_BLOCK_X, TREE_BLOCK_X, LEAF_BLOCK_X, GRASS_BLOCK_X, IRON_BLOCK_X, WOOD_BLOCK_X, WATER_BLOCK_X);
-const uint blocks_Y[9] = uint[9](REF_BLOCK_Y, DIRT_BLOCK_Y, STONE_BLOCK_Y, TREE_BLOCK_Y, LEAF_BLOCK_Y, GRASS_BLOCK_Y, IRON_BLOCK_Y, WOOD_BLOCK_Y, WATER_BLOCK_Y);
+const uint blocks_X[12] = uint[12](REF_BLOCK_X, DIRT_BLOCK_X, STONE_BLOCK_X, TREE_BLOCK_X, LEAF_BLOCK_X, GRASS_BLOCK_X, IRON_BLOCK_X, WOOD_BLOCK_X, WATER_BLOCK_X, GRAVEL_BLOCK_X, SAND_BLOCK_X, BEDROCK_BLOCK_X);
+const uint blocks_Y[12] = uint[12](REF_BLOCK_Y, DIRT_BLOCK_Y, STONE_BLOCK_Y, TREE_BLOCK_Y, LEAF_BLOCK_Y, GRASS_BLOCK_Y, IRON_BLOCK_Y, WOOD_BLOCK_Y, WATER_BLOCK_Y, GRAVEL_BLOCK_Y, SAND_BLOCK_Y, BEDROCK_BLOCK_Y);
 
 uniform float side;
 uniform vec3 chunkpos;

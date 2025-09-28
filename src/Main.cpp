@@ -267,7 +267,6 @@ int main(int, char **) {
     glfwSwapBuffers(_window->GetWindow());
   }
 
-  world->save();
   // Cleanup
   cleanup(_window->GetWindow());
   return 0;

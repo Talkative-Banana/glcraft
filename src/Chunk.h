@@ -17,7 +17,7 @@ extern GLuint wireframemode;
 class Chunk {
  public:
   GLboolean displaychunk, dirtybit;
-  GLuint id, count, cntblocks, save_id;
+  GLuint id, count, cntblocks, save_id, type;
   glm::ivec3 biomepos, chunkpos;
 
   std::array<std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>
@@ -28,7 +28,7 @@ class Chunk {
   std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> rendervert;
 
   Chunk();
-  Chunk(uint _id, glm::ivec3 biomepos, glm::ivec3 position, GLboolean display);
+  Chunk(uint _id, glm::ivec3 biomepos, glm::ivec3 position, GLboolean display, int type);
 
   void Render(
       int setup,

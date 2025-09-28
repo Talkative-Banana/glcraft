@@ -12,10 +12,11 @@ extern std::unique_ptr<World> world;
 Chunk::Chunk() {
 }
 
-Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean display) {
+Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean display, int _type) {
   // Check if the chunk needs to be loaded from disk
   id = _id;
   count = 0;
+  type = _type;
   biomepos = _biomepos;
   displaychunk = display;
   uint biome_uq_id = BIOME_COUNTZ * _biomepos.x + _biomepos.z;
@@ -139,13 +140,28 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
           image.GetValue(CHUNK_BLOCK_COUNT * Z + x, CHUNK_BLOCK_COUNT * X + z);
       // Extract the height value from the color's red channel (assuming height
       // is encoded in the red channel)
-      int height = std::max(1, static_cast<int>((color.blue / 255.0f) * 32.0f));
+      // Donot expose BEDROCK
+      int height = std::max(2, static_cast<int>((color.blue / 255.0f) * 32.0f));
       // Use the height map texture to get the height value of x, z
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
-        GLuint bltype = DIRT_BLOCK;
-        if (y == height - 1) bltype = GRASS_BLOCK;
-        if (y <= 10) bltype = STONE_BLOCK;
+        auto biome_bltypes = BIOME_BLOCK_TYPES[type];
+        GLuint bltype = -1;
+        if (y == 0) {
+          bltype = biome_bltypes[4];  // BASE Block BEDROCK
+        } else if (y == height - 1) {
+          if (y <= 10) {
+            bltype = biome_bltypes[2];  // Depth top block DIRT
+          } else if (y <= 15) {
+            bltype = biome_bltypes[1];  // Depth top middle block GRAVEL
+          } else {
+            bltype = biome_bltypes[0];  // Top Block GRASS
+          }
+        } else if (y <= 10) {
+          bltype = biome_bltypes[3];  // Depth Block
+        } else {
+          bltype = biome_bltypes[1];
+        }
         blocks[z][y][x] = Block(ofs, y < height, bltype);  // mark them solid
       }
     }
@@ -243,7 +259,6 @@ void Chunk::Render(
           }
         }
 
-        // Optional extra flag (your original had b0 repeated at bit 8)
         if (auto b0 =
                 world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
           if (b0->isSolid()) ac |= (1u << 8);

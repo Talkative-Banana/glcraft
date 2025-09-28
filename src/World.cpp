@@ -130,7 +130,7 @@ void World::workerLoop() {
     // heavy work outside lock
     int idx = BIOME_COUNTX * i + j;
     if (biomes[i][j]) continue;
-    auto biome = std::make_shared<Biome>(idx, pos, true);
+    auto biome = std::make_shared<Biome>(0, pos, true);
 
     {
       std::lock_guard<std::mutex> g(setup_mutex);
@@ -338,8 +338,9 @@ void World::load_model(glm::ivec3 pos, std::string model) {
 }
 
 // Saving Scope
-void World::save() {
-  std::ofstream save_file("save/save.bin", std::ios::binary | std::ios::trunc);
+void World::save(std::string _save_file) {
+  std::string path = "save/" + _save_file + ".bin";
+  std::ofstream save_file(path.c_str(), std::ios::binary | std::ios::trunc);
   // Save All the dirty chunks
   for (int i = 0; i < BIOME_COUNTZ; i++) {
     for (int j = 0; j < BIOME_COUNTX; j++) {

@@ -7,10 +7,11 @@
 
 extern std::unique_ptr<World> world;
 
-static void load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos, int i, bool display) {
+static void
+load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos, int i, bool display, int type) {
   for (int j = 0; j < CHUNK_COUNTZ; j++) {
     int idx = CHUNK_COUNTZ * i + j;
-    chunks[i][j] = std::make_shared<Chunk>(idx, Biomepos, glm::ivec3(i, 0, j), display);
+    chunks[i][j] = std::make_shared<Chunk>(idx, Biomepos, glm::ivec3(i, 0, j), display, type);
   }
 }
 
@@ -58,7 +59,7 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   dirtybit = false;
   std::array<std::thread, CHUNK_COUNTX> threads;
   for (int i = 0; i < CHUNK_COUNTX; i++) {
-    threads[i] = std::thread(load_p, std::ref(chunks), std::ref(Biomepos), i, true);
+    threads[i] = std::thread(load_p, std::ref(chunks), std::ref(Biomepos), i, true, t);
   }
   for (auto &thread : threads) thread.join();
   for (int i = 0; i < CHUNK_COUNTX; i++) {

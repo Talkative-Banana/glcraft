@@ -387,6 +387,22 @@ void Player::handle_stats() {
   };
 
   ImGui::EndChild();
+
+
+  // Save World
+  ImGui::BeginChild("Save World", ImVec2(400, 150), true, ImGuiWindowFlags_HorizontalScrollbar);
+  static char save_file_name[32];
+
+  ImGui::Text("Save");
+
+  ImGui::InputText("World Name", save_file_name, IM_ARRAYSIZE(save_file_name));
+
+  if (ImGui::Button("Save")) {
+    // Save the world
+    world->save(std::string(save_file_name));
+  };
+
+  ImGui::EndChild();
   ImGui::End();
 
   // Rendering
