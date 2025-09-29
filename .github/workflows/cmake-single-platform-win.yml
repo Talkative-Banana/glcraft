@@ -16,11 +16,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies with vcpkg
-      uses: lukka/run-vcpkg@v11
+    - name: Cache vcpkg
+      uses: actions/cache@v4
       with:
-        vcpkgArguments: glfw3 glew glm
-        vcpkgGitCommitId: master
+        path: vcpkg/installed
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: ${{ runner.os }}-vcpkg-
+
+    - name: Clone vcpkg
+      run: git clone https://github.com/microsoft/vcpkg.git
+
+    - name: Bootstrap vcpkg
+      run: vcpkg\bootstrap-vcpkg.bat
+      shell: pwsh
+
+    - name: Install dependencies
+      run: vcpkg\vcpkg.exe install glfw3 glew glm
 
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
