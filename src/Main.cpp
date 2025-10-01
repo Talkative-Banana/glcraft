@@ -247,9 +247,12 @@ int main(int, char **) {
       activePlayer %= players_cnt;
     }
 
+    auto playerpos = players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
+    auto playerdir = players[activePlayer]->m_cameracontroller->GetCamera()->GetOrientation();
+    auto fov = players[activePlayer]->m_cameracontroller->GetCamera()->GetHorizontalFOV();
     // World Calculations
-    world->SetupWorld(players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition());
-    world->Update_queue(players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition());
+    world->SetupWorld(playerpos);
+    world->Update_queue(playerpos, playerdir, fov);
 
     // handle player
     players[activePlayer]->update();

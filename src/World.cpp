@@ -192,8 +192,8 @@ void World::Draw() {
   }
 }
 
-void World::Update_queue(glm::vec3 playerpos) {
-  for (auto &biome : render_queue) biome->Update_queue(playerpos);
+void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov) {
+  for (auto &biome : render_queue) biome->Update_queue(playerpos, playerForward, fov);
 }
 
 void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {

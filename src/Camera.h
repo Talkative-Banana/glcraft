@@ -13,6 +13,8 @@ class Camera {
   glm::vec3 m_Up = glm::vec3(0.0, 1.0, 0.0);
   glm::vec3 m_Position = glm::vec3(0.0, 0.0, -80.0);
   glm::vec3 m_Orientation = glm::vec3(0.0, 0.0, 1.0);
+  float m_VerticalFOV = 45.0f;
+  float m_AspectRatio = 1.0f;
 
   void RecalculateViewMatrix();
 
@@ -60,4 +62,6 @@ class Camera {
   }
 
   void SetAspectRatio(float aspectratio);
+
+  float GetHorizontalFOV() const;
 };

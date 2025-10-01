@@ -47,7 +47,7 @@ class World {
   void load_model(glm::ivec3 pos, std::string model);
   void RenderWorld(bool firstRun);
   void Draw();
-  void Update_queue(glm::vec3 playerpos);
+  void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
   void save(std::string save_file);
   int getSeed();
 };
