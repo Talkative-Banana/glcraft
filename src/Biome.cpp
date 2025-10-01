@@ -146,7 +146,6 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
       if ((inRange && inView) || insideChunk) {
         chunk->displaychunk = 1;
       } else {
-        if (!inView) std::cout << "inView Test Failed\n";
         chunk->displaychunk = 0;
       }
     }

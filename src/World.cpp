@@ -58,11 +58,9 @@ std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
-  int x = pos_cpy.x / (BLOCK_SIZE), y = pos_cpy.y / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
+  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
 
-  if (pos_cpy.x < 0 || pos_cpy.y < 0 || pos_cpy.z < 0) return nullptr;
-
-  if (y < 0 || y >= CHUNK_BLOCK_COUNT) return nullptr;
+  if (pos_cpy.x < 0 || pos_cpy.z < 0) return nullptr;
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
@@ -87,11 +85,9 @@ std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
-  int x = pos_cpy.x / (BLOCK_SIZE), y = pos_cpy.y / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
+  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
 
-  if (pos_cpy.x < 0 || pos_cpy.y < 0 || pos_cpy.z < 0) return nullptr;
-
-  if (y < 0 || y >= CHUNK_BLOCK_COUNT) return nullptr;
+  if (pos_cpy.x < 0 || pos_cpy.z < 0) return nullptr;
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
@@ -260,27 +256,39 @@ void World::load_model(glm::ivec3 pos, std::string model) {
   input_model_bin_file.read(reinterpret_cast<char *>(&countx), sizeof(countx));
   input_model_bin_file.read(reinterpret_cast<char *>(&county), sizeof(county));
   input_model_bin_file.read(reinterpret_cast<char *>(&countz), sizeof(countz));
-  get_biome_by_center(pos)->dirtybit = 1;
+  auto biome = get_biome_by_center(pos);
+  if (biome)
+    biome->dirtybit = 1;
+  else {
+    std::cout << "Biome is null\n";
+    std::terminate();
+  }
   std::cout << "Loaded " << countx * county * countz << " blocks\n";
-  std::shared_ptr<Chunk> _chunk;
+  std::shared_ptr<Chunk> _chunk = get_chunk_by_center(pos);
   for (int i = 0; i < countx; i++) {
     for (int k = 0; k < countz; k++) {
       for (int j = 0; j < county; j++) {
+        // Skip the two ref blocks
         if ((i == 0 && j == 0 && k == 0) || (i == countx - 1 && j == county - 1 && k == countz - 1))
           continue;
         Block block;
         input_model_bin_file.read(reinterpret_cast<char *>(&block), sizeof(block));
         if (!block.isSolid()) continue;
-        _chunk = get_chunk_by_center(
+        auto __chunk = get_chunk_by_center(
             {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE, pos.z + k * BLOCK_SIZE});  // 63 1 63
-        _chunk->dirtybit = 1;
+        if (__chunk) {
+          __chunk->dirtybit = 1;
+        } else {
+          std::cout << "Chunk is null\n";
+          std::terminate();
+        }
         uint32_t preserve_mask = ((1 << 15) - 1);  // binary: 0000...01111111111111111 (15 bits set)
         uint32_t overwrite_mask = ~preserve_mask;
 
         Block &existing =
-            _chunk->blocks[(pos.x / static_cast<int>(BLOCK_SIZE) + i) % CHUNK_BLOCK_COUNT]
-                          [(pos.y / static_cast<int>(BLOCK_SIZE) + j) % CHUNK_BLOCK_COUNT]
-                          [(pos.z / static_cast<int>(BLOCK_SIZE) + k) % CHUNK_BLOCK_COUNT];
+            __chunk->blocks[(pos.x / static_cast<int>(BLOCK_SIZE) + i) % CHUNK_BLOCK_COUNT]
+                           [(pos.y / static_cast<int>(BLOCK_SIZE) + j) % CHUNK_BLOCK_COUNT]
+                           [(pos.z / static_cast<int>(BLOCK_SIZE) + k) % CHUNK_BLOCK_COUNT];
 
         // Keep lower 15 bits of existing, replace rest from new
         existing.blmask = (existing.blmask & preserve_mask) | (block.blmask & overwrite_mask);
@@ -288,51 +296,41 @@ void World::load_model(glm::ivec3 pos, std::string model) {
     }
   }
 
-  auto vec = pos;
-
   // If last block update adjacent chunk
-  auto chunks1 = get_neighbors(vec);
+  auto chunks1 = get_neighbors(pos);
   _chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
 
   bool update_boundary = false;
-  if (true) {
+  if (chunks1[1]) {
     auto chunks2 =
-        get_neighbors(vec + glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (chunks1[1]) {
-      std::cout << "[FRONT] Updating neighbouring chunk\n";
-      chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
-    }
+        get_neighbors(pos + glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+    std::cout << "[FRONT] Updating neighbouring chunk\n";
+    chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+    chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
   }
 
-  if (true) {
+  if (chunks1[0]) {
     auto chunks2 =
-        get_neighbors(vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    if (chunks1[0]) {
-      std::cout << "[LEFT] Updating neighbouring chunk\n";
-      chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
-    }
+        get_neighbors(pos + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+    std::cout << "[LEFT] Updating neighbouring chunk\n";
+    chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+    chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
   }
 
-  if (true) {
+  if (chunks1[3]) {
     auto chunks2 =
-        get_neighbors(vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (chunks1[3]) {
-      std::cout << "[BACK] Updating neighbouring chunk\n";
-      chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
-    }
+        get_neighbors(pos - glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+    std::cout << "[BACK] Updating neighbouring chunk\n";
+    chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+    chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
   }
 
-  if (true) {
+  if (chunks1[2]) {
     auto chunks2 =
-        get_neighbors(vec - glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    if (chunks1[2]) {
-      std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
-    }
+        get_neighbors(pos - glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+    std::cout << "[RIGHT] Updating neighbouring chunk\n";
+    chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+    chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
   }
   _chunk->Render(0, false, chunks1[0], chunks1[1], chunks1[2], chunks1[3]);
 }
