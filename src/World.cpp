@@ -162,13 +162,6 @@ void World::SetupWorld(glm::vec3 playerpos) {
       }
     }
   }
-
-  auto q = setup_queue;
-  // Render World with Inter Chunk walls
-  RenderWorld(true);
-  // Remove the inter chunk walls
-  setup_queue = q;
-  RenderWorld(false);
 }
 
 void World::RenderWorld(bool firstRun) {
@@ -183,13 +176,64 @@ void World::RenderWorld(bool firstRun) {
 
 void World::Draw() {
   // Do not render all the chunks just what biome wants to using its render_queue
-  for (auto &biome : render_queue) {
+  for (auto biome : render_queue) {
+    if (!biome) {
+      std::cerr << "[ERROR] World::Draw biome is null\n";
+      continue;
+    }
+    if (biome->chunks_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ) {
+      continue;
+    }
     biome->Draw();
   }
 }
 
 void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov) {
-  for (auto &biome : render_queue) biome->Update_queue(playerpos, playerForward, fov);
+  for (auto biome : render_queue) {
+    if (!biome) {
+      std::cerr << "[ERROR] World::Update_queue: biome is null\n";
+      continue;
+    }
+    if (biome->chunks_ready.load(std::memory_order_seq_cst) != CHUNK_COUNTX * CHUNK_COUNTZ) {
+      continue;
+    }
+    biome->Update_queue(playerpos, playerForward, fov);
+  }
+}
+
+void World::DoBindTask() {
+  if (!bind_queue.empty()) {
+    std::shared_ptr<Biome> biome;
+    {
+      std::lock_guard<std::mutex> lock(biome_mutex);
+      biome = bind_queue.front();
+      if (biome) {
+        if (biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX) {
+          bind_queue.pop();
+          for (int i = 0; i < CHUNK_COUNTX; i++) {
+            for (int j = 0; j < CHUNK_COUNTZ; j++) {
+              auto chunk = biome->chunks[i][j];
+              chunk->chunkva = std::make_unique<VertexArray>();
+              chunk->chunkva->Bind();
+              VertexBufferLayout layout;
+              layout.Push(GL_UNSIGNED_INT, 1);
+              VertexBuffer vb(
+                  chunk->cube_vertices.data(), chunk->cube_vertices.size() * sizeof(GLuint));
+              chunk->chunkva->AddBuffer(vb, layout);
+              IndexBuffer ib(chunk->cube_indices.data(), chunk->cube_indices.size());
+              //  glBindBuffer(GL_ARRAY_BUFFER, 0);
+              glBindVertexArray(0);
+              biome->render_queue.insert(chunk);
+            }
+          }
+        } else {
+          return;
+        }
+      } else {
+        std::terminate();
+      }
+    }
+  }
 }
 
 void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {

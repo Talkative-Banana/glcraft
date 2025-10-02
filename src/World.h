@@ -35,7 +35,9 @@ class World {
  public:
   std::array<std::array<std::shared_ptr<Biome>, BIOME_COUNTZ>, BIOME_COUNTX> biomes;
   std::unordered_map<uint, Chunk> load_map;
+  std::mutex biome_mutex;
   std::unordered_map<uint, std::shared_ptr<Chunk>> save_map;
+  std::queue<std::shared_ptr<Biome>> bind_queue;
   World(int seed, const glm::ivec3 &pos);
   void SetupWorld(glm::vec3 playerpos);
   bool isSolid(const glm::ivec3 &pos);
@@ -50,4 +52,5 @@ class World {
   void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
   void save(std::string save_file);
   int getSeed();
+  void DoBindTask();
 };

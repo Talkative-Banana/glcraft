@@ -18,10 +18,10 @@ load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos, int i, bool displa
 static void render_p(decltype(Biome::chunks) &chunks, int i, bool firstRun) {
   for (int j = 0; j < CHUNK_COUNTZ; j++) {
     int idx = CHUNK_COUNTZ * i + j;
-    auto &_chunk = chunks[i][j];
-    if (firstRun)
+    auto _chunk = chunks[i][j];
+    if (firstRun) {
       _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr);
-    else {
+    } else {
       if (i == 0 || i == CHUNK_COUNTX - 1 || j == 0 || j == CHUNK_COUNTZ - 1) {
         // Have to check neigbouring biome
         // get the center of chunks 1st block
@@ -47,6 +47,8 @@ static void render_p(decltype(Biome::chunks) &chunks, int i, bool firstRun) {
             1, firstRun, chunks[i + 1][j], chunks[i][j + 1], chunks[i - 1][j], chunks[i][j - 1]);
       }
     }
+    auto biome = world->get_biome_by_center(_chunk->chunkpos + glm::ivec3(BLOCK_SIZE / 2));
+    biome->chunks_ready.fetch_add(1, std::memory_order_relaxed);
   }
 }
 
@@ -61,7 +63,10 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     threads[i] = std::thread(load_p, std::ref(chunks), std::ref(Biomepos), i, true, t);
   }
+
+  // Joining is slow
   for (auto &thread : threads) thread.join();
+
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
       dirtybit |= chunks[i][j]->dirtybit;
@@ -72,34 +77,24 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
 void Biome::RenderBiome(bool firstRun) {
   if (!displaybiome) return;
 
-  GLuint idx = 0;
-  std::array<std::thread, CHUNK_COUNTX> threads;
   for (int i = 0; i < CHUNK_COUNTX; i++) {
-    threads[i] = std::thread(render_p, std::ref(chunks), i, firstRun);
+    std::thread thread = std::thread(render_p, std::ref(chunks), i, firstRun);
+    thread.detach();
   }
 
-  for (auto &thread : threads) thread.join();
-
-  // All openGL calls are to be made from main thread
-  for (int i = 0; i < CHUNK_COUNTX; i++) {
-    for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      auto &chunk = chunks[i][j];
-      chunk->chunkva = std::make_unique<VertexArray>();
-      chunk->chunkva->Bind();
-      VertexBufferLayout layout;
-      layout.Push(GL_UNSIGNED_INT, 1);
-      VertexBuffer vb(chunk->cube_vertices.data(), chunk->cube_vertices.size() * sizeof(GLuint));
-      chunk->chunkva->AddBuffer(vb, layout);
-      IndexBuffer ib(chunk->cube_indices.data(), chunk->cube_indices.size());
-      //  glBindBuffer(GL_ARRAY_BUFFER, 0);
-      glBindVertexArray(0);
-      render_queue.insert(chunk);
-    }
+  auto biome = world->get_biome_by_center(Biomepos + glm::ivec3(BLOCK_SIZE / 2.0));
+  {
+    std::lock_guard<std::mutex> lock(world->biome_mutex);
+    world->bind_queue.push(biome);
   }
 }
 
 void Biome::Draw() {
-  for (auto &chunk : render_queue) {
+  for (auto chunk : render_queue) {
+    if (!chunk) {
+      std::cerr << "[ERROR] BIOME::Draw chunk is null\n";
+      continue;
+    }
     chunk->Draw();
   }
 }
@@ -108,10 +103,10 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
   float cosHalfFOV = cos(glm::radians(fov) / 2.0f);
   // Flatten forward to XZ plane
   glm::vec3 forwardXZ = glm::normalize(glm::vec3(playerForward.x, 0.0f, playerForward.z));
-
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      auto &chunk = chunks[i][j];
+      auto chunk = chunks[i][j];
+      if (!chunk) continue;
       glm::vec3 cpos = chunk->chunkpos;
 
       float CHUNK_SIZE = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
