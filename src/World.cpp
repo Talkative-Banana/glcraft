@@ -162,16 +162,34 @@ void World::SetupWorld(glm::vec3 playerpos) {
       }
     }
   }
+
+  // Render World with Inter Chunk walls
+  RenderWorld(true);
+
+  // Render World without Inner Chunk walls
+  RenderWorld(false);
 }
 
 void World::RenderWorld(bool firstRun) {
-  std::lock_guard<std::mutex> lock(setup_mutex);
-  while (!setup_queue.empty()) {
-    auto b = setup_queue.front();
-    setup_queue.pop();
-    b->RenderBiome(firstRun);  // firstRun
-    if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+  if (firstRun) {
+    std::lock_guard<std::mutex> lock(setup_mutex);
+    while (!setup_queue.empty()) {
+      auto b = setup_queue.front();
+      setup_queue.pop();
+      b->RenderBiome(true);  // firstRun
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
+  } else {
+    std::lock_guard<std::mutex> lock(setup_mutex);
+    while (!rerender_queue.empty()) {
+      auto b = rerender_queue.front();
+      rerender_queue.pop();
+      b->RenderBiome(false);  // ReRun
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
   }
+
+  DoBindTask();
 }
 
 void World::Draw() {
@@ -181,7 +199,8 @@ void World::Draw() {
       std::cerr << "[ERROR] World::Draw biome is null\n";
       continue;
     }
-    if (biome->chunks_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ) {
+    if (biome->chunks_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ &&
+        biome->update_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ) {
       continue;
     }
     biome->Draw();
@@ -194,7 +213,8 @@ void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
       std::cerr << "[ERROR] World::Update_queue: biome is null\n";
       continue;
     }
-    if (biome->chunks_ready.load(std::memory_order_seq_cst) != CHUNK_COUNTX * CHUNK_COUNTZ) {
+    if (biome->chunks_ready.load(std::memory_order_seq_cst) != CHUNK_COUNTX * CHUNK_COUNTZ &&
+        biome->update_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ) {
       continue;
     }
     biome->Update_queue(playerpos, playerForward, fov);
@@ -208,7 +228,10 @@ void World::DoBindTask() {
       std::lock_guard<std::mutex> lock(biome_mutex);
       biome = bind_queue.front();
       if (biome) {
-        if (biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX) {
+        if ((biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX &&
+             (!biome->rerendered)) ||
+            (biome->update_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX &&
+             (biome->rerendered))) {
           bind_queue.pop();
           for (int i = 0; i < CHUNK_COUNTX; i++) {
             for (int j = 0; j < CHUNK_COUNTZ; j++) {
@@ -225,6 +248,10 @@ void World::DoBindTask() {
               glBindVertexArray(0);
               biome->render_queue.insert(chunk);
             }
+          }
+          if (!biome->rerendered) {
+            biome->rerendered = true;
+            rerender_queue.push(biome);
           }
         } else {
           return;

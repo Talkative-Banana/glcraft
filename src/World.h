@@ -22,6 +22,7 @@ class World {
   glm::ivec3 m_worldpos;
   std::unordered_set<std::shared_ptr<Biome>> render_queue;
   std::queue<std::shared_ptr<Biome>> setup_queue;
+  std::queue<std::shared_ptr<Biome>> rerender_queue;
   std::set<GLuint64> job_scheduled;
   void workerLoop();
   std::thread worker;

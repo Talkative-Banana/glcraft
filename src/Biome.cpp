@@ -48,7 +48,10 @@ static void render_p(decltype(Biome::chunks) &chunks, int i, bool firstRun) {
       }
     }
     auto biome = world->get_biome_by_center(_chunk->chunkpos + glm::ivec3(BLOCK_SIZE / 2));
-    biome->chunks_ready.fetch_add(1, std::memory_order_relaxed);
+    if (firstRun)
+      biome->chunks_ready.fetch_add(1, std::memory_order_relaxed);
+    else
+      biome->update_ready.fetch_add(1, std::memory_order_relaxed);
   }
 }
 

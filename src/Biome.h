@@ -18,9 +18,10 @@ class Biome {
   GLboolean displaybiome;
 
  public:
-  GLboolean dirtybit;
+  GLboolean dirtybit, rerendered;
   GLuint x_cord, z_cord;
   std::atomic<int> chunks_ready{0};
+  std::atomic<int> update_ready{0};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX> chunks;
   std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);

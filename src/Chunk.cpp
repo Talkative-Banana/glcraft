@@ -176,7 +176,6 @@ void Chunk::Render(
     std::shared_ptr<Chunk> right,
     std::shared_ptr<Chunk> back) {
   // Rerendering
-  if (!displaychunk) return;
   rendervert.clear();
   cube_vertices.clear();
   cube_indices.clear();
