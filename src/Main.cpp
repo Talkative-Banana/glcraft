@@ -7,7 +7,6 @@
 #include <../stb/stb_image.h>
 #include <../stb/stb_image_write.h>
 
-#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -248,22 +247,16 @@ int main(int, char **) {
       activePlayer %= players_cnt;
     }
 
-    // handle player
-    players[activePlayer]->update();
-
     auto playerpos = players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
     auto playerdir = players[activePlayer]->m_cameracontroller->GetCamera()->GetOrientation();
     auto fov = players[activePlayer]->m_cameracontroller->GetCamera()->GetHorizontalFOV();
-
     // World Calculations
     world->SetupWorld(playerpos);
-
-    // Render World with Inter Chunk walls
-    world->RenderWorld(true);
-
-    world->DoBindTask();
-
     world->Update_queue(playerpos, playerdir, fov);
+
+    // handle player
+    players[activePlayer]->update();
+
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
     glUniform1i(atlas_uniform, 0);  // bind sampler to texture unit 0

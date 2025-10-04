@@ -1,8 +1,5 @@
 #pragma once
-#include <atomic>
 #include <memory>
-#include <mutex>
-#include <queue>
 #include <thread>
 #include <unordered_set>
 
@@ -16,13 +13,12 @@ class Biome {
   int type;
   glm::ivec3 Biomepos;
   GLboolean displaybiome;
+  std::unordered_set<std::shared_ptr<Chunk>> render_queue;
 
  public:
   GLboolean dirtybit;
   GLuint x_cord, z_cord;
-  std::atomic<int> chunks_ready{0};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX> chunks;
-  std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);
   void RenderBiome(bool firstRun);
   void Draw();
