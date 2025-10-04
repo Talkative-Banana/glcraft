@@ -258,6 +258,11 @@ int main(int, char **) {
     // World Calculations
     world->SetupWorld(playerpos);
 
+    // Render World with Inter Chunk walls
+    world->RenderWorld(true);
+
+    world->DoBindTask();
+
     world->Update_queue(playerpos, playerdir, fov);
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
