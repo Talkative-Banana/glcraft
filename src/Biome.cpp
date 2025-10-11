@@ -47,7 +47,7 @@ static void render_p(decltype(Biome::chunks) &chunks, int i, bool firstRun) {
             1, firstRun, chunks[i + 1][j], chunks[i][j + 1], chunks[i - 1][j], chunks[i][j - 1]);
       }
     }
-    auto biome = world->get_biome_by_center(_chunk->chunkpos + glm::ivec3(BLOCK_SIZE / 2));
+    auto biome = world->get_biome_by_center(_chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE));
     biome->chunks_ready.fetch_add(1, std::memory_order_relaxed);
   }
 }
@@ -82,7 +82,7 @@ void Biome::RenderBiome(bool firstRun) {
     thread.detach();
   }
 
-  auto biome = world->get_biome_by_center(Biomepos + glm::ivec3(BLOCK_SIZE / 2.0));
+  auto biome = world->get_biome_by_center(Biomepos + glm::ivec3(HALF_BLOCK_SIZE));
   {
     std::lock_guard<std::mutex> lock(world->biome_mutex);
     world->bind_queue.push(biome);

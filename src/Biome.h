@@ -14,13 +14,13 @@
 class Biome {
  private:
   int type;
-  glm::ivec3 Biomepos;
   GLboolean displaybiome;
 
  public:
-  GLboolean dirtybit;
   GLuint x_cord, z_cord;
+  glm::ivec3 Biomepos;
   std::atomic<int> chunks_ready{0};
+  GLboolean dirtybit, isrerenderiter;
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX> chunks;
   std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);

@@ -5,6 +5,13 @@
 World::World(int seed, const glm::ivec3 &pos) : m_seed(seed), m_worldpos(pos) {
   // Read saved files if any
   worker = std::thread(&World::workerLoop, this);
+  scheduler = std::thread([this]() {
+    while (1) {
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+      bool expected = false;
+      run_rerender_task.compare_exchange_strong(expected, true);
+    }
+  });
   std::ifstream input_bin_file("save/save.bin", std::ios::binary);
   if (!input_bin_file) {
     std::cerr << "Failed to open save file.\n";
@@ -132,6 +139,7 @@ void World::workerLoop() {
       std::lock_guard<std::mutex> g(setup_mutex);
       biomes[i][j] = biome;
       setup_queue.push(biome);
+      rerender_queue.push(biome);
     }
   }
 }
@@ -162,16 +170,38 @@ void World::SetupWorld(glm::vec3 playerpos) {
       }
     }
   }
+
+  // Render World with Inter Chunk walls
+  RenderWorld(true);
+
+  bool expected = true;
+  if (run_rerender_task.compare_exchange_strong(expected, false)) {
+    std::cout << "Running Rerendering Task\n";
+    RenderWorld(false);
+  }
 }
 
 void World::RenderWorld(bool firstRun) {
   std::lock_guard<std::mutex> lock(setup_mutex);
-  while (!setup_queue.empty()) {
-    auto b = setup_queue.front();
-    setup_queue.pop();
-    b->RenderBiome(firstRun);  // firstRun
-    if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+  if (firstRun) {
+    while (!setup_queue.empty()) {
+      auto b = setup_queue.front();
+      setup_queue.pop();
+      b->RenderBiome(true);  // firstRun
+      b->isrerenderiter = false;
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
+  } else {
+    while (!rerender_queue.empty()) {
+      auto b = rerender_queue.front();
+      rerender_queue.pop();
+      b->RenderBiome(false);  // ReRun
+      b->isrerenderiter = true;
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
   }
+
+  DoBindTask(firstRun);
 }
 
 void World::Draw() {
@@ -181,10 +211,11 @@ void World::Draw() {
       std::cerr << "[ERROR] World::Draw biome is null\n";
       continue;
     }
-    if (biome->chunks_ready.load(std::memory_order_acquire) != CHUNK_COUNTX * CHUNK_COUNTZ) {
-      continue;
+    if (biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTX * CHUNK_COUNTZ) {
+      biome->Draw();
+    } else {
+      std::cout << "Skipping Draw: " << biome->chunks_ready << std::endl;
     }
-    biome->Draw();
   }
 }
 
@@ -194,20 +225,31 @@ void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
       std::cerr << "[ERROR] World::Update_queue: biome is null\n";
       continue;
     }
-    if (biome->chunks_ready.load(std::memory_order_seq_cst) != CHUNK_COUNTX * CHUNK_COUNTZ) {
-      continue;
+    if (biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTX * CHUNK_COUNTZ) {
+      biome->Update_queue(playerpos, playerForward, fov);
+    } else {
+      std::cout << "Skipping Update Queue: " << biome->chunks_ready << std::endl;
     }
-    biome->Update_queue(playerpos, playerForward, fov);
   }
 }
 
-void World::DoBindTask() {
-  if (!bind_queue.empty()) {
+void World::DoBindTask(bool firstRun) {
+  while (!bind_queue.empty()) {
     std::shared_ptr<Biome> biome;
     {
       std::lock_guard<std::mutex> lock(biome_mutex);
       biome = bind_queue.front();
       if (biome) {
+        if (firstRun && biome->isrerenderiter) {
+          std::cout << "Returned early\n";
+          return;
+        }
+        if (biome->isrerenderiter) {
+          int expected = 32;
+          if (biome->chunks_ready.compare_exchange_strong(expected, 16)) {
+            std::cout << "Chunk ready for biome\n";
+          }
+        }
         if (biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX) {
           bind_queue.pop();
           for (int i = 0; i < CHUNK_COUNTX; i++) {
