@@ -26,7 +26,6 @@ class World {
   std::set<GLuint64> job_scheduled;
   void workerLoop();
   std::thread worker;
-  std::thread scheduler;
   std::atomic<bool> running{true};
   std::atomic<bool> run_rerender_task{false};
 

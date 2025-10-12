@@ -5,13 +5,6 @@
 World::World(int seed, const glm::ivec3 &pos) : m_seed(seed), m_worldpos(pos) {
   // Read saved files if any
   worker = std::thread(&World::workerLoop, this);
-  scheduler = std::thread([this]() {
-    while (1) {
-      std::this_thread::sleep_for(std::chrono::seconds(10));
-      bool expected = false;
-      run_rerender_task.compare_exchange_strong(expected, true);
-    }
-  });
   std::ifstream input_bin_file("save/save.bin", std::ios::binary);
   if (!input_bin_file) {
     std::cerr << "Failed to open save file.\n";
@@ -173,12 +166,7 @@ void World::SetupWorld(glm::vec3 playerpos) {
   // Render World with Inter Chunk walls
   RenderWorld(true);
 
-  if (run_rerender_task.exchange(false)) {
-    std::cout << "Running Rerendering Task\n";
-    RenderWorld(false);
-  }
-
-  DoBindTask(false);
+  RenderWorld(false);
 }
 
 void World::RenderWorld(bool firstRun) {
@@ -213,8 +201,6 @@ void World::Draw() {
     }
     if (biome->chunks_ready.load(std::memory_order_acquire) >= CHUNK_COUNTX * CHUNK_COUNTZ) {
       biome->Draw();
-    } else {
-      std::cout << "Skipping Draw: " << biome->chunks_ready << std::endl;
     }
   }
 }
@@ -227,8 +213,6 @@ void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
     }
     if (biome->chunks_ready.load(std::memory_order_acquire) >= CHUNK_COUNTX * CHUNK_COUNTZ) {
       biome->Update_queue(playerpos, playerForward, fov);
-    } else {
-      std::cout << "Skipping Update Queue: " << biome->chunks_ready << std::endl;
     }
   }
 }
@@ -272,6 +256,8 @@ void World::DoBindTask(bool firstRun) {
           biome->render_queue.insert(chunk);
         }
       }
+
+      // Have a way to check if neighbor chunks are loaded before rerendering
       if (firstRun) {
         rerender_queue.push(biome);
       }
