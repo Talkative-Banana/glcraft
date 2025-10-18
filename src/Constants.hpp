@@ -14,7 +14,7 @@ constexpr static int CHUNK_COUNTZ = 4;
 constexpr static int BIOME_COUNTZ = 1024;
 constexpr static int CHUNK_BLOCK_COUNT = 32;
 constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
-constexpr static int RENDER_DISTANCE = BIOME_SIZE * 4;  // 1 BIOME
+constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2;  // 2 BIOME
 
 constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
