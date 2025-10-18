@@ -1,4 +1,3 @@
-#pragma once
 #include <chrono>
 #include <memory>
 #include <unordered_map>
