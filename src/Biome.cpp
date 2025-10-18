@@ -90,7 +90,11 @@ void Biome::RenderBiome(bool firstRun) {
 }
 
 void Biome::Draw() {
-  for (auto &chunk : render_queue) {
+  for (auto chunk : render_queue) {
+    if (!chunk) {
+      std::cerr << "[ERROR] BIOME::Draw chunk is null\n";
+      continue;
+    }
     chunk->Draw();
   }
 }
@@ -99,10 +103,10 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov
   float cosHalfFOV = cos(glm::radians(fov) / 2.0f);
   // Flatten forward to XZ plane
   glm::vec3 forwardXZ = glm::normalize(glm::vec3(playerForward.x, 0.0f, playerForward.z));
-
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      auto &chunk = chunks[i][j];
+      auto chunk = chunks[i][j];
+      if (!chunk) continue;
       glm::vec3 cpos = chunk->chunkpos;
 
       float CHUNK_SIZE = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
