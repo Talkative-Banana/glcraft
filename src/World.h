@@ -22,10 +22,12 @@ class World {
   glm::ivec3 m_worldpos;
   std::unordered_set<std::shared_ptr<Biome>> render_queue;
   std::queue<std::shared_ptr<Biome>> setup_queue;
+  std::queue<std::shared_ptr<Biome>> rerender_queue;
   std::set<GLuint64> job_scheduled;
   void workerLoop();
   std::thread worker;
   std::atomic<bool> running{true};
+  std::atomic<bool> run_rerender_task{false};
 
   std::mutex setup_mutex;
   std::condition_variable setup_cv;
@@ -50,4 +52,5 @@ class World {
   void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
   void save(std::string save_file);
   int getSeed();
+  void DoBindTask(bool firstRun);
 };

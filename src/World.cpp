@@ -163,33 +163,108 @@ void World::SetupWorld(glm::vec3 playerpos) {
     }
   }
 
-  auto q = setup_queue;
   // Render World with Inter Chunk walls
   RenderWorld(true);
-  // Remove the inter chunk walls
-  setup_queue = q;
+
   RenderWorld(false);
 }
 
 void World::RenderWorld(bool firstRun) {
   std::lock_guard<std::mutex> lock(setup_mutex);
-  while (!setup_queue.empty()) {
-    auto b = setup_queue.front();
-    setup_queue.pop();
-    b->RenderBiome(firstRun);  // firstRun
-    if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+  if (firstRun) {
+    while (!setup_queue.empty()) {
+      auto b = setup_queue.front();
+      setup_queue.pop();
+      b->RenderBiome(true);  // firstRun
+      b->isrerenderiter = false;
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
+  } else {
+    while (!rerender_queue.empty()) {
+      auto b = rerender_queue.front();
+      rerender_queue.pop();
+      b->RenderBiome(false);  // ReRun
+      b->isrerenderiter = true;
+      if (render_queue.find(b) == render_queue.end()) render_queue.insert(b);
+    }
   }
+
+  DoBindTask(firstRun);
 }
 
 void World::Draw() {
   // Do not render all the chunks just what biome wants to using its render_queue
-  for (auto &biome : render_queue) {
-    biome->Draw();
+  for (auto biome : render_queue) {
+    if (!biome) {
+      std::cerr << "[ERROR] World::Draw biome is null\n";
+      continue;
+    }
+    if (biome->chunks_ready.load(std::memory_order_acquire) >= CHUNK_COUNTX * CHUNK_COUNTZ) {
+      biome->Draw();
+    }
   }
 }
 
 void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov) {
-  for (auto &biome : render_queue) biome->Update_queue(playerpos, playerForward, fov);
+  for (auto biome : render_queue) {
+    if (!biome) {
+      std::cerr << "[ERROR] World::Update_queue: biome is null\n";
+      continue;
+    }
+    if (biome->chunks_ready.load(std::memory_order_acquire) >= CHUNK_COUNTX * CHUNK_COUNTZ) {
+      biome->Update_queue(playerpos, playerForward, fov);
+    }
+  }
+}
+
+void World::DoBindTask(bool firstRun) {
+  while (!bind_queue.empty()) {
+    bool flag = false;
+    std::shared_ptr<Biome> biome;
+    {
+      std::lock_guard<std::mutex> lock(biome_mutex);
+      biome = bind_queue.front();
+      // If biome is null return early
+      if (!biome) return;
+      if (firstRun && biome->isrerenderiter) {
+        return;
+      }
+
+      if (biome->isrerenderiter) {
+        int expected = 32;
+        if (biome->chunks_ready.compare_exchange_strong(expected, 16)) {
+          flag = true;
+        }
+      }
+    }
+    if ((firstRun || flag) &&
+        biome->chunks_ready.load(std::memory_order_acquire) == CHUNK_COUNTZ * CHUNK_COUNTX) {
+      bind_queue.pop();
+      for (int i = 0; i < CHUNK_COUNTX; i++) {
+        for (int j = 0; j < CHUNK_COUNTZ; j++) {
+          auto chunk = biome->chunks[i][j];
+          chunk->chunkva = std::make_unique<VertexArray>();
+          chunk->chunkva->Bind();
+          VertexBufferLayout layout;
+          layout.Push(GL_UNSIGNED_INT, 1);
+          VertexBuffer vb(
+              chunk->cube_vertices.data(), chunk->cube_vertices.size() * sizeof(GLuint));
+          chunk->chunkva->AddBuffer(vb, layout);
+          IndexBuffer ib(chunk->cube_indices.data(), chunk->cube_indices.size());
+          //  glBindBuffer(GL_ARRAY_BUFFER, 0);
+          glBindVertexArray(0);
+          biome->render_queue.insert(chunk);
+        }
+      }
+
+      // Have a way to check if neighbor chunks are loaded before rerendering
+      if (firstRun) {
+        rerender_queue.push(biome);
+      }
+    } else {
+      return;
+    }
+  }
 }
 
 void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {

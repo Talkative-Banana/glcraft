@@ -46,6 +46,7 @@ GLuint wireframemode, shaderProgram, shaderProgram2;
 glm::mat4 modelT, viewT, projectionT;  // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
+std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor;
@@ -210,10 +211,8 @@ int main(int, char **) {
   // createAxesLine(shaderProgram, axis_VAO);
   // Initalize all the players
   for (int i = 0; i < players_cnt; i++) {
-    players[i] = std::make_unique<Player>();
+    players[i] = std::make_unique<Player>(shaderProgram2);
   }
-
-  std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
 
   uint64_t handle1 = asset_manager->loadMeshObject(
       "assets/bunny.obj",
@@ -252,6 +251,7 @@ int main(int, char **) {
     auto fov = players[activePlayer]->m_cameracontroller->GetCamera()->GetHorizontalFOV();
     // World Calculations
     world->SetupWorld(playerpos);
+
     world->Update_queue(playerpos, playerdir, fov);
 
     // handle player
