@@ -1,15 +1,29 @@
 #include "Player.h"
 
-Player::Player(const glm::vec3 &pos, const glm::vec3 &dir) : m_position(pos), m_forward(dir) {
+Player::Player(const glm::vec3 &pos, const glm::vec3 &dir, const uint64_t shaderProgram)
+    : m_position(pos), m_forward(dir) {
   m_cameracontroller = std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
+  m_meshhandle = asset_manager->loadMeshObject(
+      "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
+
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  l_mesh->setup();
+  meshes.push_back(l_mesh);
 }
 
-Player::Player() {
+Player::Player(const uint64_t shaderProgram) {
   m_cameracontroller = std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
+
+  m_meshhandle = asset_manager->loadMeshObject(
+      "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
+
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  l_mesh->setup();
+  meshes.push_back(l_mesh);
 }
 
 void Player::handle_input() {
@@ -109,6 +123,8 @@ void Player::handle_input() {
 
   // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  l_mesh->pos = m_position;
 
   auto get_neighbors = [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
     std::shared_ptr<Chunk> left, front, right, back;

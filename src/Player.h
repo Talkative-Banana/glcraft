@@ -1,6 +1,7 @@
 #include <array>
 #include <memory>
 
+#include "AssetManager.h"
 #include "CameraController.h"
 #include "Chunk.h"
 #include "Mesh.h"
@@ -11,6 +12,7 @@
 
 extern std::unique_ptr<Window> _window;
 extern std::unique_ptr<World> world;
+extern std::unique_ptr<AssetManager> asset_manager;
 extern GLuint activePlayer, players_cnt, shaderProgram;
 extern GLint vModel_uniform, vView_uniform, vProjection_uniform, side_uniform, chunkpos_uniform,
     vColor_uniform, atlas_uniform, lightpos_uniform, cameraPos_uniform;
@@ -33,13 +35,14 @@ class Player {
   int display_w, display_h;
   GLFWwindow* window;
   GLuint bltype = 0, mdtype = 0, Nokeypressed = 0;
+  uint64_t m_meshhandle;
 
  public:
   std::unique_ptr<CameraController> m_cameracontroller;
 
  public:
-  Player(const glm::vec3& pos, const glm::vec3& dir);
-  Player();
+  Player(const uint64_t);
+  Player(const glm::vec3&, const glm::vec3&, const uint64_t);
 
   void handle_input();
   void update();
