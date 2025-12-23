@@ -25,7 +25,7 @@ class Block {
        {{23, 22, 21, 23, 21, 20}}}};  // Bottom
 
 
-  Block(const glm::ivec3& pos, GLboolean solid, GLuint bltype);
+  Block(const glm::ivec3& pos, GLboolean solid, BLOCK_TYPE bltype);
   Block();
 
   void Render(
@@ -33,10 +33,12 @@ class Block {
       GLuint ambient_occ,
       std::vector<GLuint>& indices,
       std::vector<GLuint>& rendervert);
-  void add(int bltype);
+  void add(BLOCK_TYPE bltype);
   void remove();
-  bool isSolid();
+  bool is_solid();
   bool is_ref();
-  bool is_transparent(GLuint blkmask);
+  bool is_removable();
+  bool is_transparent();
   GLuint Mask(GLuint X, GLuint Y, GLuint Z, GLuint cent, GLuint normal, GLuint blktype, GLuint ac);
+  BLOCK_TYPE get_type();
 };

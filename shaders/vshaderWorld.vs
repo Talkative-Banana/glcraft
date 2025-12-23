@@ -26,10 +26,22 @@ const uint SAND_BLOCK_X  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u <<
 const uint SAND_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
 const uint BEDROCK_BLOCK_X  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
 const uint BEDROCK_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint BRICK_BLOCK_X  = (7u) | (7u << 4u) | (7u << 8u) | (7u << 12u) | (7u << 16u) | (7u << 20u);
+const uint BRICK_BLOCK_Y  = (0u) | (0u << 4u) | (0u << 8u) | (0u << 12u) | (0u << 16u) | (0u << 20u);
+const uint SNOW_BLOCK_X  = (2u) | (2u << 4u) | (2u << 8u) | (2u << 12u) | (2u << 16u) | (2u << 20u);
+const uint SNOW_BLOCK_Y  = (4u) | (4u << 4u) | (4u << 8u) | (4u << 12u) | (4u << 16u) | (4u << 20u);
+const uint HARD_SNOW_BLOCK_X  = (8u) | (8u << 4u) | (8u << 8u) | (8u << 12u) | (8u << 16u) | (8u << 20u);
+const uint HARD_SNOW_BLOCK_Y  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint LAVA_BLOCK_X  = (15u) | (15u << 4u) | (15u << 8u) | (15u << 12u) | (15u << 16u) | (15u << 20u);
+const uint LAVA_BLOCK_Y  = (15u) | (15u << 4u) | (15u << 8u) | (15u << 12u) | (15u << 16u) | (15u << 20u);
+const uint GLASS_BLOCK_X  = (1u) | (1u << 4u) | (1u << 8u) | (1u << 12u) | (1u << 16u) | (1u << 20u);
+const uint GLASS_BLOCK_Y  = (3u) | (3u << 4u) | (3u << 8u) | (3u << 12u) | (3u << 16u) | (3u << 20u);
+// Y |  X -->
+//   V
 
 // Pack block arrays as const arrays (faster, not re-written per-vertex).
-const uint blocks_X[12] = uint[12](REF_BLOCK_X, DIRT_BLOCK_X, STONE_BLOCK_X, TREE_BLOCK_X, LEAF_BLOCK_X, GRASS_BLOCK_X, IRON_BLOCK_X, WOOD_BLOCK_X, WATER_BLOCK_X, GRAVEL_BLOCK_X, SAND_BLOCK_X, BEDROCK_BLOCK_X);
-const uint blocks_Y[12] = uint[12](REF_BLOCK_Y, DIRT_BLOCK_Y, STONE_BLOCK_Y, TREE_BLOCK_Y, LEAF_BLOCK_Y, GRASS_BLOCK_Y, IRON_BLOCK_Y, WOOD_BLOCK_Y, WATER_BLOCK_Y, GRAVEL_BLOCK_Y, SAND_BLOCK_Y, BEDROCK_BLOCK_Y);
+const uint blocks_X[17] = uint[17](REF_BLOCK_X, DIRT_BLOCK_X, STONE_BLOCK_X, TREE_BLOCK_X, LEAF_BLOCK_X, GRASS_BLOCK_X, IRON_BLOCK_X, WOOD_BLOCK_X, WATER_BLOCK_X, GRAVEL_BLOCK_X, SAND_BLOCK_X, BEDROCK_BLOCK_X, BRICK_BLOCK_X, SNOW_BLOCK_X, HARD_SNOW_BLOCK_X, LAVA_BLOCK_X, GLASS_BLOCK_X);
+const uint blocks_Y[17] = uint[17](REF_BLOCK_Y, DIRT_BLOCK_Y, STONE_BLOCK_Y, TREE_BLOCK_Y, LEAF_BLOCK_Y, GRASS_BLOCK_Y, IRON_BLOCK_Y, WOOD_BLOCK_Y, WATER_BLOCK_Y, GRAVEL_BLOCK_Y, SAND_BLOCK_Y, BEDROCK_BLOCK_Y, BRICK_BLOCK_Y, SNOW_BLOCK_Y, HARD_SNOW_BLOCK_Y, LAVA_BLOCK_Y, GLASS_BLOCK_Y);
 
 uniform float side;
 uniform vec3 chunkpos;
@@ -44,6 +56,10 @@ out float isoscale;
 out vec3 NormalDir;
 out vec2 TexCoord; 
 out float aoFactor;
+out float visibility;
+
+const float density = 0.02;
+const float gradient = 1.5;
 
 vec3 Center(vec3 pos, uint centeroff){
 	vec3 center = pos;
@@ -174,6 +190,12 @@ void main() {
 	vec3 pos = vec3(side * positionX, side * positionY, side * positionZ);
 	vec3 centercord = Center(pos, centeroff);
 	gl_Position = vProjection * vView * vModel * vec4(pos + chunkpos, 1.0);
+
+	vec4 posrelcam = vView * vec4(pos + chunkpos, 1.0);
+
+	float distance = length(posrelcam.xyz);
+	visibility = exp(-pow(distance*density, gradient));
+	visibility = clamp(visibility, 0.0, 1.0);
 
 	ivec3 _NormalDir = Normal(normaldir);
 

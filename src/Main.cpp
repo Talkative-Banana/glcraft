@@ -23,11 +23,13 @@
 #include "Ray.h"
 #include "Renderer.h"
 #include "Texture.h"
+#include "UI.h"
 #include "World.h"
 
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
-std::unique_ptr<World> world = std::make_unique<World>(42, _wps);
+std::unique_ptr<UI> ui = nullptr;
+std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
 glm::vec3 chunkpos;
 GLuint activePlayer, players_cnt = 2;
@@ -35,22 +37,25 @@ GLint vModel_uniform = -1;
 GLint vView_uniform = -1;
 GLint vProjection_uniform = -1;
 GLint side_uniform = -1;
-GLint chunkpos_uniform;
-GLint vColor_uniform;
-GLint atlas_uniform;
+GLint chunkpos_uniform = -1;
+GLint vColor_uniform = -1;
 GLint vVertex_attrib = -1;
 GLint vNormal_attrib = -1;
 GLint cameraPos_uniform = -1;
 GLint lightpos_uniform = -1;
-GLint atlast_uniform = -1;
-GLuint wireframemode, shaderProgram, shaderProgram2;
+GLint atlas_uniform = -1;
+GLint ui_uniform = -1;
+GLint skyColor_uniform = -1;
+GLint quadpos_uniform = -1;
+GLint uProjLoc_uniform = -1;
+GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI;
 glm::mat4 modelT, viewT, projectionT;  // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
 
 // void createAxesLine(unsigned int &, unsigned int &);
-ImVec4 clearColor;
+ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 
 // void draw_axis(unsigned int axis_VAO, unsigned int shaderProgram) {
 //   glBindVertexArray(axis_VAO);
@@ -157,16 +162,21 @@ void bind_uniforms() {
   }
 
   // Get handle to eye normal variable in shader
-  cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
   if (cameraPos_uniform == -1) {
-    fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting Switched Off.\n");
+    cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
+    if (cameraPos_uniform == -1) {
+      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting Switched Off.\n");
+      exit(0);
+    }
   }
 
   // Moved outside of loop
-  lightpos_uniform = glGetUniformLocation(shaderProgram2, "lightpos");
   if (lightpos_uniform == -1) {
-    fprintf(stderr, "Could not bind location: lightpos\n");
-    exit(0);
+    lightpos_uniform = glGetUniformLocation(shaderProgram2, "lightpos");
+    if (lightpos_uniform == -1) {
+      fprintf(stderr, "Could not bind location: lightpos\n");
+      exit(0);
+    }
   }
 
   if (side_uniform == -1) {
@@ -177,19 +187,54 @@ void bind_uniforms() {
     }
   }
 
-  atlas_uniform = glGetUniformLocation(shaderProgram, "atlas");
   if (atlas_uniform == -1) {
-    std::cerr << "Could not bind: atlas\n";
-    exit(0);
+    atlas_uniform = glGetUniformLocation(shaderProgram, "atlas");
+    if (atlas_uniform == -1) {
+      std::cerr << "Could not bind: atlas\n";
+      exit(0);
+    }
   }
+
+  if (skyColor_uniform == -1) {
+    skyColor_uniform = glGetUniformLocation(shaderProgram, "skyColor");
+    if (skyColor_uniform == -1) {
+      std::cerr << "Could not bind: skyColor\n";
+      exit(0);
+    }
+  }
+
   glUniform1f(side_uniform, BLOCK_SIZE);
 
-
-  // Moved outside of loop
-  chunkpos_uniform = glGetUniformLocation(shaderProgram, "chunkpos");
   if (chunkpos_uniform == -1) {
-    fprintf(stderr, "Could not bind location: chunkpos\n");
-    exit(0);
+    chunkpos_uniform = glGetUniformLocation(shaderProgram, "chunkpos");
+    if (chunkpos_uniform == -1) {
+      fprintf(stderr, "Could not bind location: chunkpos\n");
+      exit(0);
+    }
+  }
+
+  if (quadpos_uniform == -1) {
+    quadpos_uniform = glGetAttribLocation(shaderProgramUI, "quadpos");
+    if (quadpos_uniform == -1) {
+      fprintf(stderr, "Could not bind location: quadpos");
+      exit(0);
+    }
+  }
+
+  if (ui_uniform == -1) {
+    ui_uniform = glGetUniformLocation(shaderProgramUI, "UICOMP");
+    if (ui_uniform == -1) {
+      std::cerr << "Could not bind: UI\n";
+      exit(0);
+    }
+  }
+
+  if (uProjLoc_uniform == -1) {
+    uProjLoc_uniform = glGetUniformLocation(shaderProgramUI, "uProj");
+    if (uProjLoc_uniform == -1) {
+      std::cerr << "Could not bind uniform uProj\n";
+      exit(0);
+    }
   }
 }
 
@@ -197,16 +242,24 @@ int main(int, char **) {
   // Setup window
   _window = std::make_unique<Window>(SCREEN_WIDTH, SCREEN_HEIGHT);
   ImGuiIO &io = ImGui::GetIO();  // Create IO
-  clearColor = ImVec4(0.471f, 0.786f, .784f, 1.00f);
 
-  shaderProgram = createProgram("./shaders/vshader.vs", "./shaders/fshader.fs");
-  shaderProgram2 = createProgram("./shaders/vshader2.vs", "./shaders/fshader2.fs");
+  // create UI Render
+  ui = std::make_unique<UI>();
+  world = std::make_unique<World>(42, _wps);
+
+  shaderProgram = createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
+  shaderProgram2 = createProgram("./shaders/vshaderAsset.vs", "./shaders/fshaderAsset.fs");
+  shaderProgramUI = createProgram("./shaders/vshaderUI.vs", "./shaders/fshaderUI.fs");
 
   glUseProgram(shaderProgram);
 
   unsigned int axis_VAO;
 
   Texture atlas("textures/default_texture.png");
+
+  UIComponent uicomp = UIComponent("textures/gauge.png", glm::vec2(0.0, 0.0), 512);
+  ui->add_component(uicomp);
+  ui->Render();
 
   bind_uniforms();
   // createAxesLine(shaderProgram, axis_VAO);
@@ -215,29 +268,30 @@ int main(int, char **) {
     players[i] = std::make_unique<Player>(shaderProgram2);
   }
 
-  uint64_t handle1 = asset_manager->loadMeshObject(
-      "assets/bunny.obj",
-      shaderProgram2,
-      0.025,
-      0.0,
-      glm::vec3(70.0, 70.0, 70.0),
-      glm::vec3(1.0, 0.0, 0.0));
-  uint64_t handle2 = asset_manager->loadMeshObject(
-      "assets/buddha.obj",
-      shaderProgram2,
-      0.025,
-      180.0,
-      glm::vec3(70, 70.0, 100.0),
-      glm::normalize(glm::vec3(0.0, 1.0, 1.0)));
+  // uint64_t handle1 = asset_manager->loadMeshObject(
+  //     "assets/bunny.obj",
+  //     shaderProgram2,
+  //     0.025,
+  //     0.0,
+  //     glm::vec3(70.0, 70.0, 70.0),
+  //     glm::vec3(1.0, 0.0, 0.0));
+  // uint64_t handle2 = asset_manager->loadMeshObject(
+  //     "assets/buddha.obj",
+  //     shaderProgram2,
+  //     0.025,
+  //     180.0,
+  //     glm::vec3(70, 70.0, 100.0),
+  //     glm::normalize(glm::vec3(0.0, 1.0, 1.0)));
+  //
+  // auto mesh1 = asset_manager->get_mesh(handle1);
+  // auto mesh2 = asset_manager->get_mesh(handle2);
+  // mesh1->setup();
+  // mesh2->setup();
+  //
+  // meshes.push_back(mesh1);
+  // meshes.push_back(mesh2);
 
-  auto mesh1 = asset_manager->get_mesh(handle1);
-  auto mesh2 = asset_manager->get_mesh(handle2);
-  mesh1->setup();
-  mesh2->setup();
-
-  meshes.push_back(mesh1);
-  meshes.push_back(mesh2);
-
+  glm::mat4 uiProj;
   while (!glfwWindowShouldClose(_window->GetWindow())) {
     glfwPollEvents();
 
@@ -261,10 +315,45 @@ int main(int, char **) {
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
     glUniform1i(atlas_uniform, 0);  // bind sampler to texture unit 0
-    world->Draw();
-    glDisable(GL_DEPTH_TEST);  // Disable depth test for drawing axes. We want
-                               // axes to be drawn on top of all
+    // skyColor.Bind();
+    glUniform3f(
+        skyColor_uniform,
+        clearColor.x,
+        clearColor.y,
+        clearColor.z);  // bind sampler to texture unit 0
 
+    // OPAQUE PASS
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    world->Draw(OBJ_TYPE::OPAQUE);
+
+    // TRANSPARENT PASS
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    world->Draw(OBJ_TYPE::TRANSPARENT);
+
+    // UI PASS
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glUseProgram(shaderProgramUI);
+
+
+    int fbw, fbh;
+    glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
+    uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
+
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    ui->Draw();
+    // Restore
+    glDepthMask(GL_TRUE);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glUseProgram(0);
     // draw_axis(axis_VAO, shaderProgram);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

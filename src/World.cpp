@@ -5,7 +5,7 @@
 World::World(int seed, const glm::ivec3 &pos) : m_seed(seed), m_worldpos(pos) {
   // Read saved files if any
   worker = std::thread(&World::workerLoop, this);
-  std::ifstream input_bin_file("save/save.bin", std::ios::binary);
+  std::ifstream input_bin_file("save/ff.bin", std::ios::binary);
   if (!input_bin_file) {
     std::cerr << "Failed to open save file.\n";
     return;
@@ -126,7 +126,7 @@ void World::workerLoop() {
     // heavy work outside lock
     int idx = BIOME_COUNTX * i + j;
     if (biomes[i][j]) continue;
-    auto biome = std::make_shared<Biome>(0, pos, true);
+    auto biome = std::make_shared<Biome>(1, pos, true);
 
     {
       std::lock_guard<std::mutex> g(setup_mutex);
@@ -192,7 +192,7 @@ void World::RenderWorld(bool firstRun) {
   DoBindTask(firstRun);
 }
 
-void World::Draw() {
+void World::Draw(OBJ_TYPE type) {
   // Do not render all the chunks just what biome wants to using its render_queue
   for (auto biome : render_queue) {
     if (!biome) {
@@ -200,7 +200,7 @@ void World::Draw() {
       continue;
     }
     if (biome->chunks_ready.load(std::memory_order_acquire) >= CHUNK_COUNTX * CHUNK_COUNTZ) {
-      biome->Draw();
+      biome->Draw(type);
     }
   }
 }
@@ -253,6 +253,18 @@ void World::DoBindTask(bool firstRun) {
           IndexBuffer ib(chunk->cube_indices.data(), chunk->cube_indices.size());
           //  glBindBuffer(GL_ARRAY_BUFFER, 0);
           glBindVertexArray(0);
+
+          chunk->chunkvatrans = std::make_unique<VertexArray>();
+          chunk->chunkvatrans->Bind();
+          VertexBufferLayout layouttrans;
+          layouttrans.Push(GL_UNSIGNED_INT, 1);
+          VertexBuffer vbtrans(
+              chunk->cube_verticestrans.data(), chunk->cube_verticestrans.size() * sizeof(GLuint));
+          chunk->chunkvatrans->AddBuffer(vbtrans, layouttrans);
+          IndexBuffer ibtrans(chunk->cube_indicestrans.data(), chunk->cube_indicestrans.size());
+          //  glBindBuffer(GL_ARRAY_BUFFER, 0);
+          glBindVertexArray(0);
+
           biome->render_queue.insert(chunk);
         }
       }
@@ -273,7 +285,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
     for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
       for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
         auto blk = chunk->blocks[i][j][k];
-        if (blk.isSolid() && blk.is_ref()) {
+        if (blk.is_ref()) {
           ref_array.push_back({i, j, k});
         }
       }
@@ -281,7 +293,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
   }
 
   if (ref_array.size() != 2) {
-    std::cerr << "Reference blocks are not 2, ignoring model save\n";
+    std::cerr << "Reference blocks are not 2, ignoring model save: " << ref_array.size() << '\n';
   } else {
     std::cout << "Saving Model\n";
     std::ofstream save_model("models/" + name + ".bin", std::ios::binary | std::ios::trunc);
@@ -298,7 +310,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
         for (int j = ref_array[0].y; j <= ref_array[1].y; j++) {
           auto blk = chunk->blocks[i][j][k];
           if (blk.is_ref()) continue;
-          save_model.write(reinterpret_cast<char *>(&blk.blmask), sizeof(blk.blmask));
+          save_model.write(reinterpret_cast<char *>(&blk.blmask), sizeof(GLuint));
         }
       }
     }
@@ -348,7 +360,7 @@ void World::load_model(glm::ivec3 pos, std::string model) {
           continue;
         Block block;
         input_model_bin_file.read(reinterpret_cast<char *>(&block), sizeof(block));
-        if (!block.isSolid()) continue;
+        // if (!block.isSolid()) continue;
         auto __chunk = get_chunk_by_center(
             {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE, pos.z + k * BLOCK_SIZE});  // 63 1 63
         if (__chunk) {
@@ -357,8 +369,8 @@ void World::load_model(glm::ivec3 pos, std::string model) {
           std::cout << "Chunk is null\n";
           std::terminate();
         }
-        uint32_t preserve_mask = ((1 << 15) - 1);  // binary: 0000...01111111111111111 (15 bits set)
-        uint32_t overwrite_mask = ~preserve_mask;
+        GLuint preserve_mask = ((1 << 15) - 1);  // binary: 0000...01111111111111111 (15 bits set)
+        GLuint overwrite_mask = ~preserve_mask;
 
         Block &existing =
             __chunk->blocks[(pos.x / static_cast<int>(BLOCK_SIZE) + i) % CHUNK_BLOCK_COUNT]

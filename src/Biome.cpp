@@ -89,13 +89,13 @@ void Biome::RenderBiome(bool firstRun) {
   }
 }
 
-void Biome::Draw() {
+void Biome::Draw(OBJ_TYPE type) {
   for (auto chunk : render_queue) {
     if (!chunk) {
       std::cerr << "[ERROR] BIOME::Draw chunk is null\n";
       continue;
     }
-    chunk->Draw();
+    chunk->Draw(type);
   }
 }
 

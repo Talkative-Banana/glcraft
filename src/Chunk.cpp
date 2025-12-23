@@ -16,6 +16,7 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean disp
   // Check if the chunk needs to be loaded from disk
   id = _id;
   count = 0;
+  counttrans = 0;
   type = _type;
   biomepos = _biomepos;
   displaychunk = display;
@@ -46,7 +47,18 @@ inline GLboolean Chunk::isSolid(const std::vector<GLint> &position) {
       (position[2] < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung block is solid
-    return ((blocks[position[0]][position[1]][position[2]].blmask >> 15 & 1));
+    return ((blocks[position[0]][position[1]][position[2]].is_solid()));
+  }
+  return false;
+}
+
+inline GLboolean Chunk::isTransparent(const std::vector<GLint> &position) {
+  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) && (position[1] >= 0) &&
+      (position[1] < CHUNK_BLOCK_COUNT) && (position[2] >= 0) &&
+      (position[2] < CHUNK_BLOCK_COUNT)) {
+
+    // Check if neibhourung block is transparent
+    return ((blocks[position[0]][position[1]][position[2]].is_transparent()));
   }
   return false;
 }
@@ -63,32 +75,32 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
     if (face == 1) {
       // No Need to draw back face if block behind is solid
       tmp[2] -= 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[2] += 1;
     } else if (face == 2) {
       // No Need to draw front face if block in front is solid
       tmp[2] += 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[2] -= 1;
     } else if (face == 3) {
       // No Need to draw left face if block in left is solid
       tmp[0] -= 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[0] += 1;
     } else if (face == 4) {
       // No Need to draw right face if block in right is solid
       tmp[0] += 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[0] -= 1;
     } else if (face == 5) {
       // No Need to draw top face if block on top is solid
       tmp[1] += 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[1] -= 1;
     } else if (face == 6) {
       // No Need to draw bottom face if block on bottom is solid
       tmp[1] -= 1;
-      if (!isSolid(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
       tmp[1] += 1;
     }
   }
@@ -114,7 +126,7 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
   noise::utils::NoiseMap heightMap;
   noise::utils::NoiseMapBuilderPlane heightMapBuilder;
-  heightMapBuilder.SetSourceModule(mountainTerrain);
+  heightMapBuilder.SetSourceModule(flatTerrain);
   heightMapBuilder.SetDestNoiseMap(heightMap);
   heightMapBuilder.SetDestSize(128, 128);
   int biomex = X / 4, biomez = Z / 4;
@@ -146,7 +158,7 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
-        GLuint bltype = -1;
+        BLOCK_TYPE bltype;
         if (y == 0) {
           bltype = biome_bltypes[4];  // BASE Block BEDROCK
         } else if (y == height - 1) {
@@ -177,163 +189,327 @@ void Chunk::Render(
     std::shared_ptr<Chunk> back) {
   // Rerendering
   // if (!displaychunk) return;
-  rendervert.clear();
-  cube_vertices.clear();
-  cube_indices.clear();
-  count = 0;
-  GLuint idx = 0;
+  // Render OPAQUE blocks
+  {
+    rendervert.clear();
+    cube_vertices.clear();
+    cube_indices.clear();
+    count = 0;
+    GLuint idx = 0;
 
-  for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
-    for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
-      for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
-        // filled[0][0][0] = 1;
-        if (!((blocks[i][j][k].blmask >> 15) & 1)) {
-          // break;  // unsolid blocks
-          continue;
-        }
-        GLuint mask = 0;
-        if (firstRun) {
-          // If its first run just save the mask
-          mask = Chunk::RenderFace({i, j, k});
-          blocks[i][j][k].blmask &= ~FACE_MASK;
-          blocks[i][j][k].blmask |= (mask << 17);
-          // continue;
-        } else {
-          // Second Run extract the mask
-          if (i == 0 && right) {
-            auto &blk1 = blocks[0][j][k];
-            auto &blk2 = right->blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-            if (((blk1.blmask >> 15) & 1) && ((blk2.blmask >> 15) & 1)) {
-              // Remove left face from current block
-              blk1.blmask &= ~LEFT_FACE;
-            }
-          } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
-            auto &blk1 = blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-            auto &blk2 = left->blocks[0][j][k];
-            if (((blk1.blmask >> 15) & 1) && ((blk2.blmask >> 15) & 1)) {
-              // Remove right face from current block
-              blk1.blmask &= ~RIGHT_FACE;
-            }
+    for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
+      for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
+        for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
+          // filled[0][0][0] = 1;
+          if (!blocks[i][j][k].is_solid() || blocks[i][j][k].is_transparent()) {
+            // break;  // unsolid blocks
+            continue;
           }
-          if (k == 0 && back) {
-            auto &blk1 = blocks[i][j][0];
-            auto &blk2 = back->blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-            if (((blk1.blmask >> 15) & 1) && ((blk2.blmask >> 15) & 1)) {
-              // Remove back face from current block
-              blk1.blmask &= ~BACK_FACE;
-            }
-          } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
-            auto &blk1 = blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-            auto &blk2 = front->blocks[i][j][0];
-            if (((blk1.blmask >> 15) & 1) && ((blk2.blmask >> 15) & 1)) {
-              // Remove front face from current block
-              blk1.blmask &= ~FRONT_FACE;
-            }
+          GLuint mask = 0;
+          if (firstRun) {
+            // If its first run just save the mask
+            mask = Chunk::RenderFace({i, j, k});
+            blocks[i][j][k].blmask &= ~FACE_MASK;
+            blocks[i][j][k].blmask |= (mask << 17);
+            // continue;
           } else {
-            // No update needed middle block
+            // Second Run extract the mask
+            if (i == 0 && right) {
+              auto &blk1 = blocks[0][j][k];
+              auto &blk2 = right->blocks[CHUNK_BLOCK_COUNT - 1][j][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove left face from current block
+                blk1.blmask &= ~LEFT_FACE;
+              }
+            } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
+              auto &blk1 = blocks[CHUNK_BLOCK_COUNT - 1][j][k];
+              auto &blk2 = left->blocks[0][j][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove right face from current block
+                blk1.blmask &= ~RIGHT_FACE;
+              }
+            }
+            if (k == 0 && back) {
+              auto &blk1 = blocks[i][j][0];
+              auto &blk2 = back->blocks[i][j][CHUNK_BLOCK_COUNT - 1];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove back face from current block
+                blk1.blmask &= ~BACK_FACE;
+              }
+            } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
+              auto &blk1 = blocks[i][j][CHUNK_BLOCK_COUNT - 1];
+              auto &blk2 = front->blocks[i][j][0];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove front face from current block
+                blk1.blmask &= ~FRONT_FACE;
+              }
+            } else {
+              // No update needed middle block
+            }
+            mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
-          mask = (blocks[i][j][k].blmask >> 17) & 63;
-        }
 
-        glm::ivec3 block_pos = chunkpos +
-                               glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-                               glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
+          glm::ivec3 block_pos = chunkpos +
+                                 glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+                                 glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
 
-        // Offsets for 8 neighbors around this block (XZ plane)
-        static const glm::ivec3 neighborOffsets[8] = {
-            {0, BLOCK_SIZE, -BLOCK_SIZE},            // b0
-            {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE},  // b1   543
-            {-BLOCK_SIZE, BLOCK_SIZE, 0},            // b2   6 2
-            {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b3   701
-            {0, BLOCK_SIZE, BLOCK_SIZE},             // b4
-            {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},    // b5
-            {BLOCK_SIZE, BLOCK_SIZE, 0},             // b6
-            {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}    // b7
-        };
+          // Offsets for 8 neighbors around this block (XZ plane)
+          static const glm::ivec3 neighborOffsets[8] = {
+              {0, BLOCK_SIZE, -BLOCK_SIZE},            // b0
+              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE},  // b1   543
+              {-BLOCK_SIZE, BLOCK_SIZE, 0},            // b2   6 2
+              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b3   701
+              {0, BLOCK_SIZE, BLOCK_SIZE},             // b4
+              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},    // b5
+              {BLOCK_SIZE, BLOCK_SIZE, 0},             // b6
+              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}    // b7
+          };
 
-        GLuint ac = 0;
-        for (int n = 0; n < 8; n++) {
-          auto neighbor = world->get_block_by_center(block_pos + neighborOffsets[n]);
-          if (neighbor && neighbor->isSolid()) {
-            ac |= (1u << n);  // set bit if solid
+          GLuint ac = 0;
+          for (int n = 0; n < 8; n++) {
+            auto neighbor = world->get_block_by_center(block_pos + neighborOffsets[n]);
+            if (neighbor && neighbor->is_solid()) {
+              ac |= (1u << n);  // set bit if solid
+            }
           }
-        }
 
-        if (auto b0 =
-                world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-          if (b0->isSolid()) ac |= (1u << 8);
+          if (auto b0 =
+                  world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            if (b0->is_solid()) ac |= (1u << 8);
+          }
+          std::vector<GLuint> indices;
+          std::vector<GLuint> blockrendervert;
+          blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
+          for (auto &ind : indices) ind += idx;
+          rendervert.push_back({blockrendervert, indices});
+          idx += 24, count++;
         }
-        std::vector<GLuint> indices;
-        std::vector<GLuint> blockrendervert;
-        blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
-        for (auto &ind : indices) ind += idx;
-        rendervert.push_back({blockrendervert, indices});
-        idx += 24, count++;
       }
+    }
+
+    const GLuint cnt = count;
+    const GLuint rsize = static_cast<GLuint>(rendervert.size());
+
+    // std::vector<int> FrustumCull(rsize, 0);
+    GLuint vcnt = 0, icnt = 0;
+
+    for (GLuint i = 0; i < rsize; ++i) {
+      auto &vert_ind = rendervert[i];
+      const auto &verts = vert_ind.first;
+      const auto &inds = vert_ind.second;
+
+      vcnt += static_cast<GLuint>(verts.size());
+      // Diabled for now //  TODO:
+      // if (FrustumCulling(verts[0])) {
+      //  FrustumCull[i] = 1;
+      //  std::cout << "Frustum Culled!\n";
+      //  continue;
+      // }
+      icnt += static_cast<GLuint>(inds.size());
+    }
+
+    cntblocks = icnt;
+    cube_vertices.reserve(vcnt);
+    cube_indices.reserve(icnt);
+
+    for (GLuint i = 0; i < rsize; ++i) {
+      // if (FrustumCull[i]) continue;
+      auto &vert_ind = rendervert[i];
+      const auto &verts = vert_ind.first;
+      const auto &inds = vert_ind.second;
+
+      cube_vertices.insert(cube_vertices.end(), verts.begin(), verts.end());
+      cube_indices.insert(cube_indices.end(), inds.begin(), inds.end());
+    }
+
+    if (!setup) {
+      chunkva->Bind();
+      VertexBufferLayout layout;
+      layout.Push(GL_UNSIGNED_INT, 1);
+      VertexBuffer vb(cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
+      chunkva->AddBuffer(vb, layout);
+      IndexBuffer ib(cube_indices.data(), cube_indices.size());
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glBindVertexArray(0);
     }
   }
 
+  // Render transparent blocks
+  {
+    renderverttrans.clear();
+    cube_verticestrans.clear();
+    cube_indicestrans.clear();
+    counttrans = 0;
+    GLuint idx = 0;
 
-  const GLuint cnt = count;
-  const GLuint rsize = static_cast<GLuint>(rendervert.size());
+    for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
+      for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
+        for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
+          // filled[0][0][0] = 1;
+          if (!blocks[i][j][k].is_solid() || !blocks[i][j][k].is_transparent()) {
+            // break;  // unsolid blocks
+            continue;
+          }
+          GLuint mask = 0;
+          if (firstRun) {
+            // If its first run just save the mask
+            mask = Chunk::RenderFace({i, j, k});
+            blocks[i][j][k].blmask &= ~FACE_MASK;
+            blocks[i][j][k].blmask |= (mask << 17);
+            // continue;
+          } else {
+            // Second Run extract the mask
+            if (i == 0 && right) {
+              auto &blk1 = blocks[0][j][k];
+              auto &blk2 = right->blocks[CHUNK_BLOCK_COUNT - 1][j][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove left face from current block
+                blk1.blmask &= ~LEFT_FACE;
+              }
+            } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
+              auto &blk1 = blocks[CHUNK_BLOCK_COUNT - 1][j][k];
+              auto &blk2 = left->blocks[0][j][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove right face from current block
+                blk1.blmask &= ~RIGHT_FACE;
+              }
+            }
+            if (k == 0 && back) {
+              auto &blk1 = blocks[i][j][0];
+              auto &blk2 = back->blocks[i][j][CHUNK_BLOCK_COUNT - 1];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove back face from current block
+                blk1.blmask &= ~BACK_FACE;
+              }
+            } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
+              auto &blk1 = blocks[i][j][CHUNK_BLOCK_COUNT - 1];
+              auto &blk2 = front->blocks[i][j][0];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove front face from current block
+                blk1.blmask &= ~FRONT_FACE;
+              }
+            } else {
+              // No update needed middle block
+            }
+            mask = (blocks[i][j][k].blmask >> 17) & 63;
+          }
 
-  // std::vector<int> FrustumCull(rsize, 0);
-  GLuint vcnt = 0, icnt = 0;
+          glm::ivec3 block_pos = chunkpos +
+                                 glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+                                 glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
 
-  for (GLuint i = 0; i < rsize; ++i) {
-    auto &vert_ind = rendervert[i];
-    const auto &verts = vert_ind.first;
-    const auto &inds = vert_ind.second;
+          // Offsets for 8 neighbors around this block (XZ plane)
+          static const glm::ivec3 neighborOffsets[8] = {
+              {0, BLOCK_SIZE, -BLOCK_SIZE},            // b0
+              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE},  // b1   543
+              {-BLOCK_SIZE, BLOCK_SIZE, 0},            // b2   6 2
+              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b3   701
+              {0, BLOCK_SIZE, BLOCK_SIZE},             // b4
+              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},    // b5
+              {BLOCK_SIZE, BLOCK_SIZE, 0},             // b6
+              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}    // b7
+          };
 
-    vcnt += static_cast<GLuint>(verts.size());
-    // Diabled for now //  TODO:
-    // if (FrustumCulling(verts[0])) {
-    //  FrustumCull[i] = 1;
-    //  std::cout << "Frustum Culled!\n";
-    //  continue;
-    // }
-    icnt += static_cast<GLuint>(inds.size());
-  }
+          GLuint ac = 0;
+          for (int n = 0; n < 8; n++) {
+            auto neighbor = world->get_block_by_center(block_pos + neighborOffsets[n]);
+            if (neighbor && neighbor->is_solid()) {
+              ac |= (1u << n);  // set bit if solid
+            }
+          }
 
-  cntblocks = icnt;
-  cube_vertices.reserve(vcnt);
-  cube_indices.reserve(icnt);
+          if (auto b0 =
+                  world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            if (b0->is_solid()) ac |= (1u << 8);
+          }
+          std::vector<GLuint> indices;
+          std::vector<GLuint> blockrendervert;
+          blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
+          for (auto &ind : indices) ind += idx;
+          renderverttrans.push_back({blockrendervert, indices});
+          idx += 24, counttrans++;
+        }
+      }
+    }
 
-  for (GLuint i = 0; i < rsize; ++i) {
-    // if (FrustumCull[i]) continue;
-    auto &vert_ind = rendervert[i];
-    const auto &verts = vert_ind.first;
-    const auto &inds = vert_ind.second;
+    const GLuint cnt = counttrans;
+    const GLuint rsize = static_cast<GLuint>(renderverttrans.size());
 
-    cube_vertices.insert(cube_vertices.end(), verts.begin(), verts.end());
-    cube_indices.insert(cube_indices.end(), inds.begin(), inds.end());
-  }
+    // std::vector<int> FrustumCull(rsize, 0);
+    GLuint vcnt = 0, icnt = 0;
 
-  if (!setup) {
-    chunkva->Bind();
-    VertexBufferLayout layout;
-    layout.Push(GL_UNSIGNED_INT, 1);
-    VertexBuffer vb(cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
-    chunkva->AddBuffer(vb, layout);
-    IndexBuffer ib(cube_indices.data(), cube_indices.size());
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    for (GLuint i = 0; i < rsize; ++i) {
+      auto &vert_ind = renderverttrans[i];
+      const auto &verts = vert_ind.first;
+      const auto &inds = vert_ind.second;
+
+      vcnt += static_cast<GLuint>(verts.size());
+      // Diabled for now //  TODO:
+      // if (FrustumCulling(verts[0])) {
+      //  FrustumCull[i] = 1;
+      //  std::cout << "Frustum Culled!\n";
+      //  continue;
+      // }
+      icnt += static_cast<GLuint>(inds.size());
+    }
+
+    cntblockstrans = icnt;
+    cube_vertices.reserve(vcnt);
+    cube_indices.reserve(icnt);
+
+    for (GLuint i = 0; i < rsize; ++i) {
+      // if (FrustumCull[i]) continue;
+      auto &vert_ind = renderverttrans[i];
+      const auto &verts = vert_ind.first;
+      const auto &inds = vert_ind.second;
+
+      cube_verticestrans.insert(cube_verticestrans.end(), verts.begin(), verts.end());
+      cube_indicestrans.insert(cube_indicestrans.end(), inds.begin(), inds.end());
+    }
+
+    if (!setup) {
+      chunkvatrans->Bind();
+      VertexBufferLayout layout;
+      layout.Push(GL_UNSIGNED_INT, 1);
+      VertexBuffer vb(cube_verticestrans.data(), cube_verticestrans.size() * sizeof(GLuint));
+      chunkvatrans->AddBuffer(vb, layout);
+      IndexBuffer ib(cube_indicestrans.data(), cube_indicestrans.size());
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glBindVertexArray(0);
+    }
   }
 }
 
-void Chunk::Draw() {
+void Chunk::Draw(OBJ_TYPE type) {
   if (!displaychunk) return;
-  chunkva->Bind();
-  glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
-  if (wireframemode) {
-    // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-    glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-  } else {
-    // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
-    // 12 * Total Number of attributes
-    glDrawElements(GL_TRIANGLES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-    // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-    // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+
+  if (type == OBJ_TYPE::OPAQUE) {
+    chunkva->Bind();
+    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    if (wireframemode) {
+      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
+      glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+    } else {
+      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
+      // 12 * Total Number of attributes
+      glDrawElements(GL_TRIANGLES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
+      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+    }
+  } else if (type == OBJ_TYPE::TRANSPARENT) {
+    chunkvatrans->Bind();
+    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    if (wireframemode) {
+      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
+      glDrawElements(GL_LINES, cntblockstrans * sizeof(GLuint) * 3 * 1, GL_UNSIGNED_INT, nullptr);
+    } else {
+      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
+      // 12 * Total Number of attributes
+      glDrawElements(
+          GL_TRIANGLES, cntblockstrans * sizeof(GLuint) * 3 * 1, GL_UNSIGNED_INT, nullptr);
+      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
+      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+    }
   }
 }
 

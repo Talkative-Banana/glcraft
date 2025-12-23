@@ -2,8 +2,8 @@
 
 #include "Renderer.h"
 
-Block::Block(const glm::ivec3& pos, GLboolean solid, GLuint bltype) {
-  blmask = (bltype << 23) | (pos.x << 10) | (pos.y << 5) | (pos.z);
+Block::Block(const glm::ivec3& pos, GLboolean solid, BLOCK_TYPE bltype) {
+  blmask = (static_cast<uint32_t>(bltype) << 23) | (pos.x << 10) | (pos.y << 5) | (pos.z);
   if (solid) blmask |= (1 << 15);
 }
 
@@ -17,6 +17,10 @@ Block::Mask(GLuint X, GLuint Y, GLuint Z, GLuint cent, GLuint normal, GLuint blt
   //            xyz
   mask |= X | (Y << 6) | (Z << 12) | (cent << 18) | (normal << 21) | (bltype << 24) | (ac << 29);
   return mask;
+}
+
+BLOCK_TYPE Block::get_type() {
+  return static_cast<BLOCK_TYPE>((blmask & TYPE_MASK) >> 23);
 }
 
 std::vector<GLuint> Block::GenerateVerticies(GLuint ambient_occ) {
@@ -90,12 +94,18 @@ std::vector<GLuint> Block::GenerateVerticies(GLuint ambient_occ) {
   return vertices;
 }
 
-bool Block::is_transparent(GLuint blkmask) {
-  return ((blmask & TYPE_MASK) >> 23) == 4 && isSolid();
+bool Block::is_transparent() {
+  bool transparent =
+      (get_type() == BLOCK_TYPE::WATER_BLOCK) || (get_type() == BLOCK_TYPE::GLASS_BLOCK);
+  return transparent;
 }
 
 bool Block::is_ref() {
-  return ((blmask & TYPE_MASK) >> 23) == 5 && isSolid();
+  return (get_type() == BLOCK_TYPE::REF_BLOCK);
+}
+
+bool Block::is_removable() {
+  return (get_type() != BLOCK_TYPE::BEDROCK_BLOCK);
 }
 
 void Block::Render(
@@ -103,12 +113,12 @@ void Block::Render(
     GLuint ambient_occ,
     std::vector<GLuint>& indices,
     std::vector<GLuint>& rendervert) {
-  if (((blmask >> 15) & 1) == 0) return;  // not solid
+  if (!is_solid()) return;  // not solid
   rendervert = GenerateVerticies(ambient_occ);
 
   GLuint idx = 0;
   // If a transparent block
-  if (is_transparent(blmask)) mask = 63;
+  if (is_transparent()) mask = 63;
   while (mask != 0) {
     blmask |= (1 << 16);  // mark them visible if any side is visble
     if (mask & 1) {
@@ -119,16 +129,16 @@ void Block::Render(
 }
 
 void Block::remove() {
-  blmask &= ~(1 << 15);  // clear solid bit
-  blmask &= ~(1 << 16);  // clear visible bit
+  if (!is_removable()) return;  // do not clear indestructible blocks
+  blmask &= ~(3 << 15);         // clear solid  and visible bit
 }
 
-void Block::add(int bltype) {
+void Block::add(BLOCK_TYPE bltype) {
   blmask |= (3 << 15);  // add solid and visble bit
   blmask &= ~(TYPE_MASK);
-  blmask |= (bltype << 23);
+  blmask |= (static_cast<int>(bltype) << 23);
 }
 
-bool Block::isSolid() {
+bool Block::is_solid() {
   return blmask & (1 << 15);
 }

@@ -36,6 +36,10 @@ set(SOURCES
   "src/Player.cpp"
   "src/AssetManager.cpp"
   "src/Mesh.cpp"
+  "src/Inventory.cpp"
+  "src/Quad.cpp"
+  "src/UIComponent.cpp"
+  "src/UI.cpp"
 
   "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"

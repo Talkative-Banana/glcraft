@@ -4,6 +4,7 @@
 #include "AssetManager.h"
 #include "CameraController.h"
 #include "Chunk.h"
+#include "Inventory.h"
 #include "Mesh.h"
 #include "Ray.h"
 #include "Utils.h"
@@ -30,8 +31,8 @@ class Player {
   float m_sensitivity = 0.002f;
   glm::vec2 MousePos = {0.0f, 0.0f};
   bool enable_gravity = 1;
-  char textKeyStatus[IMGUI_TEXT_CAPACITY];
-  char textKeyDescription[IMGUI_TEXT_CAPACITY];
+  char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
+  char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};
   int display_w, display_h;
   GLFWwindow* window;
   GLuint bltype = 0, mdtype = 0, Nokeypressed = 0;
@@ -39,6 +40,7 @@ class Player {
 
  public:
   std::unique_ptr<CameraController> m_cameracontroller;
+  Inventory m_inventory;
 
  public:
   Player(const uint64_t);

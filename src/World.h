@@ -13,6 +13,7 @@
 #include "Constants.hpp"
 #include "IndexBuffer.h"
 #include "Renderer.h"
+#include "UI.h"
 #include "Utils.h"
 #include "VertexArray.h"
 
@@ -50,7 +51,7 @@ class World {
   void save_model(std::shared_ptr<Chunk> chunk, std::string name);
   void load_model(glm::ivec3 pos, std::string model);
   void RenderWorld(bool firstRun);
-  void Draw();
+  void Draw(OBJ_TYPE type);
   void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
   void save(std::string save_file);
   int getSeed();

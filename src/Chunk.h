@@ -18,6 +18,7 @@ class Chunk {
  public:
   GLboolean displaychunk, dirtybit;
   GLuint id, count, cntblocks, save_id, type;
+  GLuint counttrans, cntblockstrans;
   glm::ivec3 biomepos, chunkpos;
 
   std::array<std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>
@@ -26,6 +27,11 @@ class Chunk {
   std::vector<GLuint> cube_indices;
   std::unique_ptr<VertexArray> chunkva;
   std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> rendervert;
+
+  std::vector<GLuint> cube_verticestrans;
+  std::vector<GLuint> cube_indicestrans;
+  std::unique_ptr<VertexArray> chunkvatrans;
+  std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> renderverttrans;
 
   Chunk();
   Chunk(uint _id, glm::ivec3 biomepos, glm::ivec3 position, GLboolean display, int type);
@@ -40,7 +46,8 @@ class Chunk {
   void Setup_Landscape(GLint X, GLint Y);
   GLuint RenderFace(std::vector<GLint> &&position);
   inline GLboolean isSolid(const std::vector<GLint> &postion);
-  void Draw();
+  inline GLboolean isTransparent(const std::vector<GLint> &position);
+  void Draw(OBJ_TYPE type);
   void Serialize(std::ostream &os) const;
   bool Deserialize(std::istream &is);
 };

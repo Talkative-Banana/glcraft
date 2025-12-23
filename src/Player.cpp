@@ -229,7 +229,7 @@ void Player::handle_input() {
                 << " " << ray.m_hitcords.z << std::endl;
       glm::ivec3 prev_blk = ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
       auto block = world->get_block_by_center(prev_blk);
-      if (block) block->add(bltype);
+      if (block) block->add(static_cast<BLOCK_TYPE>(bltype));
       auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
       auto _biome = world->get_biome_by_center(ray.m_hitcords);
       // Update dirty bit
@@ -355,7 +355,7 @@ void Player::handle_stats() {
   ImGui::BeginChild("Selected Block", ImVec2(400, 75), true, ImGuiWindowFlags_HorizontalScrollbar);
 
   ImGui::Text("Selected Block");
-  for (int i = 0; i < BLOCK_TYPES; i++) {
+  for (int i = 0; i < static_cast<int>(BLOCK_TYPE::NUM_BLOCK); i++) {
     if (ImGui::RadioButton(BLOCK_ARRAY[i].c_str(), (int *)&bltype, i)) {
     }
   }

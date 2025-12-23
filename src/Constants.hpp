@@ -20,8 +20,7 @@ constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
 constexpr static float GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
-constexpr static int BLOCK_TYPES = 12;
-constexpr static int MODEL_TYPES = 2;
+constexpr static int MODEL_TYPES = 3;
 constexpr static int BIOME_TYPES = 4;
 constexpr static int BIOME_BLOCK_COUNT = 5;
 
@@ -39,20 +38,30 @@ constexpr static int IMGUI_TEXT_CAPACITY = 256;
 static int SCREEN_HEIGHT = 640;
 static int SCREEN_WIDTH = 640;
 
-constexpr static int REF_BLOCK = 0;
-constexpr static int DIRT_BLOCK = 1;
-constexpr static int STONE_BLOCK = 2;
-constexpr static int BARK_BLOCK = 3;
-constexpr static int LEAF_BLOCK = 4;
-constexpr static int GRASS_BLOCK = 5;
-constexpr static int IRON_BLOCK = 6;
-constexpr static int WOOD_BLOCK = 7;
-constexpr static int WATER_BLOCK = 8;
-constexpr static int GRAVEL_BLOCK = 9;
-constexpr static int SAND_BLOCK = 10;
-constexpr static int BEDROCK_BLOCK = 11;
+enum class BLOCK_TYPE {
+  REF_BLOCK,
+  DIRT_BLOCK,
+  STONE_BLOCK,
+  BARK_BLOCK,
+  LEAF_BLOCK,
+  GRASS_BLOCK,
+  IRON_BLOCK,
+  WOOD_BLOCK,
+  WATER_BLOCK,
+  GRAVEL_BLOCK,
+  SAND_BLOCK,
+  BEDROCK_BLOCK,
+  BRICK_BLOCK,
+  SNOW_BLOCK,
+  HARD_SNOW_BLOCK,
+  LAVA_BLOCK,
+  GLASS_BLOCK,
+  NUM_BLOCK,
+};
 
-static std::array<std::string, BLOCK_TYPES> BLOCK_ARRAY = {
+enum class OBJ_TYPE { OPAQUE, TRANSPARENT, UI };
+
+static std::array<std::string, static_cast<int>(BLOCK_TYPE::NUM_BLOCK)> BLOCK_ARRAY = {
     "REF",
     "DIRT",
     "STONE",
@@ -64,14 +73,36 @@ static std::array<std::string, BLOCK_TYPES> BLOCK_ARRAY = {
     "WATER",
     "GRAVEL",
     "SAND",
-    "BEDROCK"};
+    "BEDROCK",
+    "BRICK",
+    "SNOW",
+    "HARD_SNOW",
+    "LAVA",
+    "GLASS",
+};
 
-static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {"tree", "tree_std"};
+static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {"tree", "tree_std", "furnace"};
 
 static std::array<std::string, BIOME_TYPES> BIOME_ARRAY = {"GRASSLAND", "DESERT", "SAVANNA", "ICE"};
 
-static std::array<std::array<int, BIOME_BLOCK_COUNT>, BIOME_TYPES> BIOME_BLOCK_TYPES = {
-    {{{GRASS_BLOCK, DIRT_BLOCK, GRAVEL_BLOCK, STONE_BLOCK, BEDROCK_BLOCK}},
-     {{SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, BEDROCK_BLOCK}},
-     {{SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, BEDROCK_BLOCK}},
-     {{SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, SAND_BLOCK, BEDROCK_BLOCK}}}};
+static std::array<std::array<BLOCK_TYPE, BIOME_BLOCK_COUNT>, BIOME_TYPES> BIOME_BLOCK_TYPES = {
+    {{{BLOCK_TYPE::GRASS_BLOCK,
+       BLOCK_TYPE::DIRT_BLOCK,
+       BLOCK_TYPE::GRAVEL_BLOCK,
+       BLOCK_TYPE::STONE_BLOCK,
+       BLOCK_TYPE::BEDROCK_BLOCK}},
+     {{BLOCK_TYPE::SNOW_BLOCK,
+       BLOCK_TYPE::SNOW_BLOCK,
+       BLOCK_TYPE::SNOW_BLOCK,
+       BLOCK_TYPE::HARD_SNOW_BLOCK,
+       BLOCK_TYPE::BEDROCK_BLOCK}},
+     {{BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::BEDROCK_BLOCK}},
+     {{BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::SAND_BLOCK,
+       BLOCK_TYPE::BEDROCK_BLOCK}}}};

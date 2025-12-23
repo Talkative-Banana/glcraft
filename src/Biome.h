@@ -26,6 +26,6 @@ class Biome {
   std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);
   void RenderBiome(bool firstRun);
-  void Draw();
+  void Draw(OBJ_TYPE type);
   void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
 };
