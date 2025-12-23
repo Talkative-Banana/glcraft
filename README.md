@@ -3,7 +3,11 @@ Minecraft clone in C++ with OpenGL.
 
 # Preview
 
-**Added perlin noise for terrain generation**
+**Distant FOG and Transparent Blocks**
+
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/fog.png)
+
+**Perlin noise for terrain generation**
 
 ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Terrain_Generation.png)
 
