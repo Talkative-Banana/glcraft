@@ -15,7 +15,7 @@ bool UI::remove_component(const uint32_t handle) {
 
 uint32_t UI::add_component(const UIComponent& uicomp) {
   m_components.emplace(m_handle++, uicomp);
-  return m_handle;
+  return m_handle - 1;
 }
 
 UIComponent& UI::get_component(const uint32_t handle) {
@@ -29,33 +29,38 @@ UIComponent& UI::get_component(const uint32_t handle) {
 void UI::Render() {
   m_quad_vertices.clear();
   m_quad_indices.clear();
-  cnt = 0;
+  m_cnt = 0;
 
   for (auto& [handle, component] : m_components) {
     Quad& quad = component.get_quad();
     auto vec = quad.GenerateVertices();
-    for (auto points : vec) {
-      m_quad_vertices.push_back(points);
+    for (int i = 0; i < vec.size(); i++) {
+      m_quad_vertices.push_back(vec[i]);
     }
-    for (auto index : Quad::faceindices) m_quad_indices.push_back(cnt + index);
-    m_quadva->Bind();
-    VertexBufferLayout layout;
-    layout.Push(GL_FLOAT, 2);
-    layout.Push(GL_FLOAT, 2);
-    VertexBuffer vb(m_quad_vertices.data(), m_quad_vertices.size() * sizeof(GL_FLOAT));
-    m_quadva->AddBuffer(vb, layout);
-    IndexBuffer ib(m_quad_indices.data(), m_quad_indices.size());
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-    cnt += 4;
+    for (auto index : Quad::faceindices) m_quad_indices.push_back(m_cnt + index);
+    m_cnt += 4;
   }
+  m_quadva->Bind();
+  VertexBufferLayout layout;
+  layout.Push(GL_FLOAT, 2);
+  layout.Push(GL_FLOAT, 2);
+  layout.Push(GL_FLOAT, 1);
+  m_vbo = std::make_unique<VertexBuffer>(
+      m_quad_vertices.data(), m_quad_vertices.size() * sizeof(float));
+  m_quadva->AddBuffer(*m_vbo, layout);
+  m_ibo = std::make_unique<IndexBuffer>(m_quad_indices.data(), m_quad_indices.size());
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
 void UI::Draw() {
-  for (auto& [handle, component] : m_components) {
-    m_quadva->Bind();
+  if (m_components.empty()) return;
+  m_quadva->Bind();
+  m_vbo->Bind();
+  m_ibo->Bind();
+  for (auto& [_, component] : m_components) {
     auto& tex = component.get_texture();
     tex.Bind();
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, 6 * (m_cnt / 4), GL_UNSIGNED_INT, nullptr);
   }
 }

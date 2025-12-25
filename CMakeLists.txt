@@ -40,6 +40,9 @@ set(SOURCES
   "src/Quad.cpp"
   "src/UIComponent.cpp"
   "src/UI.cpp"
+  "src/ParticleSystem.cpp"
+  "src/Effect.cpp"
+  "src/SmokeEffect.cpp"
 
   "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"

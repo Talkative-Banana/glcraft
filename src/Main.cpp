@@ -19,9 +19,11 @@
 #include "Constants.hpp"
 #include "Input.h"
 #include "Main.h"
+#include "ParticleSystem.h"
 #include "Player.h"
 #include "Ray.h"
 #include "Renderer.h"
+#include "SmokeEffect.h"
 #include "Texture.h"
 #include "UI.h"
 #include "World.h"
@@ -29,6 +31,7 @@
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
 std::unique_ptr<UI> ui = nullptr;
+std::unique_ptr<ParticleSystem> ps = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
 glm::vec3 chunkpos;
@@ -48,7 +51,7 @@ GLint ui_uniform = -1;
 GLint skyColor_uniform = -1;
 GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
-GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI;
+GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI, shaderProgramPS;
 glm::mat4 modelT, viewT, projectionT;  // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
@@ -232,8 +235,14 @@ void bind_uniforms() {
   if (uProjLoc_uniform == -1) {
     uProjLoc_uniform = glGetUniformLocation(shaderProgramUI, "uProj");
     if (uProjLoc_uniform == -1) {
-      std::cerr << "Could not bind uniform uProj\n";
+      std::cerr << "Could not bind uniform uProj in UI\n";
       exit(0);
+    } else {
+      uProjLoc_uniform = glGetUniformLocation(shaderProgramPS, "uProj");
+      if (uProjLoc_uniform == -1) {
+        std::cerr << "Could not bind uniform uProj in PS\n";
+        exit(0);
+      }
     }
   }
 }
@@ -245,11 +254,13 @@ int main(int, char **) {
 
   // create UI Render
   ui = std::make_unique<UI>();
+  ps = std::make_unique<ParticleSystem>("./textures/smoke.png");
   world = std::make_unique<World>(42, _wps);
 
   shaderProgram = createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
   shaderProgram2 = createProgram("./shaders/vshaderAsset.vs", "./shaders/fshaderAsset.fs");
   shaderProgramUI = createProgram("./shaders/vshaderUI.vs", "./shaders/fshaderUI.fs");
+  shaderProgramPS = createProgram("./shaders/vshaderPS.vs", "./shaders/fshaderPS.fs");
 
   glUseProgram(shaderProgram);
 
@@ -257,9 +268,15 @@ int main(int, char **) {
 
   Texture atlas("textures/default_texture.png");
 
-  UIComponent uicomp = UIComponent("textures/gauge.png", glm::vec2(0.0, 0.0), 512);
-  ui->add_component(uicomp);
+  UIComponent uicomp1 = UIComponent("textures/gauge.png", glm::vec2(256.0, 256.0), 512);
+  ui->add_component(uicomp1);
   ui->Render();
+
+  std::unique_ptr<SmokeEffect> smoke_effect = std::make_unique<SmokeEffect>(128);
+  smoke_effect->setup();
+
+  ps->add_effect(std::move(smoke_effect));
+  ps->Render();
 
   bind_uniforms();
   // createAxesLine(shaderProgram, axis_VAO);
@@ -292,6 +309,7 @@ int main(int, char **) {
   // meshes.push_back(mesh2);
 
   glm::mat4 uiProj;
+  float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
     glfwPollEvents();
 
@@ -301,6 +319,9 @@ int main(int, char **) {
       activePlayer %= players_cnt;
     }
 
+    float current = glfwGetTime();
+    float dt = current - last;
+    last = current;
     // handle player
     players[activePlayer]->update();
 
@@ -322,6 +343,10 @@ int main(int, char **) {
         clearColor.y,
         clearColor.z);  // bind sampler to texture unit 0
 
+    int fbw, fbh;
+    glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
+    uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
+
     // OPAQUE PASS
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
@@ -335,18 +360,22 @@ int main(int, char **) {
     glDepthMask(GL_FALSE);
     world->Draw(OBJ_TYPE::TRANSPARENT);
 
-    // UI PASS
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
+
+    // PARTICLE SYSTEM
+    glUseProgram(shaderProgramPS);
+
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    ps->Draw(dt);
+
+    // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);
-
-
-    int fbw, fbh;
-    glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
-    uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
 
     glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
     ui->Draw();
+
+
     // Restore
     glDepthMask(GL_TRUE);
 
