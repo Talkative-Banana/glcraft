@@ -328,7 +328,7 @@ int main(int, char **) {
     float dt = current - last;
     last = current;
     // handle player
-    players[activePlayer]->update();
+    players[activePlayer]->update(dt);
 
     auto playerpos = players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
     auto playerdir = players[activePlayer]->m_cameracontroller->GetCamera()->GetOrientation();

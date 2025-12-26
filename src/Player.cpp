@@ -26,7 +26,7 @@ Player::Player(const uint64_t shaderProgram) {
   meshes.push_back(l_mesh);
 }
 
-void Player::handle_input() {
+void Player::handle_input(float dt) {
 
   // Gravity
   glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE + glm::vec3(HALF_BLOCK_SIZE);
@@ -56,14 +56,14 @@ void Player::handle_input() {
   glm::vec3 planarvec = glm::normalize(glm::vec3(m_forward.x, 0.0f, m_forward.z));
 
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
-    glm::vec3 nextPos = m_position + planarvec * m_speed;
+    glm::vec3 nextPos = m_position + planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
       m_position = nextPos;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_S)) {
-    glm::vec3 nextPos = m_position - planarvec * m_speed;
+    glm::vec3 nextPos = m_position - planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
@@ -73,7 +73,7 @@ void Player::handle_input() {
 
   if (Input::IsKeyPressed(GLFW_KEY_A)) {
     // Check if obstructed by block
-    glm::vec3 nextPos = m_position - m_speed * glm::normalize(glm::cross(m_forward, m_up));
+    glm::vec3 nextPos = m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
@@ -81,7 +81,7 @@ void Player::handle_input() {
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_D)) {
     // Check if obstructed by block
-    glm::vec3 nextPos = m_position + m_speed * glm::normalize(glm::cross(m_forward, m_up));
+    glm::vec3 nextPos = m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
@@ -93,9 +93,14 @@ void Player::handle_input() {
   // Floating only possible in case gravity is not available
   if (!enable_gravity) {
     if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
-      m_position = m_position + m_up * m_speed;
+      m_position = m_position + m_up * m_speed * dt;
     } else if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
-      m_position = m_position - m_up * m_speed;
+      m_position = m_position - m_up * m_speed * dt;
+    }
+  } else {
+    // Jump if gravity enabled
+    if (Input::WasKeyPressed(GLFW_KEY_SPACE)) {
+      m_position = m_position + m_up * m_speed * dt * 100.0f;
     }
   }
 
@@ -531,9 +536,9 @@ void Player::handle_transformations() {
   setupProjectionTransformation(shaderProgram, m_cameracontroller);
 }
 
-void Player::update() {
+void Player::update(float dt) {
   // handle player Input
-  handle_input();
+  handle_input(dt);
   // Display stats
   handle_stats();
 

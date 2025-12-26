@@ -27,7 +27,7 @@ class Player {
   glm::vec3 m_forward = glm::vec3(0.0, 0.0, 1.0);
   glm::vec3 m_velocity = glm::vec3(0.0, 0.0, 0.0);
   glm::vec3 m_up = glm::vec3(0.0, 1.0, 0.0);
-  float m_speed = 0.48f;
+  float m_speed = 20.0f;
   float m_sensitivity = 0.002f;
   glm::vec2 MousePos = {0.0f, 0.0f};
   bool enable_gravity = 1;
@@ -46,12 +46,12 @@ class Player {
   Player(const uint64_t);
   Player(const glm::vec3&, const glm::vec3&, const uint64_t);
 
-  void handle_input();
-  void update();
+  void handle_input(float);
+  void update(float);
   void handle_stats();
   void handle_transformations();
-  void setupModelTransformationCube(unsigned int& program);
-  void setupModelTransformationAxis(unsigned int& program, float rot_angle, glm::vec3 rot_axis);
-  void setupViewTransformation(unsigned int& program, std::unique_ptr<CameraController>& occ);
-  void setupProjectionTransformation(unsigned int& program, std::unique_ptr<CameraController>& occ);
+  void setupModelTransformationCube(unsigned int&);
+  void setupModelTransformationAxis(unsigned int&, float, glm::vec3);
+  void setupViewTransformation(unsigned int&, std::unique_ptr<CameraController>&);
+  void setupProjectionTransformation(unsigned int&, std::unique_ptr<CameraController>&);
 };
