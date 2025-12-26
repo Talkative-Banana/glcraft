@@ -43,6 +43,7 @@ set(SOURCES
   "src/ParticleSystem.cpp"
   "src/Effect.cpp"
   "src/SmokeEffect.cpp"
+  "src/SnowEffect.cpp"
 
   "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"

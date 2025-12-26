@@ -41,7 +41,7 @@ void ParticleSystem::Render() {
   layout.Push(GL_FLOAT, 1);  // alpha
   uint32_t vecsize = 0;
   for (auto& [handle, effect] : m_effects) vecsize += effect->get_size();
-  m_vbo = std::make_unique<VertexBuffer>(vecsize * sizeof(float) * 20);
+  m_vbo = std::make_unique<VertexBuffer>(vecsize * sizeof(float) * 4 * 5);
   m_quadva->AddBuffer(*m_vbo, layout);
 
   for (auto& [handle, effect] : m_effects) {
@@ -68,10 +68,9 @@ void ParticleSystem::Draw(float dt) {
     effect->run(dt);
     glBufferSubData(
         GL_ARRAY_BUFFER,
-        sizeof(GL_FLOAT) * offset,
+        sizeof(float) * offset * 4 * 5,
         effect->get_data().size() * sizeof(float),
         effect->get_data().data());
-
     offset += effect->get_size();
   }
   glDrawElements(GL_TRIANGLES, 6 * (m_cnt / 4), GL_UNSIGNED_INT, nullptr);

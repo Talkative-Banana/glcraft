@@ -17,7 +17,10 @@ class Quad {
   bool is_visible();
   void toggle_visible();
   void update(float, float);
+  glm::vec2& get_position();
   void update_pos(glm::vec2, float);
+  void update_pos(glm::vec2);
+  void update_vel(glm::vec2);
   void update_size(float);
   void update_alpha(float);
   void update_angle(float, float);

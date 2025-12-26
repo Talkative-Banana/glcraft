@@ -24,6 +24,7 @@
 #include "Ray.h"
 #include "Renderer.h"
 #include "SmokeEffect.h"
+#include "SnowEffect.h"
 #include "Texture.h"
 #include "UI.h"
 #include "World.h"
@@ -254,7 +255,7 @@ int main(int, char **) {
 
   // create UI Render
   ui = std::make_unique<UI>();
-  ps = std::make_unique<ParticleSystem>("./textures/smoke.png");
+  ps = std::make_unique<ParticleSystem>("./textures/snow.png");
   world = std::make_unique<World>(42, _wps);
 
   shaderProgram = createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
@@ -273,9 +274,13 @@ int main(int, char **) {
   ui->Render();
 
   std::unique_ptr<SmokeEffect> smoke_effect = std::make_unique<SmokeEffect>(128);
-  smoke_effect->setup();
+  std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
 
-  ps->add_effect(std::move(smoke_effect));
+  smoke_effect->setup();
+  snow_effect->setup();
+
+  // ps->add_effect(std::move(smoke_effect));
+  ps->add_effect(std::move(snow_effect));
   ps->Render();
 
   bind_uniforms();
@@ -373,7 +378,7 @@ int main(int, char **) {
     glUseProgram(shaderProgramUI);
 
     glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
-    ui->Draw();
+    // ui->Draw();
 
 
     // Restore

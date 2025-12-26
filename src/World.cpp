@@ -126,7 +126,7 @@ void World::workerLoop() {
     // heavy work outside lock
     int idx = BIOME_COUNTX * i + j;
     if (biomes[i][j]) continue;
-    auto biome = std::make_shared<Biome>(1, pos, true);
+    auto biome = std::make_shared<Biome>(0, pos, true);
 
     {
       std::lock_guard<std::mutex> g(setup_mutex);

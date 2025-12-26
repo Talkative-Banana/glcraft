@@ -58,6 +58,14 @@ void Quad::update_pos(glm::vec2 delta, float dt) {
       glm::sin(m_angle) * m_pos.x + glm::cos(m_angle) * m_pos.y);
 }
 
+void Quad::update_vel(glm::vec2 vel) {
+  m_vel = vel;
+}
+
+void Quad::update_pos(glm::vec2 pos) {
+  m_pos = pos;
+}
+
 void Quad::update_size(float scale) {
   m_size += scale;
 }
@@ -76,4 +84,8 @@ void Quad::update_alpha(float delta) {
 
 void Quad::update_angle(float delta, float dt) {
   m_angle += m_ccw ? delta * dt : -delta * dt;
+}
+
+glm::vec2& Quad::get_position() {
+  return m_pos;
 }

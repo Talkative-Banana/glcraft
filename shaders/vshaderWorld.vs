@@ -58,7 +58,7 @@ out vec2 TexCoord;
 out float aoFactor;
 out float visibility;
 
-const float density = 0.02;
+const float density = 0.007;
 const float gradient = 1.5;
 
 vec3 Center(vec3 pos, uint centeroff){

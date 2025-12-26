@@ -126,7 +126,7 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
   noise::utils::NoiseMap heightMap;
   noise::utils::NoiseMapBuilderPlane heightMapBuilder;
-  heightMapBuilder.SetSourceModule(flatTerrain);
+  heightMapBuilder.SetSourceModule(mountainTerrain);
   heightMapBuilder.SetDestNoiseMap(heightMap);
   heightMapBuilder.SetDestSize(128, 128);
   int biomex = X / 4, biomez = Z / 4;
