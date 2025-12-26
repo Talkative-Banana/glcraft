@@ -3,6 +3,11 @@ Minecraft clone in C++ with OpenGL.
 
 # Preview
 
+**Particle Effects**
+
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/snow.png)
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/smoke.png)
+
 **Distant FOG and Transparent Blocks**
 
 ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/fog.png)
