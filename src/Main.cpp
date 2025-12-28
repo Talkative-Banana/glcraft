@@ -52,8 +52,10 @@ GLint ui_uniform = -1;
 GLint skyColor_uniform = -1;
 GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
-GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI, shaderProgramPS;
-glm::mat4 modelT, viewT, projectionT;  // The model, view and projection transformations
+GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
+    shaderProgramPS;
+glm::mat4 modelT, viewT,
+    projectionT; // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
@@ -61,17 +63,22 @@ std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 
+// dummy implementation
+void add_player(uint32_t /*id*/) {}
+
 // void draw_axis(unsigned int axis_VAO, unsigned int shaderProgram) {
 //   glBindVertexArray(axis_VAO);
 //   setupModelTransformationAxis(shaderProgram, 0.0, glm::vec3(0, 0, 1));
 //   // glUniform4f(vColor_uniform, 1.0, 0.0, 0.0, 1.0); //Red -> X
 //   glDrawArrays(GL_LINES, 0, 2);
 //
-//   setupModelTransformationAxis(shaderProgram, glm::radians(90.0), glm::vec3(0, 0, 1));
+//   setupModelTransformationAxis(shaderProgram, glm::radians(90.0),
+//   glm::vec3(0, 0, 1));
 //   // glUniform4f(vColor_uniform, 0.0, 1.0, 0.0, 1.0); //Green -> Y
 //   glDrawArrays(GL_LINES, 0, 2);
 //
-//   setupModelTransformationAxis(shaderProgram, -glm::radians(90.0), glm::vec3(0, 1, 0));
+//   setupModelTransformationAxis(shaderProgram, -glm::radians(90.0),
+//   glm::vec3(0, 1, 0));
 //   // glUniform4f(vColor_uniform, 0.0, 0.0, 1.0, 1.0); //Blue -> Z
 //   glDrawArrays(GL_LINES, 0, 2);
 //
@@ -98,12 +105,15 @@ ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 //   GLuint vertex_VBO;
 //   glGenBuffers(1, &vertex_VBO);
 //   glBindBuffer(GL_ARRAY_BUFFER, vertex_VBO);
-//   glBufferData(GL_ARRAY_BUFFER, nVertices * 3 * sizeof(GLfloat), axis_vertices, GL_STATIC_DRAW);
+//   glBufferData(GL_ARRAY_BUFFER, nVertices * 3 * sizeof(GLfloat),
+//   axis_vertices, GL_STATIC_DRAW);
 //   glEnableVertexAttribArray(vVertex_attrib_position);
-//   glVertexAttribPointer(vVertex_attrib_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
+//   glVertexAttribPointer(vVertex_attrib_position, 3, GL_FLOAT, GL_FALSE, 0,
+//   0);
 //
 //   glBindBuffer(GL_ARRAY_BUFFER, 0);
-//   glBindVertexArray(0);  // Unbind the VAO to disable changes outside this function.
+//   glBindVertexArray(0);  // Unbind the VAO to disable changes outside this
+//   function.
 // }
 
 // int FrustumCulling(GLuint vertex) {
@@ -138,7 +148,8 @@ ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 //   uint centeroff = (vertex >> 18u) & 7u;
 //
 //   glm::ivec3 pos =
-//       glm::ivec3(BLOCK_SIZE * positionX, BLOCK_SIZE * positionY, BLOCK_SIZE * positionZ);
+//       glm::ivec3(BLOCK_SIZE * positionX, BLOCK_SIZE * positionY, BLOCK_SIZE *
+//       positionZ);
 //   // Center of block
 //   glm::ivec3 centercord = Center(pos, centeroff);
 //   for (int i = 0; i < 6; i++) {
@@ -169,7 +180,8 @@ void bind_uniforms() {
   if (cameraPos_uniform == -1) {
     cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
     if (cameraPos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting Switched Off.\n");
+      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting "
+                      "Switched Off.\n");
       exit(0);
     }
   }
@@ -251,17 +263,21 @@ void bind_uniforms() {
 int main(int, char **) {
   // Setup window
   _window = std::make_unique<Window>(SCREEN_WIDTH, SCREEN_HEIGHT);
-  ImGuiIO &io = ImGui::GetIO();  // Create IO
+  ImGuiIO &io = ImGui::GetIO(); // Create IO
 
   // create UI Render
   ui = std::make_unique<UI>();
   ps = std::make_unique<ParticleSystem>("./textures/snow.png");
   world = std::make_unique<World>(42, _wps);
 
-  shaderProgram = createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
-  shaderProgram2 = createProgram("./shaders/vshaderAsset.vs", "./shaders/fshaderAsset.fs");
-  shaderProgramUI = createProgram("./shaders/vshaderUI.vs", "./shaders/fshaderUI.fs");
-  shaderProgramPS = createProgram("./shaders/vshaderPS.vs", "./shaders/fshaderPS.fs");
+  shaderProgram =
+      createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
+  shaderProgram2 =
+      createProgram("./shaders/vshaderAsset.vs", "./shaders/fshaderAsset.fs");
+  shaderProgramUI =
+      createProgram("./shaders/vshaderUI.vs", "./shaders/fshaderUI.fs");
+  shaderProgramPS =
+      createProgram("./shaders/vshaderPS.vs", "./shaders/fshaderPS.fs");
 
   glUseProgram(shaderProgram);
 
@@ -269,11 +285,13 @@ int main(int, char **) {
 
   Texture atlas("textures/default_texture.png");
 
-  UIComponent uicomp1 = UIComponent("textures/gauge.png", glm::vec2(256.0, 256.0), 512);
+  UIComponent uicomp1 =
+      UIComponent("textures/gauge.png", glm::vec2(256.0, 256.0), 512);
   ui->add_component(uicomp1);
   ui->Render();
 
-  std::unique_ptr<SmokeEffect> smoke_effect = std::make_unique<SmokeEffect>(128);
+  std::unique_ptr<SmokeEffect> smoke_effect =
+      std::make_unique<SmokeEffect>(128);
   std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
 
   smoke_effect->setup();
@@ -287,7 +305,7 @@ int main(int, char **) {
   // createAxesLine(shaderProgram, axis_VAO);
   // Initalize all the players
   for (int i = 0; i < players_cnt; i++) {
-    players[i] = std::make_unique<Player>(shaderProgram2);
+    players[i] = std::make_unique<Player>(i, shaderProgram2);
   }
 
   // uint64_t handle1 = asset_manager->loadMeshObject(
@@ -330,23 +348,34 @@ int main(int, char **) {
     // handle player
     players[activePlayer]->update(dt);
 
-    auto playerpos = players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
-    auto playerdir = players[activePlayer]->m_cameracontroller->GetCamera()->GetOrientation();
-    auto fov = players[activePlayer]->m_cameracontroller->GetCamera()->GetHorizontalFOV();
+    auto playerpos =
+        players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
+    auto playerdir = players[activePlayer]
+                         ->m_cameracontroller->GetCamera()
+                         ->GetOrientation();
+    auto fov = players[activePlayer]
+                   ->m_cameracontroller->GetCamera()
+                   ->GetHorizontalFOV();
 
     // World Calculations
     world->SetupWorld(playerpos);
+    // Render first pass
+    world->RenderWorld(true);
+    // Do Binding for first pass
+    world->DoBindTask(true);
+
+    // Render second pass
+    world->RenderWorld(false);
+    // Do Binding for second pass
+    world->DoBindTask(false);
 
     world->Update_queue(playerpos, playerdir, fov);
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
-    glUniform1i(atlas_uniform, 0);  // bind sampler to texture unit 0
+    glUniform1i(atlas_uniform, 0); // bind sampler to texture unit 0
     // skyColor.Bind();
-    glUniform3f(
-        skyColor_uniform,
-        clearColor.x,
-        clearColor.y,
-        clearColor.z);  // bind sampler to texture unit 0
+    glUniform3f(skyColor_uniform, clearColor.x, clearColor.y,
+                clearColor.z); // bind sampler to texture unit 0
 
     int fbw, fbh;
     glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
@@ -379,7 +408,6 @@ int main(int, char **) {
 
     glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
     // ui->Draw();
-
 
     // Restore
     glDepthMask(GL_TRUE);

@@ -1,8 +1,16 @@
 #include "Player.h"
 
-Player::Player(const glm::vec3 &pos, const glm::vec3 &dir, const uint64_t shaderProgram)
-    : m_position(pos), m_forward(dir) {
-  m_cameracontroller = std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
+// Constructor with networking client
+Player::Player(const uint64_t id, const uint64_t shaderProgram,
+               const std::string &host, const std::string &port,
+               boost::asio::io_context &io_context,
+               std::function<void(const std::string &)> func)
+    : m_id(id) {
+  m_client = std::make_unique<Client>(io_context, host, port, func);
+
+  m_client->run();
+  m_cameracontroller =
+      std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
   m_meshhandle = asset_manager->loadMeshObject(
@@ -13,8 +21,24 @@ Player::Player(const glm::vec3 &pos, const glm::vec3 &dir, const uint64_t shader
   meshes.push_back(l_mesh);
 }
 
-Player::Player(const uint64_t shaderProgram) {
-  m_cameracontroller = std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
+Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
+               const uint64_t shaderProgram)
+    : m_position(pos), m_forward(dir), m_id(id) {
+  m_cameracontroller =
+      std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
+  m_cameracontroller->UpdateCamera(m_position, m_forward);
+  window = _window->GetWindow();
+  m_meshhandle = asset_manager->loadMeshObject(
+      "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
+
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  l_mesh->setup();
+  meshes.push_back(l_mesh);
+}
+
+Player::Player(const uint64_t id, const uint64_t shaderProgram) : m_id(id) {
+  m_cameracontroller =
+      std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
 
@@ -26,69 +50,106 @@ Player::Player(const uint64_t shaderProgram) {
   meshes.push_back(l_mesh);
 }
 
+Player::Player(const uint64_t id) : m_id(id) {
+  m_cameracontroller =
+      std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
+  m_cameracontroller->UpdateCamera(m_position, m_forward);
+
+  m_meshhandle = asset_manager->loadMeshObject(
+      "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
+
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  meshes.push_back(l_mesh);
+}
+
+void Player::handleNetworkRequest(PlayerState &pt) {
+  // TODO: race condition between local and server sent state?
+
+  // Update from client
+  m_position = pt.pos;
+  m_forward = pt.fwd;
+  m_velocity = pt.vel;
+  m_up = pt.up;
+
+  // Update the camera as well
+  m_cameracontroller->UpdateCamera(m_position, m_forward);
+  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
+  l_mesh->pos = m_position;
+}
+
 void Player::handle_input(float dt) {
 
   // Gravity
-  glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE + glm::vec3(HALF_BLOCK_SIZE);
+  glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
+                glm::vec3(HALF_BLOCK_SIZE);
   if (enable_gravity) {
     bool adjusted = false;
-    if (world && (!(world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)))) && (v.y > 1.0f)) {
+    if (world && (!(world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)))) &&
+        (v.y > 1.0f)) {
       v.y -= BLOCK_SIZE;
       adjusted = true;
     }
 
     float height = v.y + BLOCK_SIZE - OFFSET;
     // Case 2: If we're inside a block -> snap up
-    if (world && world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)) && (v.y < height)) {
-      v.y += BLOCK_SIZE;  // step up until clear
+    if (world && world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)) &&
+        (v.y < height)) {
+      v.y += BLOCK_SIZE; // step up until clear
       adjusted = true;
     }
 
-    if (adjusted) m_position.y = v.y;
+    if (adjusted)
+      m_position.y = v.y;
   }
 
   auto toBlockCenter = [](glm::vec3 pos) {
-    glm::ivec3 block = glm::floor(pos / BLOCK_SIZE);  // which block
+    glm::ivec3 block = glm::floor(pos / BLOCK_SIZE); // which block
     return (glm::vec3(block) + 0.5f) * BLOCK_SIZE -
-           glm::vec3(0, BLOCK_SIZE, 0);  // center of that block
+           glm::vec3(0, BLOCK_SIZE, 0); // center of that block
   };
 
-  glm::vec3 planarvec = glm::normalize(glm::vec3(m_forward.x, 0.0f, m_forward.z));
+  glm::vec3 planarvec =
+      glm::normalize(glm::vec3(m_forward.x, 0.0f, m_forward.z));
 
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
     glm::vec3 nextPos = m_position + planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
+    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+        !enable_gravity) {
       m_position = nextPos;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_S)) {
     glm::vec3 nextPos = m_position - planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
+    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+        !enable_gravity) {
       m_position = nextPos;
     }
   }
 
   if (Input::IsKeyPressed(GLFW_KEY_A)) {
     // Check if obstructed by block
-    glm::vec3 nextPos = m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
+    glm::vec3 nextPos =
+        m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
+    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+        !enable_gravity) {
       m_position = nextPos;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_D)) {
     // Check if obstructed by block
-    glm::vec3 nextPos = m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
+    glm::vec3 nextPos =
+        m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) || !enable_gravity) {
+    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+        !enable_gravity) {
       m_position = nextPos;
     }
   }
-
 
   // Floating only possible in case gravity is not available
   if (!enable_gravity) {
@@ -104,7 +165,6 @@ void Player::handle_input(float dt) {
     }
   }
 
-
   auto [x, y] = Input::GetMousePosition();
   float rotx = m_sensitivity * (float)(y - MousePos.y);
   float roty = m_sensitivity * (float)(x - MousePos.x);
@@ -116,8 +176,10 @@ void Player::handle_input(float dt) {
       glm::vec3 right = glm::normalize(glm::cross(m_forward, m_up));
 
       // glm::quat qx = glm::normalize(
-      //    glm::cross(glm::angleAxis(-rotx, right), glm::angleAxis(roty, m_Camera->GetUp())));
-      // m_Camera->SetOrientation(glm::normalize(qx * m_Camera->GetOrientation()));
+      //    glm::cross(glm::angleAxis(-rotx, right), glm::angleAxis(roty,
+      //    m_Camera->GetUp())));
+      // m_Camera->SetOrientation(glm::normalize(qx *
+      // m_Camera->GetOrientation()));
 
       glm::quat qx = glm::angleAxis(-rotx, right);
       glm::quat qy = glm::angleAxis(-roty, m_up);
@@ -131,16 +193,21 @@ void Player::handle_input(float dt) {
   auto l_mesh = asset_manager->get_mesh(m_meshhandle);
   l_mesh->pos = m_position;
 
-  auto get_neighbors = [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
+  auto get_neighbors =
+      [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
     std::shared_ptr<Chunk> left, front, right, back;
     left = world->get_chunk_by_center(
-        vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        vec +
+        glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
     front = world->get_chunk_by_center(
-        vec + glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        vec +
+        glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
     right = world->get_chunk_by_center(
-        vec - glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        vec -
+        glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
     back = world->get_chunk_by_center(
-        vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        vec -
+        glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
     return {left, front, right, back};
   };
 
@@ -154,11 +221,12 @@ void Player::handle_input(float dt) {
 
     Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
 
-    if (ray.did_hit(world)) {  // Remove a block
-      std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " " << ray.m_hitcords.y
-                << " " << ray.m_hitcords.z << std::endl;
+    if (ray.did_hit(world)) { // Remove a block
+      std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
+                << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
       auto block = world->get_block_by_center(ray.m_hitcords);
-      if (block) block->remove();
+      if (block)
+        block->remove();
       auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
       auto _biome = world->get_biome_by_center(ray.m_hitcords);
       // Set the dirty bit
@@ -166,50 +234,60 @@ void Player::handle_input(float dt) {
       _biome->dirtybit = true;
       auto vec = ray.m_hitcords;
 
-      int cordz = (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      int cordx = (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
+      int cordz =
+          (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
+      int cordx =
+          (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
       // If last block update adjacent chunk
       auto chunks1 = get_neighbors(vec);
       _chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
 
       bool update_boundary = false;
       if (cordz == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 =
-            get_neighbors(vec + glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        auto chunks2 = get_neighbors(
+            vec +
+            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
         if (chunks1[1]) {
           std::cout << "[FRONT] Updating neighbouring chunk\n";
           chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordx == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 =
-            get_neighbors(vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        auto chunks2 = get_neighbors(
+            vec +
+            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
         if (chunks1[0]) {
           std::cout << "[LEFT] Updating neighbouring chunk\n";
           chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordz == 1) {
-        auto chunks2 =
-            get_neighbors(vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        auto chunks2 = get_neighbors(
+            vec -
+            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
         if (chunks1[3]) {
           std::cout << "[BACK] Updating neighbouring chunk\n";
           chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordx == 1) {
-        auto chunks2 =
-            get_neighbors(vec - glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        auto chunks2 = get_neighbors(
+            vec -
+            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
         if (chunks1[2]) {
           std::cout << "[RIGHT] Updating neighbouring chunk\n";
           chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
       _chunk->Render(0, false, chunks1[0], chunks1[1], chunks1[2], chunks1[3]);
@@ -218,9 +296,9 @@ void Player::handle_input(float dt) {
     } else {
       std::cout << "Ray didn't hit any block\n";
     }
-  } else if (
-      !Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) &&
-      Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {  // Add a block
+  } else if (!Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) &&
+             Input::WasMouseButtonPressed(
+                 GLFW_MOUSE_BUTTON_MIDDLE)) { // Add a block
     strcpy(textKeyStatus, "Middle click");
     strcpy(textKeyDescription, "Casting ray");
 
@@ -230,11 +308,13 @@ void Player::handle_input(float dt) {
     Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
 
     if (ray.did_hit(world)) {
-      std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " " << ray.m_hitcords.y
-                << " " << ray.m_hitcords.z << std::endl;
-      glm::ivec3 prev_blk = ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
+      std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
+                << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
+      glm::ivec3 prev_blk =
+          ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
       auto block = world->get_block_by_center(prev_blk);
-      if (block) block->add(static_cast<BLOCK_TYPE>(bltype));
+      if (block)
+        block->add(static_cast<BLOCK_TYPE>(bltype));
       auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
       auto _biome = world->get_biome_by_center(ray.m_hitcords);
       // Update dirty bit
@@ -243,49 +323,59 @@ void Player::handle_input(float dt) {
 
       auto vec = ray.m_hitcords;
 
-      int cordz = (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      int cordx = (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
+      int cordz =
+          (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
+      int cordx =
+          (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
       // If last block update adjacent chunk
       auto chunks1 = get_neighbors(vec);
       _chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
 
       if (cordz == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 =
-            get_neighbors(vec + glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        auto chunks2 = get_neighbors(
+            vec +
+            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
         if (chunks1[1]) {
           std::cout << "[FRONT] Updating neighbouring chunk\n";
           chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordx == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 =
-            get_neighbors(vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        auto chunks2 = get_neighbors(
+            vec +
+            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
         if (chunks1[0]) {
           std::cout << "[LEFT] Updating neighbouring chunk\n";
           chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordz == 1) {
-        auto chunks2 =
-            get_neighbors(vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+        auto chunks2 = get_neighbors(
+            vec -
+            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
         if (chunks1[3]) {
           std::cout << "[BACK] Updating neighbouring chunk\n";
           chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
 
       if (cordx == 1) {
-        auto chunks2 =
-            get_neighbors(vec - glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
+        auto chunks2 = get_neighbors(
+            vec -
+            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
         if (chunks1[2]) {
           std::cout << "[RIGHT] Updating neighbouring chunk\n";
           chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2], chunks2[3]);
+          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
+                             chunks2[3]);
         }
       }
       _chunk->Render(0, false, chunks1[0], chunks1[1], chunks1[2], chunks1[3]);
@@ -302,12 +392,12 @@ void Player::handle_input(float dt) {
       Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
 
       if (ray.did_hit(world)) {
-        std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x << " "
-                  << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
+        std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x
+                  << " " << ray.m_hitcords.y << " " << ray.m_hitcords.z
+                  << std::endl;
         auto chunk = world->get_chunk_by_center(ray.m_hitcords);
-        world->load_model(
-            ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0),
-            "models/" + MODEL_ARRAY[mdtype] + ".bin");
+        world->load_model(ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0),
+                          "models/" + MODEL_ARRAY[mdtype] + ".bin");
       }
     }
   }
@@ -316,6 +406,46 @@ void Player::handle_input(float dt) {
     strcpy(textKeyStatus, "Listening for key events...");
     strcpy(textKeyDescription, "Listening for key events...");
   }
+}
+
+// returns true if a valid move
+bool Player::Valid(PlayerState &ps) {
+  // update server state
+  m_position = ps.pos;
+  m_forward = ps.fwd;
+  m_velocity = ps.vel;
+  m_up = ps.up;
+  return true;
+}
+
+// handle input [for server]
+std::shared_ptr<std::string>
+Player::handle_client_input(const std::string &msg) {
+  PlayerState pt;
+  std::memcpy(&pt, msg.data(), sizeof(PlayerState));
+
+  if (!Valid(pt)) { // if not valid return last state
+    return std::make_shared<std::string>(get_state());
+  }
+  // if verified return new state
+  return std::make_shared<std::string>(msg);
+}
+
+// return pointer to underlying client [for client]
+Client *const Player::get_client() { return m_client.get(); }
+
+const std::string Player::get_state() {
+  PlayerState st;
+  st.ts = glfwGetTime();
+  st.pos = m_position;
+  st.fwd = m_forward;
+  st.vel = m_velocity;
+  st.up = m_up;
+  st.id = m_id;
+
+  std::string out(sizeof(PlayerState), '\0');
+  std::memcpy(out.data(), &st, sizeof(PlayerState));
+  return out;
 }
 
 void Player::handle_stats() {
@@ -327,18 +457,16 @@ void Player::handle_stats() {
   // ImGui UI menu
   ImGui::Begin("Main", NULL, ImGuiWindowFlags_AlwaysAutoResize);
   if (ImGui::CollapsingHeader("Information", ImGuiTreeNodeFlags_DefaultOpen)) {
-    ImGui::Text(
-        "%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                ImGui::GetIO().Framerate);
     ImGui::Text("Key Status: %s", textKeyStatus);
     ImGui::Text("Key Description: %s", textKeyDescription);
     ImGui::Text("Active Player: %d", activePlayer);
     ImGui::Text("Block Selected: %s", BLOCK_ARRAY[bltype].c_str());
-    ImGui::Text(
-        "Player %d position: (%.2f, %.2f, %.2f)",
-        activePlayer,
-        m_cameracontroller->GetCamera()->GetPosition().x,
-        m_cameracontroller->GetCamera()->GetPosition().y,
-        m_cameracontroller->GetCamera()->GetPosition().z);
+    ImGui::Text("Player %d position: (%.2f, %.2f, %.2f)", activePlayer,
+                m_cameracontroller->GetCamera()->GetPosition().x,
+                m_cameracontroller->GetCamera()->GetPosition().y,
+                m_cameracontroller->GetCamera()->GetPosition().z);
   }
 
   // Enable Physics
@@ -357,7 +485,8 @@ void Player::handle_stats() {
 
   // Selected Block
   // Begin a child region with fixed height and automatic scrollbar
-  ImGui::BeginChild("Selected Block", ImVec2(400, 75), true, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("Selected Block", ImVec2(400, 75), true,
+                    ImGuiWindowFlags_HorizontalScrollbar);
 
   ImGui::Text("Selected Block");
   for (int i = 0; i < static_cast<int>(BLOCK_TYPE::NUM_BLOCK); i++) {
@@ -369,7 +498,8 @@ void Player::handle_stats() {
 
   // Selected Model
   // Begin a child region with fixed height and automatic scrollbar
-  ImGui::BeginChild("Selected Model", ImVec2(400, 75), true, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("Selected Model", ImVec2(400, 75), true,
+                    ImGuiWindowFlags_HorizontalScrollbar);
 
   ImGui::Text("Selected Model");
   for (int i = 0; i < MODEL_TYPES; i++) {
@@ -379,9 +509,9 @@ void Player::handle_stats() {
 
   ImGui::EndChild();
 
-
   // Save Model
-  ImGui::BeginChild("Save", ImVec2(400, 150), true, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("Save", ImVec2(400, 150), true,
+                    ImGuiWindowFlags_HorizontalScrollbar);
   static int X = 0;
   static int Y = 0;
   static char model_name[32];
@@ -392,26 +522,26 @@ void Player::handle_stats() {
   ImGui::InputInt("Chunk Y", &Y);
 
   // Clamp negative values
-  if (X < 0) X = 0;
-  if (Y < 0) Y = 0;
+  if (X < 0)
+    X = 0;
+  if (Y < 0)
+    Y = 0;
   ImGui::InputText("Model Name", model_name, IM_ARRAYSIZE(model_name));
 
   if (ImGui::Button("Save")) {
     // Save the model in chunk 0 included between ref
-    auto chunk = world->get_chunk_by_center(
-        glm::ivec3(
-            X * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE,
-            HALF_BLOCK_SIZE,
-            Y * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE));
+    auto chunk = world->get_chunk_by_center(glm::ivec3(
+        X * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE, HALF_BLOCK_SIZE,
+        Y * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE));
 
     world->save_model(chunk, std::string(model_name));
   };
 
   ImGui::EndChild();
 
-
   // Save World
-  ImGui::BeginChild("Save World", ImVec2(400, 150), true, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("Save World", ImVec2(400, 150), true,
+                    ImGuiWindowFlags_HorizontalScrollbar);
   static char save_file_name[32];
 
   ImGui::Text("Save");
@@ -448,10 +578,8 @@ void Player::setupModelTransformationCube(unsigned int &program) {
   glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelT));
 }
 
-void Player::setupModelTransformationAxis(
-    unsigned int &program,
-    float rot_angle,
-    glm::vec3 rot_axis) {
+void Player::setupModelTransformationAxis(unsigned int &program,
+                                          float rot_angle, glm::vec3 rot_axis) {
   // Modelling transformations (Model -> World coordinates)
   modelT = glm::rotate(glm::mat4(1.0f), rot_angle, rot_axis);
 
@@ -465,9 +593,8 @@ void Player::setupModelTransformationAxis(
   glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelT));
 }
 
-void Player::setupViewTransformation(
-    unsigned int &program,
-    std::unique_ptr<CameraController> &occ) {
+void Player::setupViewTransformation(unsigned int &program,
+                                     std::unique_ptr<CameraController> &occ) {
   // Viewing transformations (World -> Camera coordinates
   //  viewT = glm::lookAt(glm::vec3(camPosition), glm::vec3(0.0, 0.0, 0.0),
   //  glm::vec3(0.0, 1.0, 0.0));
@@ -484,8 +611,7 @@ void Player::setupViewTransformation(
 }
 
 void Player::setupProjectionTransformation(
-    unsigned int &program,
-    std::unique_ptr<CameraController> &occ) {
+    unsigned int &program, std::unique_ptr<CameraController> &occ) {
   // Projection transformation
   projectionT = occ->GetCamera()->GetProjectionMatrix();
 
@@ -496,7 +622,8 @@ void Player::setupProjectionTransformation(
     fprintf(stderr, "Could not bind location: vProjection\n");
     exit(0);
   }
-  glUniformMatrix4fv(vProjection_uniform, 1, GL_FALSE, glm::value_ptr(projectionT));
+  glUniformMatrix4fv(vProjection_uniform, 1, GL_FALSE,
+                     glm::value_ptr(projectionT));
 }
 
 void Player::handle_transformations() {
@@ -506,10 +633,10 @@ void Player::handle_transformations() {
   glUseProgram(shaderProgram);
   // Setup MVP matrix
   glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-  glEnable(GL_DEPTH_TEST);  // restore
+  glEnable(GL_DEPTH_TEST); // restore
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glEnable(GL_CULL_FACE);  // Enable OC
-  glEnable(GL_BLEND);      // Enable BLENDING
+  glEnable(GL_CULL_FACE); // Enable OC
+  glEnable(GL_BLEND);     // Enable BLENDING
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
@@ -519,17 +646,15 @@ void Player::handle_transformations() {
     mesh->render(m_cameracontroller);
   }
 
-  glUniform3f(
-      lightpos_uniform,
-      m_cameracontroller->GetCamera()->GetPosition().x,
-      m_cameracontroller->GetCamera()->GetPosition().y,
-      m_cameracontroller->GetCamera()->GetPosition().z);
+  glUniform3f(lightpos_uniform,
+              m_cameracontroller->GetCamera()->GetPosition().x,
+              m_cameracontroller->GetCamera()->GetPosition().y,
+              m_cameracontroller->GetCamera()->GetPosition().z);
 
-  glUniform3f(
-      cameraPos_uniform,
-      m_cameracontroller->GetCamera()->GetPosition().x,
-      m_cameracontroller->GetCamera()->GetPosition().y,
-      m_cameracontroller->GetCamera()->GetPosition().z);
+  glUniform3f(cameraPos_uniform,
+              m_cameracontroller->GetCamera()->GetPosition().x,
+              m_cameracontroller->GetCamera()->GetPosition().y,
+              m_cameracontroller->GetCamera()->GetPosition().z);
 
   setupModelTransformationCube(shaderProgram);
   setupViewTransformation(shaderProgram, m_cameracontroller);

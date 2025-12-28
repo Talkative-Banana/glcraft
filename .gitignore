@@ -1,9 +1,11 @@
 *.cmake
+.cache/
 *.DS_Store
 *.ini
 .user
 build/
-GlCraft
+GlCraft*
+compile_commands.json
 GLCraft.exemaps/
 maps/*
 perf*
