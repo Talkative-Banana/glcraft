@@ -13,8 +13,6 @@ find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(GLEW REQUIRED)
 
-link_directories(${LIBNOISE_DIR})
-
 set(SOURCES
   "src/Main.cpp"
   # "src/ClientMain.cpp"
@@ -50,7 +48,6 @@ set(SOURCES
   "src/Client.cpp"
   "src/Server.cpp"
 
-  "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"
   "depends/imgui/imgui_impl_opengl3.cpp"
   "depends/imgui/imgui.cpp"
@@ -95,7 +92,6 @@ set(CLIENT_SOURCES
   "src/Client.cpp"
   "src/Server.cpp"
 
-  "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"
   "depends/imgui/imgui_impl_opengl3.cpp"
   "depends/imgui/imgui.cpp"
@@ -129,7 +125,6 @@ set(SERVER_SOURCES
   "src/Client.cpp"
   "src/Server.cpp"
 
-  "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"
   "depends/imgui/imgui_impl_opengl3.cpp"
   "depends/imgui/imgui.cpp"
@@ -144,6 +139,10 @@ option(BUILD_LOCAL  "Build local single binary" OFF)
 
 if (BUILD_CLIENT)
   add_executable(GlCraftClient ${CLIENT_SOURCES})
+  
+  set_target_properties(GlCraftClient PROPERTIES
+    BUILD_RPATH "$ORIGIN/depends/noise"
+  )
 
   target_include_directories(GlCraftClient PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -153,14 +152,18 @@ if (BUILD_CLIENT)
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}}
   )
-  target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW)
-  target_link_libraries(GlCraftClient ${LIBNOISE_DIR} noise)
-  target_link_libraries(GlCraftClient ${LIBNOISE_DIR} noiseutils)
+
+  target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
+  target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise noiseutils)
 
 endif()
 
 if (BUILD_SERVER)
   add_executable(GlCraftServer ${SERVER_SOURCES})
+
+  set_target_properties(GlCraftServer PROPERTIES
+    BUILD_RPATH "$ORIGIN/depends/noise"
+  )
 
   target_include_directories(GlCraftServer PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -170,9 +173,9 @@ if (BUILD_SERVER)
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}}
   )
-  target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW)
-  target_link_libraries(GlCraftServer ${LIBNOISE_DIR} noise)
-  target_link_libraries(GlCraftServer ${LIBNOISE_DIR} noiseutils)
+
+  target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
+  target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise noiseutils)
 
 endif()
 
@@ -187,7 +190,7 @@ if (BUILD_LOCAL)
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}}
   )
-  target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW)
-  target_link_libraries(GlCraftLocal ${LIBNOISE_DIR} noise)
-  target_link_libraries(GlCraftLocal ${LIBNOISE_DIR} noiseutils)
+
+  target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
+  target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise noiseutils)
 endif()
