@@ -30,6 +30,7 @@ struct PlayerState {
   glm::vec3 pos, fwd, vel, up;
   GLuint id;
   float ts;
+  bool enforce{false};
 };
 
 class Player {

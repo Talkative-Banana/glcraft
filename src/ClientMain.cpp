@@ -270,6 +270,8 @@ void updatePlayer(const std::string &msg) {
   PlayerState pt;
   std::memcpy(&pt, msg.data(), sizeof(PlayerState));
 
+  if ((pt.id == activePlayer) && (!pt.enforce))
+    return; // do not update my state unless explicitly asked by server
   players[pt.id]->handleNetworkRequest(pt);
 }
 
