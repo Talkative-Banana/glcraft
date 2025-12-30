@@ -18,7 +18,7 @@ if (WIN32)
     find_package(glfw3 CONFIG REQUIRED)
     find_package(glm CONFIG REQUIRED)
     find_package(GLEW CONFIG REQUIRED)
-elseif(UNIX and NOT APPLE)
+elseif(UNIX AND NOT APPLE)
     find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     find_package(glm REQUIRED)
@@ -154,12 +154,14 @@ option(BUILD_LOCAL  "Build local single binary" OFF)
 
 if (BUILD_CLIENT)
   add_executable(GlCraftClient ${CLIENT_SOURCES})
-  
+ 
+if(WIN32)
   add_custom_command(TARGET GlCraftClient POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${LIBNOISE_DIR}/lib/noise.dll"
         $<TARGET_FILE_DIR:GlCraftClient>
   )
+endif()
 
   target_include_directories(GlCraftClient PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -178,11 +180,13 @@ endif()
 if (BUILD_SERVER)
     add_executable(GlCraftServer ${SERVER_SOURCES})
 
+if(WIN32)
     add_custom_command(TARGET GlCraftServer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${LIBNOISE_DIR}/lib/noise.dll"
         $<TARGET_FILE_DIR:GlCraftServer>
     )
+endif()
 
     target_include_directories(GlCraftServer PRIVATE 
     ${PROJECT_SOURCE_DIR}/src
@@ -200,11 +204,14 @@ endif()
 
 if (BUILD_LOCAL)
     add_executable(GlCraftLocal ${SOURCES})
+
+if(WIN32)
     add_custom_command(TARGET GlCraftLocal POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${LIBNOISE_DIR}/lib/noise.dll"
         $<TARGET_FILE_DIR:GlCraftLocal>
     )
+endif()
 
     target_include_directories(GlCraftLocal PRIVATE 
     ${PROJECT_SOURCE_DIR}/src
