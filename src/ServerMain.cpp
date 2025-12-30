@@ -1,7 +1,9 @@
 #include "Utils.h"
 
 #define GLM_FORCE_RADIANS
-#define GLM_ENABLE_EXPERIMENTAL
+#ifndef GLM_ENABLE_EXPERIMENTAL
+  #define GLM_ENABLE_EXPERIMENTAL
+#endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <../stb/stb_image.h>
@@ -49,7 +51,7 @@ GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
 glm::mat4 modelT, viewT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
-std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
+std::unique_ptr<AssetManager> asset_manager;
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -57,14 +59,16 @@ ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
 int main(int, char **) {
   // Setup world
   world = std::make_unique<World>(42, _wps);
+  asset_manager = std::make_unique<AssetManager>();
 
   // Initalize all potential player
   for (int i = 0; i < PLAYER_COUNT; i++) {
     players[i] = std::make_unique<Player>(i);
   }
 
+  int port = 8080;
   boost::asio::io_context ioc;
-  std::make_shared<Server>(ioc, 8080)->on_recv([](const std::string &msg) {
+  std::make_shared<Server>(ioc, port)->on_recv([](const std::string &msg) {
     // handle player
     PlayerState pt;
     std::memcpy(&pt, msg.data(), sizeof(PlayerState));
@@ -74,7 +78,10 @@ int main(int, char **) {
     return players.at(pt.id)->handle_client_input(msg);
   });
 
-  std::thread networking_thread = std::thread([&ioc]() { ioc.run(); });
+  std::thread networking_thread = std::thread([&ioc, port]() { 
+      std::cout << "Server Listening on port: " << port << '\n';
+      ioc.run(); 
+   });
 
   glm::mat4 uiProj;
   float last = glfwGetTime();

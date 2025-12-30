@@ -1,7 +1,7 @@
 #version 330 core
 
-in vec3 vVertex;   // position in model space
-in vec3 vNormal;   // normal in model space
+layout(location = 0) in vec3 vVertex;   // position in model space
+layout(location = 1) in vec3 vNormal;   // normal in model space
 
 uniform mat4 vModel;
 uniform mat4 vView;
