@@ -170,6 +170,7 @@ endif()
     ${PROJECT_SOURCE_DIR}/depends/libnoise
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
+    ${OPENGL_INCLUDE_DIR}
   )
 
   target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
@@ -195,7 +196,7 @@ endif()
     ${PROJECT_SOURCE_DIR}/depends/libnoise
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
-    )
+  )
 
     target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
     target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
@@ -220,7 +221,7 @@ endif()
     ${PROJECT_SOURCE_DIR}/depends/libnoise
     ${GLFW_INCLUDE_DIRS}
     ${OPENGL_INCLUDE_DIR}
-    )
+  )
 
     target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
     target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
