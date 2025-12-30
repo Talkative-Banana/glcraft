@@ -290,7 +290,6 @@ void Chunk::Render(
     const GLuint cnt = count;
     const GLuint rsize = static_cast<GLuint>(rendervert.size());
 
-    // std::vector<int> FrustumCull(rsize, 0);
     GLuint vcnt = 0, icnt = 0;
 
     for (GLuint i = 0; i < rsize; ++i) {
@@ -299,12 +298,6 @@ void Chunk::Render(
       const auto &inds = vert_ind.second;
 
       vcnt += static_cast<GLuint>(verts.size());
-      // Diabled for now //  TODO:
-      // if (FrustumCulling(verts[0])) {
-      //  FrustumCull[i] = 1;
-      //  std::cout << "Frustum Culled!\n";
-      //  continue;
-      // }
       icnt += static_cast<GLuint>(inds.size());
     }
 
@@ -326,11 +319,11 @@ void Chunk::Render(
       chunkva->Bind();
       VertexBufferLayout layout;
       layout.Push(GL_UNSIGNED_INT, 1);
-      VertexBuffer vb(cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
-      chunkva->AddBuffer(vb, layout);
-      IndexBuffer ib(cube_indices.data(), cube_indices.size());
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-      glBindVertexArray(0);
+      chunkvb = std::make_unique<VertexBuffer>(cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
+      chunkva->AddBuffer(*chunkvb, layout);
+      chunkib = std::make_unique<IndexBuffer>(cube_indices.data(), cube_indices.size());
+      chunkib->Bind();
+      chunkva->Unbind();
     }
   }
 
@@ -435,7 +428,6 @@ void Chunk::Render(
     const GLuint cnt = counttrans;
     const GLuint rsize = static_cast<GLuint>(renderverttrans.size());
 
-    // std::vector<int> FrustumCull(rsize, 0);
     GLuint vcnt = 0, icnt = 0;
 
     for (GLuint i = 0; i < rsize; ++i) {
@@ -444,12 +436,6 @@ void Chunk::Render(
       const auto &inds = vert_ind.second;
 
       vcnt += static_cast<GLuint>(verts.size());
-      // Diabled for now //  TODO:
-      // if (FrustumCulling(verts[0])) {
-      //  FrustumCull[i] = 1;
-      //  std::cout << "Frustum Culled!\n";
-      //  continue;
-      // }
       icnt += static_cast<GLuint>(inds.size());
     }
 
@@ -458,7 +444,6 @@ void Chunk::Render(
     cube_indices.reserve(icnt);
 
     for (GLuint i = 0; i < rsize; ++i) {
-      // if (FrustumCull[i]) continue;
       auto &vert_ind = renderverttrans[i];
       const auto &verts = vert_ind.first;
       const auto &inds = vert_ind.second;
@@ -471,45 +456,46 @@ void Chunk::Render(
       chunkvatrans->Bind();
       VertexBufferLayout layout;
       layout.Push(GL_UNSIGNED_INT, 1);
-      VertexBuffer vb(cube_verticestrans.data(), cube_verticestrans.size() * sizeof(GLuint));
-      chunkvatrans->AddBuffer(vb, layout);
-      IndexBuffer ib(cube_indicestrans.data(), cube_indicestrans.size());
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-      glBindVertexArray(0);
+      chunkvbtrans = std::make_unique<VertexBuffer>(cube_verticestrans.data(), cube_verticestrans.size() * sizeof(GLuint));
+      chunkvatrans->AddBuffer(*chunkvbtrans, layout);
+      chunkibtrans = std::make_unique<IndexBuffer>(cube_indicestrans.data(), cube_indicestrans.size());
+      chunkibtrans->Bind();
+      chunkvatrans->Unbind();
     }
   }
 }
 
 void Chunk::Draw(OBJ_TYPE type) {
   if (!displaychunk) return;
-
-  if (type == OBJ_TYPE::OPAQUE) {
+  if (type == OBJ_TYPE::OPAQUE_) {
     chunkva->Bind();
     glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+      glDrawElements(GL_LINES, cntblocks, GL_UNSIGNED_INT, nullptr);
     } else {
       // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
       // 12 * Total Number of attributes
-      glDrawElements(GL_TRIANGLES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
+      glDrawElements(GL_TRIANGLES, cntblocks, GL_UNSIGNED_INT, nullptr);
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
     }
-  } else if (type == OBJ_TYPE::TRANSPARENT) {
+    chunkva->Unbind();
+  } else if (type == OBJ_TYPE::TRANSPARENT_) {
     chunkvatrans->Bind();
     glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, cntblockstrans * sizeof(GLuint) * 3 * 1, GL_UNSIGNED_INT, nullptr);
+      glDrawElements(GL_LINES, cntblockstrans, GL_UNSIGNED_INT, nullptr);
     } else {
       // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
       // 12 * Total Number of attributes
       glDrawElements(
-          GL_TRIANGLES, cntblockstrans * sizeof(GLuint) * 3 * 1, GL_UNSIGNED_INT, nullptr);
+          GL_TRIANGLES, cntblockstrans, GL_UNSIGNED_INT, nullptr);
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
     }
+    chunkvatrans->Unbind();
   }
 }
 

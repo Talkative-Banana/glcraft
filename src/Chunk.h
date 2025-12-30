@@ -26,11 +26,15 @@ class Chunk {
   std::vector<GLuint> cube_vertices;
   std::vector<GLuint> cube_indices;
   std::unique_ptr<VertexArray> chunkva;
+  std::unique_ptr<VertexBuffer> chunkvb;
+  std::unique_ptr<IndexBuffer> chunkib;
   std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> rendervert;
 
   std::vector<GLuint> cube_verticestrans;
   std::vector<GLuint> cube_indicestrans;
   std::unique_ptr<VertexArray> chunkvatrans;
+  std::unique_ptr<VertexBuffer> chunkvbtrans;
+  std::unique_ptr<IndexBuffer> chunkibtrans;
   std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> renderverttrans;
 
   Chunk();

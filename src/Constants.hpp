@@ -59,7 +59,7 @@ enum class BLOCK_TYPE {
   NUM_BLOCK,
 };
 
-enum class OBJ_TYPE { OPAQUE, TRANSPARENT, UI };
+enum class OBJ_TYPE { OPAQUE_, TRANSPARENT_, UI_ };
 
 static std::array<std::string, static_cast<int>(BLOCK_TYPE::NUM_BLOCK)> BLOCK_ARRAY = {
     "REF",

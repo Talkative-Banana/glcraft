@@ -10,5 +10,7 @@ GLCraft.exemaps/
 maps/*
 perf*
 save/*.bin
-
+.vs*/
+Debug/
+Release/
 !maps/.gitkeep

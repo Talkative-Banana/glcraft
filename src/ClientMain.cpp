@@ -1,7 +1,9 @@
 #include "Utils.h"
 
 #define GLM_FORCE_RADIANS
-#define GLM_ENABLE_EXPERIMENTAL
+#ifndef GLM_ENABLE_EXPERIMENTAL
+  #define GLM_ENABLE_EXPERIMENTAL
+#endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <../stb/stb_image.h>
@@ -60,7 +62,7 @@ glm::mat4 modelT, viewT,
     projectionT; // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
-std::unique_ptr<AssetManager> asset_manager = std::make_unique<AssetManager>();
+std::unique_ptr<AssetManager> asset_manager;
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -284,6 +286,7 @@ int main(int, char **) {
   ui = std::make_unique<UI>();
   ps = std::make_unique<ParticleSystem>("./textures/snow.png");
   world = std::make_unique<World>(42, _wps);
+  asset_manager = std::make_unique<AssetManager>();
 
   shaderProgram =
       createProgram("./shaders/vshaderWorld.vs", "./shaders/fshaderWorld.fs");
@@ -406,14 +409,14 @@ int main(int, char **) {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
-    world->Draw(OBJ_TYPE::OPAQUE);
+    world->Draw(OBJ_TYPE::OPAQUE_);
 
     // TRANSPARENT PASS
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    world->Draw(OBJ_TYPE::TRANSPARENT);
+    world->Draw(OBJ_TYPE::TRANSPARENT_);
 
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);

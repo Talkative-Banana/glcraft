@@ -261,31 +261,32 @@ void World::DoBindTask(bool firstRun) {
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
           auto chunk = biome->chunks[i][j];
+          // OPAQUE PASS
           chunk->chunkva = std::make_unique<VertexArray>();
           chunk->chunkva->Bind();
           VertexBufferLayout layout;
           layout.Push(GL_UNSIGNED_INT, 1);
-          VertexBuffer vb(chunk->cube_vertices.data(),
+          chunk->chunkvb = std::make_unique<VertexBuffer>(chunk->cube_vertices.data(),
                           chunk->cube_vertices.size() * sizeof(GLuint));
-          chunk->chunkva->AddBuffer(vb, layout);
-          IndexBuffer ib(chunk->cube_indices.data(),
+          chunk->chunkva->AddBuffer(*(chunk->chunkvb), layout);
+          chunk->chunkib = std::make_unique<IndexBuffer>(chunk->cube_indices.data(),
                          chunk->cube_indices.size());
-          //  glBindBuffer(GL_ARRAY_BUFFER, 0);
-          glBindVertexArray(0);
+          chunk->chunkib->Bind();
+          chunk->chunkva->Unbind();
 
+          // TRANSPARENT PASS
           chunk->chunkvatrans = std::make_unique<VertexArray>();
           chunk->chunkvatrans->Bind();
           VertexBufferLayout layouttrans;
           layouttrans.Push(GL_UNSIGNED_INT, 1);
-          VertexBuffer vbtrans(chunk->cube_verticestrans.data(),
-                               chunk->cube_verticestrans.size() *
-                                   sizeof(GLuint));
-          chunk->chunkvatrans->AddBuffer(vbtrans, layouttrans);
-          IndexBuffer ibtrans(chunk->cube_indicestrans.data(),
+          chunk->chunkvbtrans = std::make_unique<VertexBuffer>(chunk->cube_verticestrans.data(),
+                               chunk->cube_verticestrans.size() * sizeof(GLuint));
+          chunk->chunkvatrans->AddBuffer(*(chunk->chunkvbtrans), layouttrans);
+          chunk->chunkibtrans = std::make_unique<IndexBuffer>(chunk->cube_indicestrans.data(),
                               chunk->cube_indicestrans.size());
-          //  glBindBuffer(GL_ARRAY_BUFFER, 0);
-          glBindVertexArray(0);
-
+          
+          chunk->chunkibtrans->Bind();
+          chunk->chunkvatrans->Unbind();
           biome->render_queue.insert(chunk);
         }
       }
