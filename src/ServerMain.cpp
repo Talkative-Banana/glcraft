@@ -66,8 +66,9 @@ int main(int, char **) {
     players[i] = std::make_unique<Player>(i);
   }
 
+  int port = 8080;
   boost::asio::io_context ioc;
-  std::make_shared<Server>(ioc, 8080)->on_recv([](const std::string &msg) {
+  std::make_shared<Server>(ioc, port)->on_recv([](const std::string &msg) {
     // handle player
     PlayerState pt;
     std::memcpy(&pt, msg.data(), sizeof(PlayerState));
@@ -77,7 +78,10 @@ int main(int, char **) {
     return players.at(pt.id)->handle_client_input(msg);
   });
 
-  std::thread networking_thread = std::thread([&ioc]() { ioc.run(); });
+  std::thread networking_thread = std::thread([&ioc, port]() { 
+      std::cout << "Server Listening on port: " << port << '\n';
+      ioc.run(); 
+   });
 
   glm::mat4 uiProj;
   float last = glfwGetTime();
