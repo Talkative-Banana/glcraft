@@ -6,7 +6,7 @@ Minecraft clone in C++ with OpenGL.
 **Particle Effects**
 
 ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/snow.png)
-![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/smoke.png)
+<!-- ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/async-fix/preview/smoke.png) -->
 
 **Distant FOG and Transparent Blocks**
 
@@ -16,9 +16,9 @@ Minecraft clone in C++ with OpenGL.
 
 ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Terrain_Generation.png)
 
-**Multiple types of blocks in a Chunk**
+<!-- **Multiple types of blocks in a Chunk**
 
-![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Multiple_Blocks.png)
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Multiple_Blocks.png) -->
 
 
 **Hollow Chunk**
@@ -35,9 +35,9 @@ Chunks are hollow from the inside just like you ;)
 
 ![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/Trees.png)
 
-**Asset Importer**
+<!-- **Asset Importer**
 
-![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/asset.png)
+![image](https://github.com/Talkative-Banana/Gl_Craft/blob/master/preview/asset.png) -->
 
 ## Quick Start
 
@@ -45,11 +45,15 @@ Chunks are hollow from the inside just like you ;)
 ``` bash
 chmod +x build.sh clean.sh
 sudo apt update && sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libx11-dev xorg-dev libglfw3-dev libglm-dev libglew-dev
-./build.sh
+./build.sh <client|server|local>
 ```
 ### Windows
 ``` bash
-build
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+.\vcpkg install glfw3 glew glm opengl
+.\build.bat <client|server|local>
 ```
 
 ## Dependencies
