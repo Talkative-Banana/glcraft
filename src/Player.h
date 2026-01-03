@@ -68,5 +68,5 @@ private:
   GLuint bltype = 0, mdtype = 0, Nokeypressed = 0, m_id = 0;
   uint64_t m_meshhandle;
   Inventory m_inventory;
-  std::unique_ptr<Client> m_client;
+  std::unique_ptr<Client> m_client = nullptr;
 };

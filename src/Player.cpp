@@ -304,10 +304,10 @@ void Player::handle_input(float dt) {
   }
 
   // Send player update
-  if (position_updated)
+  if (position_updated && m_client)
     m_client->send(std::make_shared<std::string>(get_state()));
   // Send world update
-  if (world_updated)
+  if (world_updated && m_client)
     m_client->send(std::make_shared<std::string>(world->get_state(ws)));
 }
 
