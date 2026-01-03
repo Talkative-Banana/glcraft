@@ -367,6 +367,10 @@ void World::load_model(glm::ivec3 pos, std::string model) {
     std::cout << "Biome is null\n";
   }
   std::cout << "Loaded " << countx * county * countz << " blocks\n";
+  if (county * BLOCK_SIZE + pos.y > CHUNK_BLOCK_COUNT * BLOCK_SIZE) {
+    std::cerr << "MODEL to big to fitin, select a lower altitude\n";
+    return;
+  }
   for (int i = 0; i < countx; i++) {
     for (int k = 0; k < countz; k++) {
       for (int j = 0; j < county; j++) {
@@ -489,12 +493,15 @@ World::handle_client_input(const std::string &msg) {
     return std::make_shared<std::string>(get_state(wst));
   }
 
-  // TODO: Update state on server
   auto chunk = get_chunk_by_center(wst.blockpos);
   if (wst.model_idx != 0) {
-    // TODO: load model on server
+    load_model(wst.blockpos, "models/" + MODEL_ARRAY[wst.model_idx] + ".bin");
+    st.enforce = true;
+    return std::make_shared<std::string>(get_state(wst));
   }
   // if verified return new state
+
+  // TODO: Update state on server
   return std::make_shared<std::string>(msg);
 }
 
