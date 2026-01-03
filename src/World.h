@@ -18,7 +18,7 @@
 #include "VertexArray.h"
 
 class World {
- private:
+private:
   int m_seed;
   glm::ivec3 m_worldpos;
   std::unordered_set<std::shared_ptr<Biome>> render_queue;
@@ -35,25 +35,31 @@ class World {
 
   std::queue<std::tuple<int, int, glm::ivec3>> job_queue;
 
- public:
-  std::array<std::array<std::shared_ptr<Biome>, BIOME_COUNTZ>, BIOME_COUNTX> biomes;
+public:
+  std::array<std::array<std::shared_ptr<Biome>, BIOME_COUNTZ>, BIOME_COUNTX>
+      biomes;
   std::unordered_map<uint, Chunk> load_map;
   std::mutex biome_mutex;
   std::unordered_map<uint, std::shared_ptr<Chunk>> save_map;
   std::queue<std::shared_ptr<Biome>> bind_queue;
-  World(int seed, const glm::ivec3 &pos);
-  void SetupWorld(glm::vec3 playerpos);
-  bool isSolid(const glm::ivec3 &pos);
-  bool isVisible(const glm::ivec3 &pos);
-  Block *get_block_by_center(const glm::ivec3 &pos);
-  std::shared_ptr<Chunk> get_chunk_by_center(const glm::ivec3 &pos);
-  std::shared_ptr<Biome> get_biome_by_center(const glm::ivec3 &pos);
-  void save_model(std::shared_ptr<Chunk> chunk, std::string name);
-  void load_model(glm::ivec3 pos, std::string model);
-  void RenderWorld(bool firstRun);
-  void Draw(OBJ_TYPE type);
-  void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
-  void save(std::string save_file);
+  World(int, const glm::ivec3 &);
+  void SetupWorld(glm::vec3);
+  bool isSolid(const glm::ivec3 &);
+  bool isVisible(const glm::ivec3 &);
+  Block *get_block_by_center(const glm::ivec3 &);
+  std::shared_ptr<Chunk> get_chunk_by_center(const glm::ivec3 &);
+  std::shared_ptr<Biome> get_biome_by_center(const glm::ivec3 &);
+  void save_model(std::shared_ptr<Chunk>, std::string);
+  void load_model(glm::ivec3, std::string);
+  void RenderWorld(bool);
+  void Draw(OBJ_TYPE);
+  void Update_queue(glm::vec3, glm::vec3, float);
+  void save(std::string);
   int getSeed();
-  void DoBindTask(bool firstRun);
+  void DoBindTask(bool);
+  void RefreshChunks(glm::ivec3);
+  void handleNetworkRequest(WorldState &);
+  std::shared_ptr<std::string> handle_client_input(const std::string &);
+  bool Valid(WorldState &);
+  std::string get_state(WorldState &);
 };

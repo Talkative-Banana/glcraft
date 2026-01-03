@@ -2,16 +2,16 @@
 #include "Utils.h"
 
 class Window {
- private:
-  GLFWwindow* window;
+private:
+  GLFWwindow *window;
   int screen_height, screen_width;
 
- public:
-  Window(int sh, int sw);
-  GLFWwindow* GetWindow() const;
-  void setup(int sw, int sh);
+public:
+  Window(int, int);
+  GLFWwindow *GetWindow() const;
+  void setup(int, int);
   const int GetWidth() const;
   const int GetHeight() const;
-  void SetWidth(int display_w);
-  void SetHeight(int display_h);
+  void SetWidth(int);
+  void SetHeight(int);
 };

@@ -9,10 +9,10 @@
 
 extern std::unique_ptr<World> world;
 
-Chunk::Chunk() {
-}
+Chunk::Chunk() {}
 
-Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean display, int _type) {
+Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
+             GLboolean display, int _type) {
   // Check if the chunk needs to be loaded from disk
   id = _id;
   count = 0;
@@ -21,10 +21,11 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean disp
   biomepos = _biomepos;
   displaychunk = display;
   uint biome_uq_id = BIOME_COUNTZ * _biomepos.x + _biomepos.z;
-  save_id = (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) + _id;
+  save_id =
+      (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
+      _id;
   chunkpos = glm::vec3(
-      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id / CHUNK_COUNTX) + biomepos.x,
-      0.0,
+      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id / CHUNK_COUNTX) + biomepos.x, 0.0,
       CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id % CHUNK_COUNTZ) + biomepos.z);
 
   if (world->load_map.find(save_id) != world->load_map.end()) {
@@ -42,9 +43,9 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position, GLboolean disp
 }
 
 inline GLboolean Chunk::isSolid(const std::vector<GLint> &position) {
-  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) && (position[1] >= 0) &&
-      (position[1] < CHUNK_BLOCK_COUNT) && (position[2] >= 0) &&
-      (position[2] < CHUNK_BLOCK_COUNT)) {
+  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
+      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
+      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung block is solid
     return ((blocks[position[0]][position[1]][position[2]].is_solid()));
@@ -53,9 +54,9 @@ inline GLboolean Chunk::isSolid(const std::vector<GLint> &position) {
 }
 
 inline GLboolean Chunk::isTransparent(const std::vector<GLint> &position) {
-  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) && (position[1] >= 0) &&
-      (position[1] < CHUNK_BLOCK_COUNT) && (position[2] >= 0) &&
-      (position[2] < CHUNK_BLOCK_COUNT)) {
+  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
+      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
+      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung block is transparent
     return ((blocks[position[0]][position[1]][position[2]].is_transparent()));
@@ -75,32 +76,38 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
     if (face == 1) {
       // No Need to draw back face if block behind is solid
       tmp[2] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[2] += 1;
     } else if (face == 2) {
       // No Need to draw front face if block in front is solid
       tmp[2] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[2] -= 1;
     } else if (face == 3) {
       // No Need to draw left face if block in left is solid
       tmp[0] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[0] += 1;
     } else if (face == 4) {
       // No Need to draw right face if block in right is solid
       tmp[0] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[0] -= 1;
     } else if (face == 5) {
       // No Need to draw top face if block on top is solid
       tmp[1] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[1] -= 1;
     } else if (face == 6) {
       // No Need to draw bottom face if block on bottom is solid
       tmp[1] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp)) mask |= (1 << (face - 1));
+      if (!isSolid(tmp) || isTransparent(tmp))
+        mask |= (1 << (face - 1));
       tmp[1] += 1;
     }
   }
@@ -114,11 +121,11 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
   // 4 5 6 7
   // 0 1 2 3
   noise::module::RidgedMulti mountainTerrain;
-  mountainTerrain.SetSeed(randomSeed);  // Set random seed for mountains
+  mountainTerrain.SetSeed(randomSeed); // Set random seed for mountains
 
   noise::module::Billow baseFlatTerrain;
   baseFlatTerrain.SetFrequency(2.0);
-  baseFlatTerrain.SetSeed(randomSeed);  // Set random seed for flat terrain
+  baseFlatTerrain.SetSeed(randomSeed); // Set random seed for flat terrain
 
   noise::module::ScaleBias flatTerrain;
   flatTerrain.SetSourceModule(0, baseFlatTerrain);
@@ -141,7 +148,8 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
   noise::utils::WriterBMP writer;
   writer.SetSourceImage(image);
-  writer.SetDestFilename("maps/tutorial" + std::to_string((4 * X + Z) / 16) + ".bmp");
+  writer.SetDestFilename("maps/tutorial" + std::to_string((4 * X + Z) / 16) +
+                         ".bmp");
   X %= 4, Z %= 4;
   writer.WriteDestFile();
 
@@ -160,33 +168,29 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
         BLOCK_TYPE bltype;
         if (y == 0) {
-          bltype = biome_bltypes[4];  // BASE Block BEDROCK
+          bltype = biome_bltypes[4]; // BASE Block BEDROCK
         } else if (y == height - 1) {
           if (y <= 10) {
-            bltype = biome_bltypes[2];  // Depth top block DIRT
+            bltype = biome_bltypes[2]; // Depth top block DIRT
           } else if (y <= 15) {
-            bltype = biome_bltypes[1];  // Depth top middle block GRAVEL
+            bltype = biome_bltypes[1]; // Depth top middle block GRAVEL
           } else {
-            bltype = biome_bltypes[0];  // Top Block GRASS
+            bltype = biome_bltypes[0]; // Top Block GRASS
           }
         } else if (y <= 10) {
-          bltype = biome_bltypes[3];  // Depth Block
+          bltype = biome_bltypes[3]; // Depth Block
         } else {
           bltype = biome_bltypes[1];
         }
-        blocks[z][y][x] = Block(ofs, y < height, bltype);  // mark them solid
+        blocks[z][y][x] = Block(ofs, y < height, bltype); // mark them solid
       }
     }
   }
 }
 
-void Chunk::Render(
-    int setup,
-    bool firstRun,
-    std::shared_ptr<Chunk> left,
-    std::shared_ptr<Chunk> front,
-    std::shared_ptr<Chunk> right,
-    std::shared_ptr<Chunk> back) {
+void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
+                   std::shared_ptr<Chunk> front, std::shared_ptr<Chunk> right,
+                   std::shared_ptr<Chunk> back) {
   // Rerendering
   // if (!displaychunk) return;
   // Render OPAQUE blocks
@@ -249,38 +253,42 @@ void Chunk::Render(
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          glm::ivec3 block_pos = chunkpos +
-                                 glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-                                 glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
+          glm::ivec3 block_pos =
+              chunkpos +
+              glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+              glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
 
           // Offsets for 8 neighbors around this block (XZ plane)
           static const glm::ivec3 neighborOffsets[8] = {
-              {0, BLOCK_SIZE, -BLOCK_SIZE},            // b0
-              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE},  // b1   543
-              {-BLOCK_SIZE, BLOCK_SIZE, 0},            // b2   6 2
-              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b3   701
-              {0, BLOCK_SIZE, BLOCK_SIZE},             // b4
-              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},    // b5
-              {BLOCK_SIZE, BLOCK_SIZE, 0},             // b6
-              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}    // b7
+              {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
+              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}, // b1   543
+              {-BLOCK_SIZE, BLOCK_SIZE, 0},           // b2   6 2
+              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},  // b3   701
+              {0, BLOCK_SIZE, BLOCK_SIZE},            // b4
+              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b5
+              {BLOCK_SIZE, BLOCK_SIZE, 0},            // b6
+              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
           };
 
           GLuint ac = 0;
           for (int n = 0; n < 8; n++) {
-            auto neighbor = world->get_block_by_center(block_pos + neighborOffsets[n]);
+            auto neighbor =
+                world->get_block_by_center(block_pos + neighborOffsets[n]);
             if (neighbor && neighbor->is_solid()) {
-              ac |= (1u << n);  // set bit if solid
+              ac |= (1u << n); // set bit if solid
             }
           }
 
-          if (auto b0 =
-                  world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid()) ac |= (1u << 8);
+          if (auto b0 = world->get_block_by_center(
+                  block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            if (b0->is_solid())
+              ac |= (1u << 8);
           }
           std::vector<GLuint> indices;
           std::vector<GLuint> blockrendervert;
           blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
-          for (auto &ind : indices) ind += idx;
+          for (auto &ind : indices)
+            ind += idx;
           rendervert.push_back({blockrendervert, indices});
           idx += 24, count++;
         }
@@ -319,9 +327,11 @@ void Chunk::Render(
       chunkva->Bind();
       VertexBufferLayout layout;
       layout.Push(GL_UNSIGNED_INT, 1);
-      chunkvb = std::make_unique<VertexBuffer>(cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
+      chunkvb = std::make_unique<VertexBuffer>(
+          cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
       chunkva->AddBuffer(*chunkvb, layout);
-      chunkib = std::make_unique<IndexBuffer>(cube_indices.data(), cube_indices.size());
+      chunkib = std::make_unique<IndexBuffer>(cube_indices.data(),
+                                              cube_indices.size());
       chunkib->Bind();
       chunkva->Unbind();
     }
@@ -339,7 +349,8 @@ void Chunk::Render(
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
         for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
           // filled[0][0][0] = 1;
-          if (!blocks[i][j][k].is_solid() || !blocks[i][j][k].is_transparent()) {
+          if (!blocks[i][j][k].is_solid() ||
+              !blocks[i][j][k].is_transparent()) {
             // break;  // unsolid blocks
             continue;
           }
@@ -387,38 +398,42 @@ void Chunk::Render(
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          glm::ivec3 block_pos = chunkpos +
-                                 glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-                                 glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
+          glm::ivec3 block_pos =
+              chunkpos +
+              glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+              glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
 
           // Offsets for 8 neighbors around this block (XZ plane)
           static const glm::ivec3 neighborOffsets[8] = {
-              {0, BLOCK_SIZE, -BLOCK_SIZE},            // b0
-              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE},  // b1   543
-              {-BLOCK_SIZE, BLOCK_SIZE, 0},            // b2   6 2
-              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b3   701
-              {0, BLOCK_SIZE, BLOCK_SIZE},             // b4
-              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},    // b5
-              {BLOCK_SIZE, BLOCK_SIZE, 0},             // b6
-              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}    // b7
+              {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
+              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}, // b1   543
+              {-BLOCK_SIZE, BLOCK_SIZE, 0},           // b2   6 2
+              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},  // b3   701
+              {0, BLOCK_SIZE, BLOCK_SIZE},            // b4
+              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b5
+              {BLOCK_SIZE, BLOCK_SIZE, 0},            // b6
+              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
           };
 
           GLuint ac = 0;
           for (int n = 0; n < 8; n++) {
-            auto neighbor = world->get_block_by_center(block_pos + neighborOffsets[n]);
+            auto neighbor =
+                world->get_block_by_center(block_pos + neighborOffsets[n]);
             if (neighbor && neighbor->is_solid()) {
-              ac |= (1u << n);  // set bit if solid
+              ac |= (1u << n); // set bit if solid
             }
           }
 
-          if (auto b0 =
-                  world->get_block_by_center(block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid()) ac |= (1u << 8);
+          if (auto b0 = world->get_block_by_center(
+                  block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            if (b0->is_solid())
+              ac |= (1u << 8);
           }
           std::vector<GLuint> indices;
           std::vector<GLuint> blockrendervert;
           blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
-          for (auto &ind : indices) ind += idx;
+          for (auto &ind : indices)
+            ind += idx;
           renderverttrans.push_back({blockrendervert, indices});
           idx += 24, counttrans++;
         }
@@ -448,17 +463,22 @@ void Chunk::Render(
       const auto &verts = vert_ind.first;
       const auto &inds = vert_ind.second;
 
-      cube_verticestrans.insert(cube_verticestrans.end(), verts.begin(), verts.end());
-      cube_indicestrans.insert(cube_indicestrans.end(), inds.begin(), inds.end());
+      cube_verticestrans.insert(cube_verticestrans.end(), verts.begin(),
+                                verts.end());
+      cube_indicestrans.insert(cube_indicestrans.end(), inds.begin(),
+                               inds.end());
     }
 
     if (!setup) {
       chunkvatrans->Bind();
       VertexBufferLayout layout;
       layout.Push(GL_UNSIGNED_INT, 1);
-      chunkvbtrans = std::make_unique<VertexBuffer>(cube_verticestrans.data(), cube_verticestrans.size() * sizeof(GLuint));
+      chunkvbtrans = std::make_unique<VertexBuffer>(cube_verticestrans.data(),
+                                                    cube_verticestrans.size() *
+                                                        sizeof(GLuint));
       chunkvatrans->AddBuffer(*chunkvbtrans, layout);
-      chunkibtrans = std::make_unique<IndexBuffer>(cube_indicestrans.data(), cube_indicestrans.size());
+      chunkibtrans = std::make_unique<IndexBuffer>(cube_indicestrans.data(),
+                                                   cube_indicestrans.size());
       chunkibtrans->Bind();
       chunkvatrans->Unbind();
     }
@@ -466,7 +486,8 @@ void Chunk::Render(
 }
 
 void Chunk::Draw(OBJ_TYPE type) {
-  if (!displaychunk) return;
+  if (!displaychunk)
+    return;
   if (type == OBJ_TYPE::OPAQUE_) {
     chunkva->Bind();
     glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
@@ -490,8 +511,7 @@ void Chunk::Draw(OBJ_TYPE type) {
     } else {
       // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
       // 12 * Total Number of attributes
-      glDrawElements(
-          GL_TRIANGLES, cntblockstrans, GL_UNSIGNED_INT, nullptr);
+      glDrawElements(GL_TRIANGLES, cntblockstrans, GL_UNSIGNED_INT, nullptr);
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
     }
@@ -512,14 +532,23 @@ void Chunk::Serialize(std::ostream &os) const {
 }
 
 bool Chunk::Deserialize(std::istream &is) {
-  if (!is.read(reinterpret_cast<char *>(&id), sizeof(id))) return false;
-  if (!is.read(reinterpret_cast<char *>(&save_id), sizeof(save_id))) return false;
-  if (!is.read(reinterpret_cast<char *>(&biomepos.x), sizeof(biomepos.x))) return false;
-  if (!is.read(reinterpret_cast<char *>(&biomepos.y), sizeof(biomepos.y))) return false;
-  if (!is.read(reinterpret_cast<char *>(&biomepos.z), sizeof(biomepos.z))) return false;
-  if (!is.read(reinterpret_cast<char *>(&chunkpos.x), sizeof(chunkpos.x))) return false;
-  if (!is.read(reinterpret_cast<char *>(&chunkpos.y), sizeof(chunkpos.y))) return false;
-  if (!is.read(reinterpret_cast<char *>(&chunkpos.z), sizeof(chunkpos.z))) return false;
-  if (!is.read(reinterpret_cast<char *>(&blocks), sizeof(blocks))) return false;
+  if (!is.read(reinterpret_cast<char *>(&id), sizeof(id)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&save_id), sizeof(save_id)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&biomepos.x), sizeof(biomepos.x)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&biomepos.y), sizeof(biomepos.y)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&biomepos.z), sizeof(biomepos.z)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&chunkpos.x), sizeof(chunkpos.x)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&chunkpos.y), sizeof(chunkpos.y)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&chunkpos.z), sizeof(chunkpos.z)))
+    return false;
+  if (!is.read(reinterpret_cast<char *>(&blocks), sizeof(blocks)))
+    return false;
   return true;
 }

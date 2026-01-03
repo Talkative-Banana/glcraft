@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Utils.h"
 #include <array>
 #include <string>
-constexpr static float BLOCK_SIZE = 2.0;       // BLOCK LENGTH
-constexpr static float HALF_BLOCK_SIZE = 1.0;  // HALF_BLOCK LENGTH
+#include <variant>
+constexpr static float BLOCK_SIZE = 2.0;      // BLOCK LENGTH
+constexpr static float HALF_BLOCK_SIZE = 1.0; // HALF_BLOCK LENGTH
 constexpr static float NEAR_PLANE = 0.01f;
 constexpr static float FAR_PLANE = 1000.0f;
 constexpr static int TOTAL_STEPS = 32;
@@ -14,16 +16,19 @@ constexpr static int CHUNK_COUNTZ = 4;
 constexpr static int BIOME_COUNTZ = 1024;
 constexpr static int CHUNK_BLOCK_COUNT = 32;
 constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
-constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2;  // 2 BIOME
+constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
 
 constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
 constexpr static float GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
-constexpr static int MODEL_TYPES = 3;
+constexpr static int MODEL_TYPES = 4;
 constexpr static int BIOME_TYPES = 4;
 constexpr static int BIOME_BLOCK_COUNT = 5;
 
+constexpr static int BLOCK_POSX = 31 << 10;
+constexpr static int BLOCK_POSY = 31 << 5;
+constexpr static int BLOCK_POSZ = 31;
 constexpr static int BACK_FACE = 1 << 17;
 constexpr static int FRONT_FACE = 1 << 18;
 constexpr static int LEFT_FACE = 1 << 19;
@@ -61,48 +66,45 @@ enum class BLOCK_TYPE {
 
 enum class OBJ_TYPE { OPAQUE_, TRANSPARENT_, UI_ };
 
-static std::array<std::string, static_cast<int>(BLOCK_TYPE::NUM_BLOCK)> BLOCK_ARRAY = {
-    "REF",
-    "DIRT",
-    "STONE",
-    "BARK",
-    "LEAF",
-    "GRASS",
-    "IRON",
-    "WOOD",
-    "WATER",
-    "GRAVEL",
-    "SAND",
-    "BEDROCK",
-    "BRICK",
-    "SNOW",
-    "HARD_SNOW",
-    "LAVA",
-    "GLASS",
+static std::array<std::string, static_cast<int>(BLOCK_TYPE::NUM_BLOCK)>
+    BLOCK_ARRAY = {
+        "REF",   "DIRT", "STONE",     "BARK",   "LEAF",  "GRASS",
+        "IRON",  "WOOD", "WATER",     "GRAVEL", "SAND",  "BEDROCK",
+        "BRICK", "SNOW", "HARD_SNOW", "LAVA",   "GLASS",
 };
 
-static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {"tree", "tree_std", "furnace"};
+static std::array<std::string, MODEL_TYPES> MODEL_ARRAY = {
+    "monostate", "tree", "tree_std", "furnace"};
 
-static std::array<std::string, BIOME_TYPES> BIOME_ARRAY = {"GRASSLAND", "DESERT", "SAVANNA", "ICE"};
+static std::array<std::string, BIOME_TYPES> BIOME_ARRAY = {
+    "GRASSLAND", "DESERT", "SAVANNA", "ICE"};
 
-static std::array<std::array<BLOCK_TYPE, BIOME_BLOCK_COUNT>, BIOME_TYPES> BIOME_BLOCK_TYPES = {
-    {{{BLOCK_TYPE::GRASS_BLOCK,
-       BLOCK_TYPE::DIRT_BLOCK,
-       BLOCK_TYPE::GRAVEL_BLOCK,
-       BLOCK_TYPE::STONE_BLOCK,
-       BLOCK_TYPE::BEDROCK_BLOCK}},
-     {{BLOCK_TYPE::SNOW_BLOCK,
-       BLOCK_TYPE::SNOW_BLOCK,
-       BLOCK_TYPE::SNOW_BLOCK,
-       BLOCK_TYPE::HARD_SNOW_BLOCK,
-       BLOCK_TYPE::BEDROCK_BLOCK}},
-     {{BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::BEDROCK_BLOCK}},
-     {{BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::SAND_BLOCK,
-       BLOCK_TYPE::BEDROCK_BLOCK}}}};
+static std::array<std::array<BLOCK_TYPE, BIOME_BLOCK_COUNT>, BIOME_TYPES>
+    BIOME_BLOCK_TYPES = {{{{BLOCK_TYPE::GRASS_BLOCK, BLOCK_TYPE::DIRT_BLOCK,
+                            BLOCK_TYPE::GRAVEL_BLOCK, BLOCK_TYPE::STONE_BLOCK,
+                            BLOCK_TYPE::BEDROCK_BLOCK}},
+                          {{BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::SNOW_BLOCK,
+                            BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::HARD_SNOW_BLOCK,
+                            BLOCK_TYPE::BEDROCK_BLOCK}},
+                          {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+                            BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+                            BLOCK_TYPE::BEDROCK_BLOCK}},
+                          {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+                            BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+                            BLOCK_TYPE::BEDROCK_BLOCK}}}};
+
+struct PlayerState {
+  glm::vec3 pos, fwd, vel, up;
+};
+
+struct WorldState {
+  glm::ivec3 blockpos;
+  GLuint blk, model_idx;
+};
+
+struct State {
+  std::variant<std::monostate, PlayerState, WorldState> _data;
+  GLuint id;
+  bool enforce{false};
+  float ts;
+};

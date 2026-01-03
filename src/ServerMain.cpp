@@ -2,7 +2,7 @@
 
 #define GLM_FORCE_RADIANS
 #ifndef GLM_ENABLE_EXPERIMENTAL
-  #define GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
 #endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -69,19 +69,27 @@ int main(int, char **) {
   int port = 8080;
   boost::asio::io_context ioc;
   std::make_shared<Server>(ioc, port)->on_recv([](const std::string &msg) {
-    // handle player
-    PlayerState pt;
-    std::memcpy(&pt, msg.data(), sizeof(PlayerState));
-
-    // set the id of the activePlayer to mimic their movement here
-    // activePlayer = pt.id;
-    return players.at(pt.id)->handle_client_input(msg);
+    // handle request
+    State st;
+    std::memcpy(&st, msg.data(), sizeof(State));
+    if (std::holds_alternative<PlayerState>(st._data)) {
+      PlayerState pst = std::get<PlayerState>(st._data);
+      // set the id of the activePlayer to mimic their movement here
+      // activePlayer = pt.id;
+      return players.at(st.id)->handle_client_input(msg);
+    } else if (std::holds_alternative<WorldState>(st._data)) {
+      WorldState wst = std::get<WorldState>(st._data);
+      return world->handle_client_input(msg);
+    } else {
+      std::cerr << "Invalid Packet Received\n";
+      return std::make_shared<std::string>("Invalid Message");
+    }
   });
 
-  std::thread networking_thread = std::thread([&ioc, port]() { 
-      std::cout << "Server Listening on port: " << port << '\n';
-      ioc.run(); 
-   });
+  std::thread networking_thread = std::thread([&ioc, port]() {
+    std::cout << "Server Listening on port: " << port << '\n';
+    ioc.run();
+  });
 
   glm::mat4 uiProj;
   float last = glfwGetTime();

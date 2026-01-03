@@ -63,8 +63,6 @@ Player::Player(const uint64_t id) : m_id(id) {
 }
 
 void Player::handleNetworkRequest(PlayerState &pt) {
-  // TODO: race condition between local and server sent state?
-
   // Update from client
   m_position = pt.pos;
   m_forward = pt.fwd;
@@ -79,6 +77,7 @@ void Player::handleNetworkRequest(PlayerState &pt) {
 
 void Player::handle_input(float dt) {
 
+  bool position_updated = false;
   // Gravity
   glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
                 glm::vec3(HALF_BLOCK_SIZE);
@@ -98,8 +97,10 @@ void Player::handle_input(float dt) {
       adjusted = true;
     }
 
-    if (adjusted)
+    if (adjusted) {
       m_position.y = v.y;
+      position_updated = true;
+    }
   }
 
   auto toBlockCenter = [](glm::vec3 pos) {
@@ -118,6 +119,7 @@ void Player::handle_input(float dt) {
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
+      position_updated = true;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_S)) {
     glm::vec3 nextPos = m_position - planarvec * m_speed * dt;
@@ -126,6 +128,7 @@ void Player::handle_input(float dt) {
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
+      position_updated = true;
     }
   }
 
@@ -138,6 +141,7 @@ void Player::handle_input(float dt) {
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
+      position_updated = true;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_D)) {
     // Check if obstructed by block
@@ -148,6 +152,7 @@ void Player::handle_input(float dt) {
     if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
+      position_updated = true;
     }
   }
 
@@ -155,13 +160,16 @@ void Player::handle_input(float dt) {
   if (!enable_gravity) {
     if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
       m_position = m_position + m_up * m_speed * dt;
+      position_updated = true;
     } else if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
       m_position = m_position - m_up * m_speed * dt;
+      position_updated = true;
     }
   } else {
     // Jump if gravity enabled
     if (Input::WasKeyPressed(GLFW_KEY_SPACE)) {
       m_position = m_position + m_up * m_speed * dt * 100.0f;
+      position_updated = true;
     }
   }
 
@@ -185,6 +193,7 @@ void Player::handle_input(float dt) {
       glm::quat qy = glm::angleAxis(-roty, m_up);
       glm::quat rotation = glm::normalize(qy * qx);
       m_forward = glm::normalize(rotation * m_forward);
+      position_updated = true;
     }
   }
 
@@ -193,24 +202,9 @@ void Player::handle_input(float dt) {
   auto l_mesh = asset_manager->get_mesh(m_meshhandle);
   l_mesh->pos = m_position;
 
-  auto get_neighbors =
-      [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
-    std::shared_ptr<Chunk> left, front, right, back;
-    left = world->get_chunk_by_center(
-        vec +
-        glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    front = world->get_chunk_by_center(
-        vec +
-        glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    right = world->get_chunk_by_center(
-        vec -
-        glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    back = world->get_chunk_by_center(
-        vec -
-        glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    return {left, front, right, back};
-  };
-
+  // default initialize to indicate no updates
+  WorldState ws{};
+  bool world_updated = false;
   if (!Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL) &&
       Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
     strcpy(textKeyStatus, "Right click");
@@ -232,66 +226,13 @@ void Player::handle_input(float dt) {
       // Set the dirty bit
       _chunk->dirtybit = true;
       _biome->dirtybit = true;
-      auto vec = ray.m_hitcords;
 
-      int cordz =
-          (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      int cordx =
-          (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      // If last block update adjacent chunk
-      auto chunks1 = get_neighbors(vec);
-      _chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      // Update ws to send to server
+      ws.blockpos = ray.m_hitcords;
+      ws.blk = block->blmask;
 
-      bool update_boundary = false;
-      if (cordz == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 = get_neighbors(
-            vec +
-            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-        if (chunks1[1]) {
-          std::cout << "[FRONT] Updating neighbouring chunk\n";
-          chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordx == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 = get_neighbors(
-            vec +
-            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-        if (chunks1[0]) {
-          std::cout << "[LEFT] Updating neighbouring chunk\n";
-          chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordz == 1) {
-        auto chunks2 = get_neighbors(
-            vec -
-            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-        if (chunks1[3]) {
-          std::cout << "[BACK] Updating neighbouring chunk\n";
-          chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordx == 1) {
-        auto chunks2 = get_neighbors(
-            vec -
-            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-        if (chunks1[2]) {
-          std::cout << "[RIGHT] Updating neighbouring chunk\n";
-          chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-      _chunk->Render(0, false, chunks1[0], chunks1[1], chunks1[2], chunks1[3]);
-
+      world_updated = true;
+      world->RefreshChunks(ray.m_hitcords);
       // world->RenderWorld();
     } else {
       std::cout << "Ray didn't hit any block\n";
@@ -321,64 +262,11 @@ void Player::handle_input(float dt) {
       _chunk->dirtybit = true;
       _biome->dirtybit = true;
 
-      auto vec = ray.m_hitcords;
-
-      int cordz =
-          (ray.m_hitcords.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      int cordx =
-          (ray.m_hitcords.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
-      // If last block update adjacent chunk
-      auto chunks1 = get_neighbors(vec);
-      _chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-
-      if (cordz == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 = get_neighbors(
-            vec +
-            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-        if (chunks1[1]) {
-          std::cout << "[FRONT] Updating neighbouring chunk\n";
-          chunks1[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[1]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordx == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1) {
-        auto chunks2 = get_neighbors(
-            vec +
-            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-        if (chunks1[0]) {
-          std::cout << "[LEFT] Updating neighbouring chunk\n";
-          chunks1[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[0]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordz == 1) {
-        auto chunks2 = get_neighbors(
-            vec -
-            glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-        if (chunks1[3]) {
-          std::cout << "[BACK] Updating neighbouring chunk\n";
-          chunks1[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[3]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-
-      if (cordx == 1) {
-        auto chunks2 = get_neighbors(
-            vec -
-            glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-        if (chunks1[2]) {
-          std::cout << "[RIGHT] Updating neighbouring chunk\n";
-          chunks1[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-          chunks1[2]->Render(0, false, chunks2[0], chunks2[1], chunks2[2],
-                             chunks2[3]);
-        }
-      }
-      _chunk->Render(0, false, chunks1[0], chunks1[1], chunks1[2], chunks1[3]);
+      // Update ws to send to server
+      ws.blockpos = prev_blk;
+      ws.blk = block->blmask;
+      world_updated = true;
+      world->RefreshChunks(ray.m_hitcords);
     } else {
       std::cout << "Ray didn't hit any block\n";
     }
@@ -393,11 +281,19 @@ void Player::handle_input(float dt) {
 
       if (ray.did_hit(world)) {
         std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x
-                  << " " << ray.m_hitcords.y << " " << ray.m_hitcords.z
-                  << std::endl;
+                  << " " << ray.m_hitcords.y << " " << ray.m_hitcords.z << '\n';
         auto chunk = world->get_chunk_by_center(ray.m_hitcords);
-        world->load_model(ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0),
-                          "models/" + MODEL_ARRAY[mdtype] + ".bin");
+
+        if (mdtype != 0) {
+          auto vec = ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0);
+          world->load_model(vec, "models/" + MODEL_ARRAY[mdtype] + ".bin");
+          // instead of sending all of the blocks send block to render model
+          // there damn i'm so smart!!!
+          ws.blockpos = vec;
+          ws.model_idx = mdtype;
+          world_updated = true;
+          world->RefreshChunks(ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0));
+        }
       }
     }
   }
@@ -406,6 +302,13 @@ void Player::handle_input(float dt) {
     strcpy(textKeyStatus, "Listening for key events...");
     strcpy(textKeyDescription, "Listening for key events...");
   }
+
+  // Send player update
+  if (position_updated)
+    m_client->send(std::make_shared<std::string>(get_state()));
+  // Send world update
+  if (world_updated)
+    m_client->send(std::make_shared<std::string>(world->get_state(ws)));
 }
 
 // returns true if a valid move
@@ -421,10 +324,12 @@ bool Player::Valid(PlayerState &ps) {
 // handle input [for server]
 std::shared_ptr<std::string>
 Player::handle_client_input(const std::string &msg) {
-  PlayerState pt;
-  std::memcpy(&pt, msg.data(), sizeof(PlayerState));
+  State st;
+  std::memcpy(&st, msg.data(), sizeof(State));
 
-  if (!Valid(pt)) { // if not valid return last state
+  PlayerState pst = std::get<PlayerState>(st._data);
+
+  if (!Valid(pst)) { // if not valid return last state
     return std::make_shared<std::string>(get_state());
   }
   // if verified return new state
@@ -435,16 +340,18 @@ Player::handle_client_input(const std::string &msg) {
 Client *const Player::get_client() { return m_client.get(); }
 
 const std::string Player::get_state() {
-  PlayerState st;
+  PlayerState pst;
+  State st;
   st.ts = glfwGetTime();
-  st.pos = m_position;
-  st.fwd = m_forward;
-  st.vel = m_velocity;
-  st.up = m_up;
   st.id = m_id;
+  pst.pos = m_position;
+  pst.fwd = m_forward;
+  pst.vel = m_velocity;
+  pst.up = m_up;
+  st._data = pst;
 
-  std::string out(sizeof(PlayerState), '\0');
-  std::memcpy(out.data(), &st, sizeof(PlayerState));
+  std::string out(sizeof(State), '\0');
+  std::memcpy(out.data(), &st, sizeof(State));
   return out;
 }
 

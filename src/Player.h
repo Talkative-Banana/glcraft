@@ -26,13 +26,6 @@ extern ImVec4 clearColor;
 extern std::vector<std::shared_ptr<Mesh>> meshes;
 extern void add_player(uint32_t);
 
-struct PlayerState {
-  glm::vec3 pos, fwd, vel, up;
-  GLuint id;
-  float ts;
-  bool enforce{false};
-};
-
 class Player {
 public:
   std::unique_ptr<CameraController> m_cameracontroller;

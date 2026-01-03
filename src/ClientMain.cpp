@@ -2,7 +2,7 @@
 
 #define GLM_FORCE_RADIANS
 #ifndef GLM_ENABLE_EXPERIMENTAL
-  #define GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
 #endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -63,102 +63,11 @@ glm::mat4 modelT, viewT,
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
+extern std::mutex m;
+extern std::queue<glm::ivec3> refreshq;
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-
-// void draw_axis(unsigned int axis_VAO, unsigned int shaderProgram) {
-//   glBindVertexArray(axis_VAO);
-//   setupModelTransformationAxis(shaderProgram, 0.0, glm::vec3(0, 0, 1));
-//   // glUniform4f(vColor_uniform, 1.0, 0.0, 0.0, 1.0); //Red -> X
-//   glDrawArrays(GL_LINES, 0, 2);
-//
-//   setupModelTransformationAxis(shaderProgram, glm::radians(90.0),
-//   glm::vec3(0, 0, 1));
-//   // glUniform4f(vColor_uniform, 0.0, 1.0, 0.0, 1.0); //Green -> Y
-//   glDrawArrays(GL_LINES, 0, 2);
-//
-//   setupModelTransformationAxis(shaderProgram, -glm::radians(90.0),
-//   glm::vec3(0, 1, 0));
-//   // glUniform4f(vColor_uniform, 0.0, 0.0, 1.0, 1.0); //Blue -> Z
-//   glDrawArrays(GL_LINES, 0, 2);
-//
-//   glEnable(GL_DEPTH_TEST);  // Enable depth test again
-// }
-
-// void createAxesLine(unsigned int &program, unsigned int &axis_VAO) {
-//   glUseProgram(program);
-//
-//   // Bind shader variables
-//   int vVertex_attrib_position = glGetAttribLocation(program, "vVertex");
-//   if (vVertex_attrib_position == -1) {
-//     fprintf(stderr, "Could not bind location: vVertex\n");
-//     exit(0);
-//   }
-//
-//   // Axes data
-//   GLfloat axis_vertices[] = {0, 0, 0, 20, 0, 0};  // X-axis
-//   glGenVertexArrays(1, &axis_VAO);
-//   glBindVertexArray(axis_VAO);
-//
-//   // Create VBO for the VAO
-//   int nVertices = 2;  // 2 vertices
-//   GLuint vertex_VBO;
-//   glGenBuffers(1, &vertex_VBO);
-//   glBindBuffer(GL_ARRAY_BUFFER, vertex_VBO);
-//   glBufferData(GL_ARRAY_BUFFER, nVertices * 3 * sizeof(GLfloat),
-//   axis_vertices, GL_STATIC_DRAW);
-//   glEnableVertexAttribArray(vVertex_attrib_position);
-//   glVertexAttribPointer(vVertex_attrib_position, 3, GL_FLOAT, GL_FALSE, 0,
-//   0);
-//
-//   glBindBuffer(GL_ARRAY_BUFFER, 0);
-//   glBindVertexArray(0);  // Unbind the VAO to disable changes outside this
-//   function.
-// }
-
-// int FrustumCulling(GLuint vertex) {
-//   // return 0 if inside frustum
-//
-//   auto Center = [&](glm::ivec3 pos, uint centeroff) {
-//     glm::ivec3 center = pos;
-//
-//     if ((centeroff & 1u) == 1u) {
-//       center.z += HALF_BLOCK_SIZE;
-//     } else {
-//       center.z -= HALF_BLOCK_SIZE;
-//     }
-//
-//     if ((centeroff & 2u) == 2u) {
-//       center.y += HALF_BLOCK_SIZE;
-//     } else {
-//       center.y -= HALF_BLOCK_SIZE;
-//     }
-//
-//     if ((centeroff & 4u) == 4u) {
-//       center.x += HALF_BLOCK_SIZE;
-//     } else {
-//       center.x -= HALF_BLOCK_SIZE;
-//     }
-//     return center;
-//   };
-//
-//   uint positionX = (vertex) & 63u;
-//   uint positionY = (vertex >> 6u) & 63u;
-//   uint positionZ = (vertex >> 12u) & 63u;
-//   uint centeroff = (vertex >> 18u) & 7u;
-//
-//   glm::ivec3 pos =
-//       glm::ivec3(BLOCK_SIZE * positionX, BLOCK_SIZE * positionY, BLOCK_SIZE *
-//       positionZ);
-//   // Center of block
-//   glm::ivec3 centercord = Center(pos, centeroff);
-//   for (int i = 0; i < 6; i++) {
-//     // for each of frusum face check if inside else return 1
-//     // TODO:
-//   }
-//   return 0;
-// }
 
 void bind_uniforms() {
   if (vVertex_attrib == -1) {
@@ -268,13 +177,23 @@ uint32_t allocatePlayerId() {
 }
 
 void updatePlayer(const std::string &msg) {
-  // Received update from client
-  PlayerState pt;
-  std::memcpy(&pt, msg.data(), sizeof(PlayerState));
+  // Received update from server
+  State st;
+  std::memcpy(&st, msg.data(), sizeof(State));
 
-  if ((pt.id == activePlayer) && (!pt.enforce))
-    return; // do not update my state unless explicitly asked by server
-  players[pt.id]->handleNetworkRequest(pt);
+  if (std::holds_alternative<PlayerState>(st._data)) {
+    PlayerState pst = std::get<PlayerState>(st._data);
+    if ((st.id == activePlayer) && (!st.enforce))
+      return; // do not update my state unless explicitly asked by server
+    players[st.id]->handleNetworkRequest(pst);
+  } else if (std::holds_alternative<WorldState>(st._data)) {
+    WorldState wst = std::get<WorldState>(st._data);
+    if ((st.id == activePlayer) && (st.enforce))
+      return; // do not update my world state alreay did
+    world->handleNetworkRequest(wst);
+  } else {
+    std::cerr << "Invalid State Message\n";
+  }
 }
 
 int main(int, char **) {
@@ -374,12 +293,18 @@ int main(int, char **) {
     auto &player = players[activePlayer];
     player->update(dt);
 
-    player->get_client()->send(
-        std::make_shared<std::string>(player->get_state()));
-
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
     auto playerdir = player->m_cameracontroller->GetCamera()->GetOrientation();
     auto fov = player->m_cameracontroller->GetCamera()->GetHorizontalFOV();
+
+    {
+      std::lock_guard<std::mutex> l{m};
+      if (!refreshq.empty()) {
+        auto raycord = refreshq.front();
+        refreshq.pop();
+        world->RefreshChunks(raycord);
+      }
+    }
 
     // World Calculations
     world->SetupWorld(playerpos);
