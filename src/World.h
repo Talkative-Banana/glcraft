@@ -57,7 +57,9 @@ public:
   void save(std::string);
   int getSeed();
   void DoBindTask(bool);
-  void RefreshChunks(glm::ivec3);
+  void RefreshChunks(glm::ivec3, bool left = false, bool back = false,
+                     bool right = false, bool front = false);
+
   void handleNetworkRequest(WorldState &);
   std::shared_ptr<std::string> handle_client_input(const std::string &);
   bool Valid(WorldState &);
