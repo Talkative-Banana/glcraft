@@ -12,9 +12,10 @@ void Server::on_recv(
       boost::asio::buffer(m_data, max_length), *endpoint,
       [self = shared_from_this(), func, endpoint](boost::system::error_code ec,
                                                   std::size_t bytes_recvd) {
+        bool new_client = self->m_sender_endpoints.find(endpoint) ==
+                          self->m_sender_endpoints.end();
         // if a new client add to clientlist
-        if (self->m_sender_endpoints.find(endpoint) ==
-            self->m_sender_endpoints.end()) {
+        if (new_client) {
           std::cout << "Added new client " << endpoint->address() << ' '
                     << endpoint->port() << '\n';
           self->m_sender_endpoints.insert(endpoint);
@@ -24,6 +25,13 @@ void Server::on_recv(
           std::shared_ptr<std::string> reply =
               func(std::string(self->m_data, bytes_recvd));
           self->send(reply);
+          if (new_client) { // Replay previous operations to new_clients
+            for (auto op : world_operations) {
+              std::shared_ptr<std::string> msg =
+                  std::make_shared<std::string>(op);
+              self->send(msg);
+            }
+          }
         }
         self->on_recv(func);
       });

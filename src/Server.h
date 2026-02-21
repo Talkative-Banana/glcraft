@@ -7,6 +7,7 @@
 
 using boost::asio::ip::udp;
 
+extern std::vector<std::string> world_operations;
 struct EndpointCompare {
   bool operator()(const std::shared_ptr<udp::endpoint> &a,
                   const std::shared_ptr<udp::endpoint> &b) const {

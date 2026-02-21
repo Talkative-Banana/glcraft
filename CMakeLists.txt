@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(GlCraft)
 set(TARGET ${CMAKE_PROJECT_NAME})
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -58,7 +58,7 @@ set(SOURCES
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
   "src/Client.cpp"
-  "src/Server.cpp"
+  # "src/Server.cpp"
 
   "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"
@@ -103,7 +103,7 @@ set(CLIENT_SOURCES
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
   "src/Client.cpp"
-  "src/Server.cpp"
+  # "src/Server.cpp"
 
   "depends/libnoise/noiseutils.cpp"
   "depends/imgui/imgui_impl_glfw.cpp"
@@ -175,6 +175,7 @@ endif()
 
   target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
   target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
+  target_compile_definitions(GlCraftClient PRIVATE BUILD_CLIENT)
 
 endif()
 
@@ -200,7 +201,7 @@ endif()
 
     target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
     target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
-
+    target_compile_definitions(GlCraftServer PRIVATE BUILD_SERVER)
 endif()
 
 if (BUILD_LOCAL)
@@ -225,4 +226,5 @@ endif()
 
     target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
     target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
+    target_compile_definitions(GlCraftLocal PRIVATE BUILD_LOCAL)
 endif()

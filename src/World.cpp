@@ -508,11 +508,18 @@ World::handle_client_input(const std::string &msg) {
   if (wst.model_idx != 0) {
     load_model(wst.blockpos, "models/" + MODEL_ARRAY[wst.model_idx] + ".bin");
     st.enforce = true;
-    return std::make_shared<std::string>(get_state(wst));
+    std::string resp = get_state(wst);
+#ifdef BUILD_SERVER
+    world_operations.push_back(resp);
+#endif
+    return std::make_shared<std::string>(std::move(resp));
   }
   // if verified return new state
 
   // TODO: Update state on server
+#ifdef BUILD_SERVER
+  world_operations.push_back(msg);
+#endif
   return std::make_shared<std::string>(msg);
 }
 

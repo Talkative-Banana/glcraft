@@ -17,6 +17,10 @@
 #include "Utils.h"
 #include "VertexArray.h"
 
+#ifdef BUILD_SERVER
+extern std::vector<std::string> world_operations;
+#endif
+
 class World {
 private:
   int m_seed;

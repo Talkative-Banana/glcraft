@@ -2,7 +2,7 @@
 
 #define GLM_FORCE_RADIANS
 #ifndef GLM_ENABLE_EXPERIMENTAL
-  #define GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL
 #endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -301,7 +301,7 @@ int main(int, char **) {
   snow_effect->setup();
 
   // ps->add_effect(std::move(smoke_effect));
-  ps->add_effect(std::move(snow_effect));
+  // ps->add_effect(std::move(snow_effect));
   ps->Render();
 
   bind_uniforms();

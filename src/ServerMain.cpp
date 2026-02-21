@@ -52,6 +52,7 @@ glm::mat4 modelT, viewT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
+std::vector<std::string> world_operations;
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);

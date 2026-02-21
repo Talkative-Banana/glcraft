@@ -32,6 +32,7 @@
 #include "World.h"
 #include <boost/asio.hpp>
 #include <random>
+#include <unordered_set>
 
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
@@ -65,6 +66,7 @@ std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
 extern std::mutex m;
 extern std::queue<glm::ivec3> refreshq;
+std::vector<WorldState> client_operations;
 
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -188,9 +190,18 @@ void updatePlayer(const std::string &msg) {
     players[st.id]->handleNetworkRequest(pst);
   } else if (std::holds_alternative<WorldState>(st._data)) {
     WorldState wst = std::get<WorldState>(st._data);
-    if ((st.id == activePlayer) && (st.enforce))
+    if ((st.id == activePlayer) && (st.enforce)) {
       return; // do not update my world state alreay did
-    world->handleNetworkRequest(wst);
+    }
+    auto chunk = world->get_chunk_by_center(wst.blockpos);
+    if (chunk && chunk->chunkva) {
+      // check if block within render distance
+      world->handleNetworkRequest(wst);
+    } else {
+      // if not will apply change when block within render distance
+      std::cout << "Skipping update chunk not loaded yet\n";
+      client_operations.push_back(wst);
+    }
   } else {
     std::cerr << "Invalid State Message\n";
   }
@@ -235,7 +246,7 @@ int main(int, char **) {
   snow_effect->setup();
 
   // ps->add_effect(std::move(smoke_effect));
-  ps->add_effect(std::move(snow_effect));
+  // ps->add_effect(std::move(snow_effect));
   ps->Render();
 
   bind_uniforms();
@@ -306,6 +317,19 @@ int main(int, char **) {
       }
     }
 
+    for (size_t i = 0; i < client_operations.size();) {
+      auto &wst = client_operations[i];
+      auto chunk = world->get_chunk_by_center(wst.blockpos);
+
+      if (chunk && chunk->chunkva) {
+        world->handleNetworkRequest(wst);
+
+        std::swap(client_operations[i], client_operations.back());
+        client_operations.pop_back();
+      } else {
+        ++i;
+      }
+    }
     // World Calculations
     world->SetupWorld(playerpos);
     // Render first pass

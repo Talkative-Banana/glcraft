@@ -323,6 +323,12 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
       cube_indices.insert(cube_indices.end(), inds.begin(), inds.end());
     }
 
+    // Return early in case of server as we dont want to perform any graphic
+    // operations there
+#ifdef BUILD_SERVER
+    return;
+#endif
+
     if (!setup) {
       chunkva->Bind();
       VertexBufferLayout layout;
