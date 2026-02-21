@@ -12,20 +12,34 @@
 #include "VertexArray.h"
 
 class Biome {
- private:
+private:
   int type;
   GLboolean displaybiome;
 
- public:
+public:
   GLuint x_cord, z_cord;
   glm::ivec3 Biomepos;
   std::thread worker1, worker2;
   std::atomic<int> chunks_ready{0};
   GLboolean dirtybit, isrerenderiter;
-  std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX> chunks;
+  std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
+      chunks;
   std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);
   void RenderBiome(bool firstRun);
   void Draw(OBJ_TYPE type);
-  void Update_queue(glm::vec3 playerpos, glm::vec3 playerForward, float fov);
+  void Update_queue(glm::vec3 playerpos, glm::mat4 VP);
+};
+
+struct Plane {
+  glm::vec3 normal;
+  float d;
+
+  void normalize() {
+    float len = glm::length(normal);
+    normal /= len;
+    d /= len;
+  }
+
+  float distance(const glm::vec3 &p) const { return glm::dot(normal, p) + d; }
 };

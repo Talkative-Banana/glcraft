@@ -305,8 +305,8 @@ int main(int, char **) {
     player->update(dt);
 
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
-    auto playerdir = player->m_cameracontroller->GetCamera()->GetOrientation();
-    auto fov = player->m_cameracontroller->GetCamera()->GetHorizontalFOV();
+    auto playervp =
+        player->m_cameracontroller->GetCamera()->GetProjectionViewMatrix();
 
     {
       std::lock_guard<std::mutex> l{m};
@@ -342,7 +342,7 @@ int main(int, char **) {
     // Do Binding for second pass
     world->DoBindTask(false);
 
-    world->Update_queue(playerpos, playerdir, fov);
+    world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
     glUniform1i(atlas_uniform, 0); // bind sampler to texture unit 0

@@ -57,7 +57,7 @@ public:
   void load_model(glm::ivec3, std::string);
   void RenderWorld(bool);
   void Draw(OBJ_TYPE);
-  void Update_queue(glm::vec3, glm::vec3, float);
+  void Update_queue(glm::vec3, glm::mat4);
   void save(std::string);
   int getSeed();
   void DoBindTask(bool);

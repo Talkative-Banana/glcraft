@@ -353,13 +353,9 @@ int main(int, char **) {
 
     auto playerpos =
         players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
-    auto playerdir = players[activePlayer]
-                         ->m_cameracontroller->GetCamera()
-                         ->GetOrientation();
-    auto fov = players[activePlayer]
-                   ->m_cameracontroller->GetCamera()
-                   ->GetHorizontalFOV();
-
+    auto playervp = players[activePlayer]
+                        ->m_cameracontroller->GetCamera()
+                        ->GetProjectionViewMatrix();
     // World Calculations
     world->SetupWorld(playerpos);
     // Render first pass
@@ -372,7 +368,7 @@ int main(int, char **) {
     // Do Binding for second pass
     world->DoBindTask(false);
 
-    world->Update_queue(playerpos, playerdir, fov);
+    world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
     atlas.Bind();
     glUniform1i(atlas_uniform, 0); // bind sampler to texture unit 0

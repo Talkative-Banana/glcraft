@@ -102,8 +102,8 @@ int main(int, char **) {
 
     auto &player = players.at(activePlayer);
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
-    auto playerdir = player->m_cameracontroller->GetCamera()->GetOrientation();
-    auto fov = player->m_cameracontroller->GetCamera()->GetHorizontalFOV();
+    auto playervp =
+        player->m_cameracontroller->GetCamera()->GetProjectionViewMatrix();
 
     // World Calculations
     world->SetupWorld(playerpos);
@@ -117,7 +117,7 @@ int main(int, char **) {
     // Do Binding for second pass
     // world->DoBindTask(false);
 
-    world->Update_queue(playerpos, playerdir, fov);
+    world->Update_queue(playerpos, playervp);
   }
 
   ioc.stop();

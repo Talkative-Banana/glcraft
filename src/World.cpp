@@ -222,8 +222,7 @@ void World::Draw(OBJ_TYPE type) {
   }
 }
 
-void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward,
-                         float fov) {
+void World::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
   for (auto biome : render_queue) {
     if (!biome) {
       std::cerr << "[ERROR] World::Update_queue: biome is null\n";
@@ -231,7 +230,7 @@ void World::Update_queue(glm::vec3 playerpos, glm::vec3 playerForward,
     }
     if (biome->chunks_ready.load(std::memory_order_acquire) >=
         CHUNK_COUNTX * CHUNK_COUNTZ) {
-      biome->Update_queue(playerpos, playerForward, fov);
+      biome->Update_queue(playerpos, VP);
     }
   }
 }
