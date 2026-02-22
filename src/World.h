@@ -49,6 +49,7 @@ public:
   World(int, const glm::ivec3 &);
   void SetupWorld(glm::vec3);
   bool isSolid(const glm::ivec3 &);
+  bool isStandable(const glm::ivec3 &);
   bool isVisible(const glm::ivec3 &);
   Block *get_block_by_center(const glm::ivec3 &);
   std::shared_ptr<Chunk> get_chunk_by_center(const glm::ivec3 &);

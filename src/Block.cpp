@@ -139,8 +139,6 @@ void Block::Render(GLuint mask, GLuint ambient_occ,
 
   GLuint idx = 0;
   // If a transparent block
-  if (is_transparent())
-    mask = 63;
   while (mask != 0) {
     blmask |= (1 << 16); // mark them visible if any side is visble
     if (mask & 1) {

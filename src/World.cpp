@@ -120,9 +120,12 @@ std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
 
 bool World::isSolid(const glm::ivec3 &pos) {
   Block *b = get_block_by_center(pos);
-  if (!b)
-    return false;
   return (b && (((b->blmask) >> 15) & 1) == 1);
+}
+
+bool World::isStandable(const glm::ivec3 &pos) {
+  Block *b = get_block_by_center(pos);
+  return (b && b->is_solid() && b->get_type() != BLOCK_TYPE::WATER_BLOCK);
 }
 
 bool World::isVisible(const glm::ivec3 &pos) {

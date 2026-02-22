@@ -24,7 +24,7 @@ constexpr static float GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
 constexpr static int MODEL_TYPES = 4;
 constexpr static int BIOME_TYPES = 4;
-constexpr static int BIOME_BLOCK_COUNT = 5;
+constexpr static int BIOME_BLOCK_COUNT = 6;
 
 constexpr static int BLOCK_POSX = 31 << 10;
 constexpr static int BLOCK_POSY = 31 << 5;
@@ -80,18 +80,19 @@ static std::array<std::string, BIOME_TYPES> BIOME_ARRAY = {
     "GRASSLAND", "DESERT", "SAVANNA", "ICE"};
 
 static std::array<std::array<BLOCK_TYPE, BIOME_BLOCK_COUNT>, BIOME_TYPES>
-    BIOME_BLOCK_TYPES = {{{{BLOCK_TYPE::GRASS_BLOCK, BLOCK_TYPE::DIRT_BLOCK,
-                            BLOCK_TYPE::GRAVEL_BLOCK, BLOCK_TYPE::STONE_BLOCK,
-                            BLOCK_TYPE::BEDROCK_BLOCK}},
-                          {{BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::SNOW_BLOCK,
-                            BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::HARD_SNOW_BLOCK,
-                            BLOCK_TYPE::BEDROCK_BLOCK}},
-                          {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
-                            BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
-                            BLOCK_TYPE::BEDROCK_BLOCK}},
-                          {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
-                            BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
-                            BLOCK_TYPE::BEDROCK_BLOCK}}}};
+    BIOME_BLOCK_TYPES = {
+        {{{BLOCK_TYPE::GRASS_BLOCK, BLOCK_TYPE::DIRT_BLOCK,
+           BLOCK_TYPE::GRAVEL_BLOCK, BLOCK_TYPE::STONE_BLOCK,
+           BLOCK_TYPE::BEDROCK_BLOCK, BLOCK_TYPE::WATER_BLOCK}},
+         {{BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::SNOW_BLOCK,
+           BLOCK_TYPE::SNOW_BLOCK, BLOCK_TYPE::HARD_SNOW_BLOCK,
+           BLOCK_TYPE::BEDROCK_BLOCK, BLOCK_TYPE::WATER_BLOCK}},
+         {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+           BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+           BLOCK_TYPE::BEDROCK_BLOCK, BLOCK_TYPE::WATER_BLOCK}},
+         {{BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+           BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::SAND_BLOCK,
+           BLOCK_TYPE::BEDROCK_BLOCK, BLOCK_TYPE::WATER_BLOCK}}}};
 
 struct PlayerState {
   glm::vec3 pos, fwd, vel, up;
