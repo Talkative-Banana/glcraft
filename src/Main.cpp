@@ -19,6 +19,7 @@
 
 #include "AssetManager.h"
 #include "Constants.hpp"
+#include "GameSound.hpp"
 #include "Input.h"
 #include "Main.h"
 #include "ParticleSystem.h"
@@ -27,6 +28,7 @@
 #include "Renderer.h"
 #include "SmokeEffect.h"
 #include "SnowEffect.h"
+#include "SoundSystem.hpp"
 #include "Texture.h"
 #include "UI.h"
 #include "World.h"
@@ -35,6 +37,7 @@
 glm::ivec3 _wps = {0, 0, 0};
 std::unique_ptr<UI> ui = nullptr;
 std::unique_ptr<ParticleSystem> ps = nullptr;
+std::unique_ptr<SoundSystem> ss = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
 glm::vec3 chunkpos;
@@ -270,6 +273,7 @@ int main(int, char **) {
   // create UI Render
   ui = std::make_unique<UI>();
   ps = std::make_unique<ParticleSystem>("./textures/snow.png");
+  ss = std::make_unique<SoundSystem>();
   world = std::make_unique<World>(42, _wps);
   asset_manager = std::make_unique<AssetManager>();
 
@@ -334,6 +338,9 @@ int main(int, char **) {
   // meshes.push_back(mesh1);
   // meshes.push_back(mesh2);
 
+  // Audio Setup
+  GameSound thundersound("assets/audio/calm-thunderstorm-mono.wav");
+  ss->AddSound("thunderstorm", thundersound);
   glm::mat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
@@ -353,6 +360,12 @@ int main(int, char **) {
 
     auto playerpos =
         players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
+    auto playerdir = players[activePlayer]
+                         ->m_cameracontroller->GetCamera()
+                         ->GetOrientation();
+
+    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
+    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
     auto playervp = players[activePlayer]
                         ->m_cameracontroller->GetCamera()
                         ->GetProjectionViewMatrix();
