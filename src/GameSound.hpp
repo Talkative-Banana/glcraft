@@ -18,7 +18,7 @@ public:
     sound.setMinDistance(50.0f);
     sound.setAttenuation(0.5f);
     sound.setLoop(true);
-    sound.setRelativeToListener(false);
+    sound.setRelativeToListener(true);
     sound.play();
   }
 

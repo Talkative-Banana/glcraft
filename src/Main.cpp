@@ -31,6 +31,7 @@
 #include "SoundSystem.hpp"
 #include "Texture.h"
 #include "UI.h"
+#include "WaterEffect.h"
 #include "World.h"
 
 // Globals
@@ -272,7 +273,7 @@ int main(int, char **) {
 
   // create UI Render
   ui = std::make_unique<UI>();
-  ps = std::make_unique<ParticleSystem>("./textures/snow.png");
+  ps = std::make_unique<ParticleSystem>("./textures/water.png");
   ss = std::make_unique<SoundSystem>();
   world = std::make_unique<World>(42, _wps);
   asset_manager = std::make_unique<AssetManager>();
@@ -300,12 +301,15 @@ int main(int, char **) {
   std::unique_ptr<SmokeEffect> smoke_effect =
       std::make_unique<SmokeEffect>(128);
   std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
+  std::unique_ptr<WaterEffect> water_effect = std::make_unique<WaterEffect>(1);
 
   smoke_effect->setup();
   snow_effect->setup();
+  water_effect->setup();
 
   // ps->add_effect(std::move(smoke_effect));
   // ps->add_effect(std::move(snow_effect));
+  auto we_id = ps->add_effect(std::move(water_effect));
   ps->Render();
 
   bind_uniforms();
@@ -392,6 +396,15 @@ int main(int, char **) {
     int fbw, fbh;
     glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
     uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
+
+    auto *effect = ps->get_effect(we_id);
+
+    if (players[activePlayer]->InsideBlock() == BLOCK_TYPE::WATER_BLOCK) {
+      effect->set_initial_size(std::max(fbw, fbh));
+      effect->effect_visible = true;
+    } else {
+      effect->effect_visible = false;
+    }
 
     // OPAQUE PASS
     glDisable(GL_BLEND);

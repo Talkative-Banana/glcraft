@@ -162,3 +162,6 @@ void Block::add(BLOCK_TYPE bltype) {
 }
 
 bool Block::is_solid() { return blmask & (1 << 15); }
+bool Block::is_standable() {
+  return is_solid() && this->get_type() != BLOCK_TYPE::WATER_BLOCK;
+}

@@ -95,6 +95,8 @@ void Player::handle_input(float dt) {
         (v.y < height)) {
       v.y += BLOCK_SIZE; // step up until clear
       adjusted = true;
+      auto blk = world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0));
+      inside_block = blk->get_type();
     }
 
     if (adjusted) {
@@ -327,6 +329,8 @@ bool Player::Valid(PlayerState &ps) {
   m_up = ps.up;
   return true;
 }
+
+BLOCK_TYPE Player::InsideBlock() { return inside_block; }
 
 // handle input [for server]
 std::shared_ptr<std::string>

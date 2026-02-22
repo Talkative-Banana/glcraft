@@ -350,7 +350,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
   }
 }
 
-void World::load_model(glm::ivec3 pos, std::string model) {
+void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
   // Read saved models files if any
   std::ifstream input_model_bin_file(model, std::ios::binary);
   if (!input_model_bin_file) {
@@ -367,6 +367,7 @@ void World::load_model(glm::ivec3 pos, std::string model) {
     biome->dirtybit = 1;
   else {
     std::cout << "Biome is null\n";
+    return;
   }
   std::cout << "Loaded " << countx * county * countz << " blocks\n";
   if (county * BLOCK_SIZE + pos.y > CHUNK_BLOCK_COUNT * BLOCK_SIZE) {
@@ -392,6 +393,7 @@ void World::load_model(glm::ivec3 pos, std::string model) {
           chunk->dirtybit = 1;
         } else {
           std::cout << "Chunk is null\n";
+          return;
         }
         GLuint preserve_mask = ((1 << 15) - 1);
         // binary: 0000...01111111111111111 (15 bits set)
@@ -421,8 +423,9 @@ void World::load_model(glm::ivec3 pos, std::string model) {
       }
     }
   }
-
-  RefreshChunks(pos, left, back, right, front);
+  if (refresh_chunk) {
+    RefreshChunks(pos, left, back, right, front);
+  }
 }
 
 // Saving Scope

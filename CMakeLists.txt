@@ -58,6 +58,7 @@ set(SOURCES
   "src/Effect.cpp"
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
+  "src/WaterEffect.cpp"
   "src/Client.cpp"
   # "src/Server.cpp"
 
@@ -103,6 +104,7 @@ set(CLIENT_SOURCES
   "src/Effect.cpp"
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
+  "src/WaterEffect.cpp"
   "src/Client.cpp"
   # "src/Server.cpp"
 

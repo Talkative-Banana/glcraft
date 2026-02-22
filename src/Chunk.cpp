@@ -182,12 +182,12 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
         BLOCK_TYPE bltype;
         if (y == 0) {
-          bltype = biome_bltypes[4]; // BASE Block BEDROCK
+          bltype = BLOCK_TYPE::BEDROCK_BLOCK; // BASE Block BEDROCK
         } else if (y == height - 1) {
           if (y <= 10) {
-            bltype = biome_bltypes[2]; // Depth top block DIRT
+            bltype = biome_bltypes[2]; // Depth top block GRAVEL
           } else if (y <= 15) {
-            bltype = biome_bltypes[1]; // Depth top middle block GRAVEL
+            bltype = biome_bltypes[4]; // Depth top middle block DIRT
           } else {
             bltype = biome_bltypes[0]; // Top Block GRASS
           }
@@ -293,14 +293,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           for (int n = 0; n < 8; n++) {
             auto neighbor =
                 world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_solid()) {
+            if (neighbor && neighbor->is_standable()) {
               ac |= (1u << n); // set bit if solid
             }
           }
 
           if (auto b0 = world->get_block_by_center(
                   block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid())
+            if (b0->is_standable())
               ac |= (1u << 8);
           }
           std::vector<GLuint> indices;
@@ -444,14 +444,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           for (int n = 0; n < 8; n++) {
             auto neighbor =
                 world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_solid()) {
+            if (neighbor && neighbor->is_standable()) {
               ac |= (1u << n); // set bit if solid
             }
           }
 
           if (auto b0 = world->get_block_by_center(
                   block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid())
+            if (b0->is_standable())
               ac |= (1u << 8);
           }
           std::vector<GLuint> indices;
