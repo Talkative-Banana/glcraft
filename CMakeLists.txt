@@ -23,6 +23,7 @@ elseif(UNIX AND NOT APPLE)
     find_package(glfw3 REQUIRED)
     find_package(glm REQUIRED)
     find_package(GLEW REQUIRED)
+    find_package(SFML 2.5 REQUIRED COMPONENTS audio)
 endif()
 
 set(SOURCES
@@ -57,6 +58,7 @@ set(SOURCES
   "src/Effect.cpp"
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
+  "src/WaterEffect.cpp"
   "src/Client.cpp"
   # "src/Server.cpp"
 
@@ -102,6 +104,7 @@ set(CLIENT_SOURCES
   "src/Effect.cpp"
   "src/SmokeEffect.cpp"
   "src/SnowEffect.cpp"
+  "src/WaterEffect.cpp"
   "src/Client.cpp"
   # "src/Server.cpp"
 
@@ -174,7 +177,7 @@ endif()
   )
 
   target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
-  target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
+  target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
   target_compile_definitions(GlCraftClient PRIVATE BUILD_CLIENT)
 
 endif()
@@ -200,7 +203,7 @@ endif()
   )
 
     target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
-    target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
+    target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
     target_compile_definitions(GlCraftServer PRIVATE BUILD_SERVER)
 endif()
 
@@ -225,6 +228,6 @@ endif()
   )
 
     target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
-    target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise)
+    target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
     target_compile_definitions(GlCraftLocal PRIVATE BUILD_LOCAL)
 endif()

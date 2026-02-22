@@ -49,12 +49,13 @@ public:
   World(int, const glm::ivec3 &);
   void SetupWorld(glm::vec3);
   bool isSolid(const glm::ivec3 &);
+  bool isStandable(const glm::ivec3 &);
   bool isVisible(const glm::ivec3 &);
   Block *get_block_by_center(const glm::ivec3 &);
   std::shared_ptr<Chunk> get_chunk_by_center(const glm::ivec3 &);
   std::shared_ptr<Biome> get_biome_by_center(const glm::ivec3 &);
   void save_model(std::shared_ptr<Chunk>, std::string);
-  void load_model(glm::ivec3, std::string);
+  void load_model(glm::ivec3, std::string, bool refresh_chunk = true);
   void RenderWorld(bool);
   void Draw(OBJ_TYPE);
   void Update_queue(glm::vec3, glm::mat4);

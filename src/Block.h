@@ -33,6 +33,7 @@ public:
   void add(BLOCK_TYPE bltype);
   void remove();
   bool is_solid();
+  bool is_standable();
   bool is_ref();
   bool is_removable();
   bool is_transparent();

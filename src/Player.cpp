@@ -83,7 +83,7 @@ void Player::handle_input(float dt) {
                 glm::vec3(HALF_BLOCK_SIZE);
   if (enable_gravity) {
     bool adjusted = false;
-    if (world && (!(world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)))) &&
+    if (world && (!(world->isStandable(v - glm::vec3(0, PLAYER_HEIGHT, 0)))) &&
         (v.y > 1.0f)) {
       v.y -= BLOCK_SIZE;
       adjusted = true;
@@ -91,10 +91,12 @@ void Player::handle_input(float dt) {
 
     float height = v.y + BLOCK_SIZE - OFFSET;
     // Case 2: If we're inside a block -> snap up
-    if (world && world->isSolid(v - glm::vec3(0, PLAYER_HEIGHT, 0)) &&
+    if (world && world->isStandable(v - glm::vec3(0, PLAYER_HEIGHT, 0)) &&
         (v.y < height)) {
       v.y += BLOCK_SIZE; // step up until clear
       adjusted = true;
+      auto blk = world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0));
+      inside_block = blk->get_type();
     }
 
     if (adjusted) {
@@ -116,7 +118,8 @@ void Player::handle_input(float dt) {
     glm::vec3 nextPos = m_position + planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+    if (!world->isStandable(blockCenter_h2) &&
+            !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
       position_updated = true;
@@ -125,7 +128,8 @@ void Player::handle_input(float dt) {
     glm::vec3 nextPos = m_position - planarvec * m_speed * dt;
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+    if (!world->isStandable(blockCenter_h2) &&
+            !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
       position_updated = true;
@@ -138,7 +142,8 @@ void Player::handle_input(float dt) {
         m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+    if (!world->isStandable(blockCenter_h2) &&
+            !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
       position_updated = true;
@@ -149,7 +154,8 @@ void Player::handle_input(float dt) {
         m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
     glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
     glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
-    if (!world->isSolid(blockCenter_h2) && !world->isSolid(blockCenter_h3) ||
+    if (!world->isStandable(blockCenter_h2) &&
+            !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
       m_position = nextPos;
       position_updated = true;
@@ -323,6 +329,8 @@ bool Player::Valid(PlayerState &ps) {
   m_up = ps.up;
   return true;
 }
+
+BLOCK_TYPE Player::InsideBlock() { return inside_block; }
 
 // handle input [for server]
 std::shared_ptr<std::string>

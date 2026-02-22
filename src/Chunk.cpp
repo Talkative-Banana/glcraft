@@ -64,6 +64,20 @@ inline GLboolean Chunk::isTransparent(const std::vector<GLint> &position) {
   return false;
 }
 
+inline GLboolean Chunk::isSameKind(const std::vector<GLint> &position,
+                                   const std::vector<GLint> &pos) {
+  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
+      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
+      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
+
+    // Check if neibhourung blocks are of same kind
+    auto res = (blocks[position[0]][position[1]][position[2]].get_type() ==
+                blocks[pos[0]][pos[1]][pos[2]].get_type());
+    return res;
+  }
+  return false;
+}
+
 // k blue i red j green
 // ctrl x -> red facing me
 
@@ -76,37 +90,37 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
     if (face == 1) {
       // No Need to draw back face if block behind is solid
       tmp[2] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[2] += 1;
     } else if (face == 2) {
       // No Need to draw front face if block in front is solid
       tmp[2] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[2] -= 1;
     } else if (face == 3) {
       // No Need to draw left face if block in left is solid
       tmp[0] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[0] += 1;
     } else if (face == 4) {
       // No Need to draw right face if block in right is solid
       tmp[0] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[0] -= 1;
     } else if (face == 5) {
       // No Need to draw top face if block on top is solid
       tmp[1] += 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[1] -= 1;
     } else if (face == 6) {
       // No Need to draw bottom face if block on bottom is solid
       tmp[1] -= 1;
-      if (!isSolid(tmp) || isTransparent(tmp))
+      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
         mask |= (1 << (face - 1));
       tmp[1] += 1;
     }
@@ -168,21 +182,24 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
         BLOCK_TYPE bltype;
         if (y == 0) {
-          bltype = biome_bltypes[4]; // BASE Block BEDROCK
+          bltype = BLOCK_TYPE::BEDROCK_BLOCK; // BASE Block BEDROCK
         } else if (y == height - 1) {
           if (y <= 10) {
-            bltype = biome_bltypes[2]; // Depth top block DIRT
+            bltype = biome_bltypes[2]; // Depth top block GRAVEL
           } else if (y <= 15) {
-            bltype = biome_bltypes[1]; // Depth top middle block GRAVEL
+            bltype = biome_bltypes[4]; // Depth top middle block DIRT
           } else {
             bltype = biome_bltypes[0]; // Top Block GRASS
           }
         } else if (y <= 10) {
           bltype = biome_bltypes[3]; // Depth Block
+        } else if (y >= height && y <= 15) {
+          bltype = biome_bltypes[5]; // Water Block
         } else {
           bltype = biome_bltypes[1];
         }
-        blocks[z][y][x] = Block(ofs, y < height, bltype); // mark them solid
+        // mark them solid
+        blocks[z][y][x] = Block(ofs, (y < height || y <= 15), bltype);
       }
     }
   }
@@ -221,14 +238,16 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (i == 0 && right) {
               auto &blk1 = blocks[0][j][k];
               auto &blk2 = right->blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove left face from current block
                 blk1.blmask &= ~LEFT_FACE;
               }
             } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
               auto &blk1 = blocks[CHUNK_BLOCK_COUNT - 1][j][k];
               auto &blk2 = left->blocks[0][j][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove right face from current block
                 blk1.blmask &= ~RIGHT_FACE;
               }
@@ -236,19 +255,19 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (k == 0 && back) {
               auto &blk1 = blocks[i][j][0];
               auto &blk2 = back->blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove back face from current block
                 blk1.blmask &= ~BACK_FACE;
               }
             } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
               auto &blk1 = blocks[i][j][CHUNK_BLOCK_COUNT - 1];
               auto &blk2 = front->blocks[i][j][0];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
-            } else {
-              // No update needed middle block
             }
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
@@ -274,14 +293,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           for (int n = 0; n < 8; n++) {
             auto neighbor =
                 world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_solid()) {
+            if (neighbor && neighbor->is_standable()) {
               ac |= (1u << n); // set bit if solid
             }
           }
 
           if (auto b0 = world->get_block_by_center(
                   block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid())
+            if (b0->is_standable())
               ac |= (1u << 8);
           }
           std::vector<GLuint> indices;
@@ -425,14 +444,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           for (int n = 0; n < 8; n++) {
             auto neighbor =
                 world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_solid()) {
+            if (neighbor && neighbor->is_standable()) {
               ac |= (1u << n); // set bit if solid
             }
           }
 
           if (auto b0 = world->get_block_by_center(
                   block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_solid())
+            if (b0->is_standable())
               ac |= (1u << 8);
           }
           std::vector<GLuint> indices;

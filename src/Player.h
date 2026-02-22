@@ -51,6 +51,7 @@ public:
   Client *const get_client();
   const std::string get_state();
   bool Valid(PlayerState &);
+  BLOCK_TYPE InsideBlock();
 
 private:
   glm::vec3 m_position = glm::vec3(70.0, 100.0, 85.0);
@@ -68,5 +69,6 @@ private:
   GLuint bltype = 0, mdtype = 0, Nokeypressed = 0, m_id = 0;
   uint64_t m_meshhandle;
   Inventory m_inventory;
+  BLOCK_TYPE inside_block;
   std::unique_ptr<Client> m_client = nullptr;
 };

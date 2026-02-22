@@ -19,6 +19,7 @@
 
 #include "AssetManager.h"
 #include "Constants.hpp"
+#include "GameSound.hpp"
 #include "Input.h"
 #include "Main.h"
 #include "ParticleSystem.h"
@@ -27,14 +28,17 @@
 #include "Renderer.h"
 #include "SmokeEffect.h"
 #include "SnowEffect.h"
+#include "SoundSystem.hpp"
 #include "Texture.h"
 #include "UI.h"
+#include "WaterEffect.h"
 #include "World.h"
 
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
 std::unique_ptr<UI> ui = nullptr;
 std::unique_ptr<ParticleSystem> ps = nullptr;
+std::unique_ptr<SoundSystem> ss = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
 glm::vec3 chunkpos;
@@ -269,7 +273,8 @@ int main(int, char **) {
 
   // create UI Render
   ui = std::make_unique<UI>();
-  ps = std::make_unique<ParticleSystem>("./textures/snow.png");
+  ps = std::make_unique<ParticleSystem>("./textures/water.png");
+  ss = std::make_unique<SoundSystem>();
   world = std::make_unique<World>(42, _wps);
   asset_manager = std::make_unique<AssetManager>();
 
@@ -296,12 +301,15 @@ int main(int, char **) {
   std::unique_ptr<SmokeEffect> smoke_effect =
       std::make_unique<SmokeEffect>(128);
   std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
+  std::unique_ptr<WaterEffect> water_effect = std::make_unique<WaterEffect>(1);
 
   smoke_effect->setup();
   snow_effect->setup();
+  water_effect->setup();
 
   // ps->add_effect(std::move(smoke_effect));
   // ps->add_effect(std::move(snow_effect));
+  auto we_id = ps->add_effect(std::move(water_effect));
   ps->Render();
 
   bind_uniforms();
@@ -334,6 +342,9 @@ int main(int, char **) {
   // meshes.push_back(mesh1);
   // meshes.push_back(mesh2);
 
+  // Audio Setup
+  GameSound thundersound("assets/audio/calm-thunderstorm-mono.wav");
+  ss->AddSound("thunderstorm", thundersound);
   glm::mat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
@@ -353,6 +364,12 @@ int main(int, char **) {
 
     auto playerpos =
         players[activePlayer]->m_cameracontroller->GetCamera()->GetPosition();
+    auto playerdir = players[activePlayer]
+                         ->m_cameracontroller->GetCamera()
+                         ->GetOrientation();
+
+    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
+    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
     auto playervp = players[activePlayer]
                         ->m_cameracontroller->GetCamera()
                         ->GetProjectionViewMatrix();
@@ -379,6 +396,15 @@ int main(int, char **) {
     int fbw, fbh;
     glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
     uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
+
+    auto *effect = ps->get_effect(we_id);
+
+    if (players[activePlayer]->InsideBlock() == BLOCK_TYPE::WATER_BLOCK) {
+      effect->set_initial_size(std::max(fbw, fbh));
+      effect->effect_visible = true;
+    } else {
+      effect->effect_visible = false;
+    }
 
     // OPAQUE PASS
     glDisable(GL_BLEND);
