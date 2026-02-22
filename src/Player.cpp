@@ -254,8 +254,11 @@ void Player::handle_input(float dt) {
       glm::ivec3 prev_blk =
           ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
       auto block = world->get_block_by_center(prev_blk);
-      if (block)
+      if (block) {
         block->add(static_cast<BLOCK_TYPE>(bltype));
+      } else {
+        return;
+      }
       auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
       auto _biome = world->get_biome_by_center(ray.m_hitcords);
       // Update dirty bit
