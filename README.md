@@ -56,7 +56,7 @@ sudo apt update && sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev freeglut
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-.\vcpkg install glfw3 glew glm opengl
+.\vcpkg install glfw3 glew glm opengl sfml:x64-windows
 .\build.bat <client|server|local>
 ```
 

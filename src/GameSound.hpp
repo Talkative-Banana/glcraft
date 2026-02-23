@@ -10,14 +10,13 @@ public:
     if (!res) {
       std::cerr << "Audio file at " << path << " not found\n";
     }
-
-    sound.setBuffer(sound_buffer);
+    sound = sf::Sound(sound_buffer);
     sound.setPosition({0.0, 0.0, 0.0});
     sound.setPitch(1.0f);
     sound.setVolume(100.0f); // original volume
     sound.setMinDistance(50.0f);
     sound.setAttenuation(0.5f);
-    sound.setLoop(true);
+    sound.setLooping(true);
     sound.setRelativeToListener(true);
     sound.play();
   }
@@ -26,6 +25,6 @@ public:
   sf::Sound &get_sound() { return sound; }
 
 private:
-  sf::Sound sound;
   sf::SoundBuffer sound_buffer;
+  sf::Sound sound{sound_buffer};
 };
