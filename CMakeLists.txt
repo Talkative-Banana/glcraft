@@ -178,7 +178,13 @@ endif()
   )
 
   target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
-  target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+
+if(WIN32)
+    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+elseif(UNIX AND NOT APPLE)
+    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+endif()
+
   target_compile_definitions(GlCraftClient PRIVATE BUILD_CLIENT)
 
 endif()
@@ -204,7 +210,13 @@ endif()
   )
 
     target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
-    target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+
+if(WIN32)
+        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+elseif(UNIX AND NOT APPLE)
+        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+endif()
+
     target_compile_definitions(GlCraftServer PRIVATE BUILD_SERVER)
 endif()
 
@@ -229,6 +241,12 @@ endif()
   )
 
     target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
-    target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+
+if(WIN32)
+        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+elseif(UNIX AND NOT APPLE)
+        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+endif()
+
     target_compile_definitions(GlCraftLocal PRIVATE BUILD_LOCAL)
 endif()

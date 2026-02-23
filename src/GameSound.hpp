@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Audio.hpp>
+#include <SFML/Config.hpp>
 #include <iostream>
 #include <string.h>
 
@@ -16,7 +17,11 @@ public:
     sound.setVolume(100.0f); // original volume
     sound.setMinDistance(50.0f);
     sound.setAttenuation(0.5f);
+#if SFML_VERSION_MAJOR >= 3
     sound.setLooping(true);
+#else
+    sound.setLoop(true);
+#endif
     sound.setRelativeToListener(true);
     sound.play();
   }

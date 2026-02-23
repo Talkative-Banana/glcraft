@@ -128,7 +128,10 @@ bool Block::is_transparent() {
 
 bool Block::is_ref() { return (get_type() == BLOCK_TYPE::REF_BLOCK); }
 
-bool Block::is_removable() { return (get_type() != BLOCK_TYPE::BEDROCK_BLOCK); }
+bool Block::is_removable() {
+  return (get_type() != BLOCK_TYPE::BEDROCK_BLOCK &&
+          get_type() != BLOCK_TYPE::WATER_BLOCK);
+}
 
 void Block::Render(GLuint mask, GLuint ambient_occ,
                    std::vector<GLuint> &indices,

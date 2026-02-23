@@ -78,6 +78,7 @@ void Player::handleNetworkRequest(PlayerState &pt) {
 void Player::handle_input(float dt) {
 
   bool position_updated = false;
+  BLOCK_TYPE legblock = BLOCK_TYPE::GRASS_BLOCK;
   // Gravity
   glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
                 glm::vec3(HALF_BLOCK_SIZE);
@@ -95,8 +96,15 @@ void Player::handle_input(float dt) {
         (v.y < height)) {
       v.y += BLOCK_SIZE; // step up until clear
       adjusted = true;
-      auto blk = world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0));
-      inside_block = blk->get_type();
+      auto blk = world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0) +
+                                            glm::vec3(0, 2 * BLOCK_SIZE, 0));
+      if (blk)
+        inside_block = blk->get_type();
+
+      auto legblk =
+          world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0));
+      if (legblk)
+        legblock = legblk->get_type();
     }
 
     if (adjusted) {
@@ -113,6 +121,11 @@ void Player::handle_input(float dt) {
 
   glm::vec3 planarvec =
       glm::normalize(glm::vec3(m_forward.x, 0.0f, m_forward.z));
+
+  if (legblock == BLOCK_TYPE::WATER_BLOCK)
+    m_speed = SMUGED_SPEED;
+  else
+    m_speed = WALKING_SPEED;
 
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
     glm::vec3 nextPos = m_position + planarvec * m_speed * dt;
