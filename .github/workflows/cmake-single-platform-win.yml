@@ -2,9 +2,9 @@ name: CMake on Windows
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "multiplayer" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "multiplayer" ]
 
 env:
   BUILD_TYPE: Release
@@ -31,7 +31,7 @@ jobs:
       shell: pwsh
 
     - name: Install dependencies
-      run: vcpkg\vcpkg.exe install glfw3 glew glm
+      run: vcpkg\vcpkg.exe install glfw3 glew glm sfml:x64-windows
 
     - name: Configure CMake
       run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
