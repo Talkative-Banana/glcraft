@@ -24,6 +24,7 @@
 #include "Main.h"
 #include "ParticleSystem.h"
 #include "Player.h"
+#include "RainEffect.h"
 #include "Ray.h"
 #include "Renderer.h"
 #include "SmokeEffect.h"
@@ -40,7 +41,7 @@
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
 std::unique_ptr<UI> ui = nullptr;
-std::unique_ptr<ParticleSystem> ps = nullptr;
+std::unique_ptr<ParticleSystem> water_ps, smoke_ps, snow_ps, rain_ps;
 std::unique_ptr<SoundSystem> ss = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
@@ -218,7 +219,12 @@ int main(int, char **) {
 
   // create UI Render
   ui = std::make_unique<UI>();
-  ps = std::make_unique<ParticleSystem>("./textures/water.png");
+
+  water_ps = std::make_unique<ParticleSystem>("./textures/water.png");
+  smoke_ps = std::make_unique<ParticleSystem>("./textures/smoke.png");
+  snow_ps = std::make_unique<ParticleSystem>("./textures/snow.png");
+  rain_ps = std::make_unique<ParticleSystem>("./textures/rain.png");
+
   ss = std::make_unique<SoundSystem>();
   world = std::make_unique<World>(42, _wps);
   asset_manager = std::make_unique<AssetManager>();
@@ -246,17 +252,21 @@ int main(int, char **) {
   std::unique_ptr<SmokeEffect> smoke_effect =
       std::make_unique<SmokeEffect>(128);
   std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
+  std::unique_ptr<RainEffect> rain_effect = std::make_unique<RainEffect>(512);
   std::unique_ptr<WaterEffect> water_effect = std::make_unique<WaterEffect>(1);
 
   smoke_effect->setup();
   snow_effect->setup();
+  rain_effect->setup();
   water_effect->setup();
 
-  // ps->add_effect(std::move(smoke_effect));
-  // ps->add_effect(std::move(snow_effect));
+  auto sm_id = smoke_ps->add_effect(std::move(smoke_effect));
+  auto sn_id = snow_ps->add_effect(std::move(snow_effect));
+  auto we_id = water_ps->add_effect(std::move(water_effect));
+  auto rn_id = rain_ps->add_effect(std::move(rain_effect));
 
-  auto we_id = ps->add_effect(std::move(water_effect));
-  ps->Render();
+  water_ps->Render();
+  rain_ps->Render();
 
   bind_uniforms();
 
@@ -372,13 +382,27 @@ int main(int, char **) {
     glfwGetFramebufferSize(_window->GetWindow(), &fbw, &fbh);
     uiProj = glm::ortho(0.0f, (float)fbw, 0.0f, (float)fbh);
 
-    auto *effect = ps->get_effect(we_id);
+    auto *effect = water_ps->get_effect(we_id);
 
     if (players[activePlayer]->InsideBlock() == BLOCK_TYPE::WATER_BLOCK) {
       effect->set_initial_size(std::max(fbw, fbh));
       effect->effect_visible = true;
     } else {
       effect->effect_visible = false;
+    }
+
+    auto *rain_effect = rain_ps->get_effect(rn_id);
+    rain_effect->set_position(fbw, fbh);
+    rain_effect->set_vel_y_factor(-fbh / 2.0);
+    rain_effect->fraction = (static_cast<float>(fbw) / 3840.0f);
+
+    auto &player_dir = players[activePlayer]
+                           ->m_cameracontroller->GetCamera()
+                           ->GetOrientation();
+    if (players[activePlayer]->InsideBlock() == BLOCK_TYPE::WATER_BLOCK) {
+      rain_effect->effect_visible = false;
+    } else {
+      rain_effect->effect_visible = true;
     }
 
     // OPAQUE PASS
@@ -401,7 +425,8 @@ int main(int, char **) {
     glUseProgram(shaderProgramPS);
 
     glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
-    ps->Draw(dt);
+    water_ps->Draw(dt);
+    rain_ps->Draw(dt);
 
     // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);

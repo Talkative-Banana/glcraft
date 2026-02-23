@@ -21,9 +21,13 @@ public:
   virtual void setup() = 0;
   virtual void set_size(float) = 0;
   virtual void set_initial_size(float) = 0;
+  virtual void set_position(float, float) = 0;
+  virtual void set_vel_x_factor(float) = 0;
+  virtual void set_vel_y_factor(float) = 0;
   uint32_t get_size();
   std::vector<float> get_data();
   std::vector<Quad> get_particles();
 
   bool effect_visible{true};
+  float fraction{1.0f};
 };
