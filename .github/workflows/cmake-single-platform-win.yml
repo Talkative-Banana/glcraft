@@ -16,29 +16,32 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Cache vcpkg
-      uses: actions/cache@v4
-      with:
-        path: vcpkg/installed
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/CMakeLists.txt') }}
-        restore-keys: ${{ runner.os }}-vcpkg-
-
     - name: Clone vcpkg
-      continue-on-error: true
       run: git clone https://github.com/microsoft/vcpkg.git
 
     - name: Bootstrap vcpkg
-      run: vcpkg\bootstrap-vcpkg.bat
+      run: .\vcpkg\bootstrap-vcpkg.bat
       shell: pwsh
 
     - name: Install dependencies
-      run: vcpkg\vcpkg.exe install glfw3 glew glm sfml:x64-windows
+      run: .\vcpkg\vcpkg.exe install glfw3 glew glm sfml:x64-windows
+      shell: pwsh
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+      run: >
+        cmake -B build
+        -G "Visual Studio 17 2022"
+        -A x64
+        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
+        -DVCPKG_TARGET_TRIPLET=x64-windows
+        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+    - name: Add vcpkg DLLs to PATH
+      run: echo "${{ github.workspace }}\vcpkg\installed\x64-windows\bin" >> $env:GITHUB_PATH
+      shell: pwsh
 
     - name: Test
       working-directory: build
