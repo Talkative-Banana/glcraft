@@ -272,12 +272,19 @@ void Player::handle_input(float dt) {
                 << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
       glm::ivec3 prev_blk =
           ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
+      glm::ivec3 hit_blk = ray.m_hitcords;
+      auto hitblk = world->get_block_by_center(hit_blk);
       auto block = world->get_block_by_center(prev_blk);
-      if (block) {
-        block->add(static_cast<BLOCK_TYPE>(bltype));
+      if (hitblk && hitblk->get_type() == BLOCK_TYPE::WATER_BLOCK) {
+        hitblk->add(static_cast<BLOCK_TYPE>(bltype));
       } else {
-        return;
+        if (block) {
+          block->add(static_cast<BLOCK_TYPE>(bltype));
+        } else {
+          return;
+        }
       }
+
       auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
       auto _biome = world->get_biome_by_center(ray.m_hitcords);
       // Update dirty bit
