@@ -421,6 +421,18 @@ void Player::handle_stats() {
   ImGui::RadioButton("Wireframe Mode", (int *)&wireframemode, 1);
   ImGui::EndChild();
 
+  // Weather
+  ImGui::BeginChild("Child##Weather", ImVec2(400, 80), true);
+
+  int whtr = static_cast<int>(world->getWeather());
+  ImGui::Text("Weather");
+  ImGui::RadioButton("CLOUDY", (int *)&whtr, 0);
+  ImGui::RadioButton("HAILSTORM", (int *)&whtr, 1);
+  ImGui::RadioButton("SNOWSTORM", (int *)&whtr, 2);
+  ImGui::EndChild();
+
+  world->setWeather(static_cast<WEATHER>(whtr));
+
   // Selected Block
   // Begin a child region with fixed height and automatic scrollbar
   ImGui::BeginChild("Selected Block", ImVec2(400, 75), true,

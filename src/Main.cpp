@@ -282,6 +282,7 @@ int main(int, char **) {
 
   ss = std::make_unique<SoundSystem>();
   world = std::make_unique<World>(42, _wps);
+
   asset_manager = std::make_unique<AssetManager>();
 
   shaderProgram =
@@ -306,7 +307,7 @@ int main(int, char **) {
 
   std::unique_ptr<SmokeEffect> smoke_effect =
       std::make_unique<SmokeEffect>(128);
-  std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(128);
+  std::unique_ptr<SnowEffect> snow_effect = std::make_unique<SnowEffect>(256);
   std::unique_ptr<RainEffect> rain_effect = std::make_unique<RainEffect>(512);
   std::unique_ptr<WaterEffect> water_effect = std::make_unique<WaterEffect>(1);
 
@@ -322,6 +323,7 @@ int main(int, char **) {
 
   water_ps->Render();
   rain_ps->Render();
+  snow_ps->Render();
 
   bind_uniforms();
   // createAxesLine(shaderProgram, axis_VAO);
@@ -353,9 +355,13 @@ int main(int, char **) {
   // meshes.push_back(mesh1);
   // meshes.push_back(mesh2);
 
-  // Audio Setup
+  // Audio Setup [Maintain Lifetime]
   GameSound thundersound("assets/audio/calm-thunderstorm-mono.wav");
+  GameSound blizzardsound("assets/audio/blizzard.ogg");
+
   ss->AddSound("thunderstorm", thundersound);
+  ss->AddSound("blizzard", blizzardsound);
+
   glm::mat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
@@ -422,13 +428,21 @@ int main(int, char **) {
     rain_effect->set_vel_y_factor(-fbh / 2.0);
     rain_effect->fraction = (static_cast<float>(fbw) / 3840.0f);
 
+    auto *snow_effect = snow_ps->get_effect(sn_id);
+    snow_effect->set_position(fbw, fbh);
+    snow_effect->set_vel_y_factor(-fbh / 2.0);
+    snow_effect->set_vel_x_factor(-fbw / 2.0);
+    snow_effect->fraction = (static_cast<float>(fbw) / 3840.0f);
+
     auto &player_dir = players[activePlayer]
                            ->m_cameracontroller->GetCamera()
                            ->GetOrientation();
     if (players[activePlayer]->InsideBlock() == BLOCK_TYPE::WATER_BLOCK) {
       rain_effect->effect_visible = false;
+      snow_effect->effect_visible = false;
     } else {
       rain_effect->effect_visible = true;
+      snow_effect->effect_visible = true;
     }
 
     // OPAQUE PASS
@@ -452,7 +466,25 @@ int main(int, char **) {
 
     glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
     water_ps->Draw(dt);
-    rain_ps->Draw(dt);
+
+    if (world->getWeather() == WEATHER::HAILSTORM) {
+      rain_ps->Draw(dt);
+      if (thundersound.get_sound().getStatus() == sf::Sound::Paused)
+        thundersound.get_sound().play();
+      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
+        blizzardsound.get_sound().pause();
+    } else if (world->getWeather() == WEATHER::SNOWSTORM) {
+      snow_ps->Draw(dt);
+      if (blizzardsound.get_sound().getStatus() == sf::Sound::Paused)
+        blizzardsound.get_sound().play();
+      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
+        thundersound.get_sound().pause();
+    } else {
+      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
+        blizzardsound.get_sound().pause();
+      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
+        thundersound.get_sound().pause();
+    }
 
     // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);

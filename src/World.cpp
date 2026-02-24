@@ -678,3 +678,7 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
   chunk->Render(0, false, neighchunks[0], neighchunks[1], neighchunks[2],
                 neighchunks[3]);
 }
+
+WEATHER World::getWeather() { return m_weather; }
+
+void World::setWeather(WEATHER weather) { m_weather = weather; }

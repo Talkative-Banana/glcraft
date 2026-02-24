@@ -25,7 +25,7 @@ void RainEffect::run(float dt) {
     particle.update_alpha_to(m_alpha);
     particle.update(m_damping, dt);
     auto pos = particle.get_position();
-    if (pos.y < -256.0f) {
+    if (pos.y < -m_initialsize) {
       float X = dist(rng) * m_pos.x;
       particle.update_pos({X, m_pos.y});
       glm::vec2 vel{0, m_velyfac * (dist(rng) + 1.0f)};

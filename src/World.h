@@ -25,6 +25,7 @@ class World {
 private:
   int m_seed;
   glm::ivec3 m_worldpos;
+  WEATHER m_weather{WEATHER::CLOUDY};
   std::unordered_set<std::shared_ptr<Biome>> render_queue;
   std::queue<std::shared_ptr<Biome>> setup_queue;
   std::queue<std::shared_ptr<Biome>> rerender_queue;
@@ -61,6 +62,8 @@ public:
   void Update_queue(glm::vec3, glm::mat4);
   void save(std::string);
   int getSeed();
+  WEATHER getWeather();
+  void setWeather(WEATHER weather);
   void DoBindTask(bool);
   void RefreshChunks(glm::ivec3, bool left = false, bool back = false,
                      bool right = false, bool front = false);
