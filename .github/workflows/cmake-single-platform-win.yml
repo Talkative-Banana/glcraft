@@ -24,6 +24,7 @@ jobs:
         restore-keys: ${{ runner.os }}-vcpkg-
 
     - name: Clone vcpkg
+      continue-on-error: true
       run: git clone https://github.com/microsoft/vcpkg.git
 
     - name: Bootstrap vcpkg
