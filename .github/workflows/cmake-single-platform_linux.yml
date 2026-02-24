@@ -1,0 +1,45 @@
+name: CMake Linux Build
+
+on:
+  push:
+    branches: [ "multiplayer" ]
+  pull_request:
+    branches: [ "multiplayer" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  linux-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libglew-dev \
+            libglfw3-dev \
+            libglm-dev \
+            libsfml-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
+            -DBUILD_CLIENT=ON \
+            -DBUILD_SERVER=OFF \
+            -DBUILD_LOCAL=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
