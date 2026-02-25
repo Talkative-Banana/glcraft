@@ -3,6 +3,7 @@
 #include <SFML/Config.hpp>
 #include <iostream>
 #include <string.h>
+#include "Constants.hpp"
 
 class GameSound {
 public:
@@ -28,6 +29,24 @@ public:
 
   // Use it to get and set property of sound
   sf::Sound &get_sound() { return sound; }
+
+  // Helper function to get status of sound across versions
+  SOUNDSTATUS getSoundStatus(){
+#if SFML_VERSION_MAJOR >= 3
+      switch (sound.getStatus()) {
+        case sf::SoundSource::Status::Stopped: return SOUNDSTATUS::STOPPED;
+        case sf::SoundSource::Status::Paused:  return SOUNDSTATUS::PAUSED;
+        case sf::SoundSource::Status::Playing: return SOUNDSTATUS::PLAYING;
+      }
+#else
+      switch (sound.getStatus()) {
+        case sf::SoundSource::Stopped: return SOUNDSTATUS::STOPPED;
+        case sf::SoundSource::Paused:  return SOUNDSTATUS::PAUSED;
+        case sf::SoundSource::Playing: return SOUNDSTATUS::PLAYING;
+      }
+#endif
+      return SOUNDSTATUS::UNKNOWN;
+  }
 
 private:
   sf::SoundBuffer sound_buffer;

@@ -73,6 +73,13 @@ enum class WEATHER {
   SNOWSTORM,
 };
 
+enum class SOUNDSTATUS {
+    STOPPED,
+    PAUSED,
+    PLAYING,
+    UNKNOWN,
+};
+
 enum class OBJ_TYPE {
   OPAQUE_,
   TRANSPARENT_,

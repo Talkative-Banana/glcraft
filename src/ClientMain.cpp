@@ -442,22 +442,24 @@ int main(int, char **) {
     water_ps->Draw(dt);
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
-      rain_ps->Draw(dt);
-      if (thundersound.get_sound().getStatus() == sf::Sound::Paused)
-        thundersound.get_sound().play();
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
-        blizzardsound.get_sound().pause();
-    } else if (world->getWeather() == WEATHER::SNOWSTORM) {
-      snow_ps->Draw(dt);
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Paused)
-        blizzardsound.get_sound().play();
-      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
-        thundersound.get_sound().pause();
-    } else {
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
-        blizzardsound.get_sound().pause();
-      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
-        thundersound.get_sound().pause();
+        rain_ps->Draw(dt);
+        if (thundersound.getSoundStatus() == SOUNDSTATUS::PAUSED)
+            thundersound.get_sound().play();
+        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+            blizzardsound.get_sound().pause();
+    }
+    else if (world->getWeather() == WEATHER::SNOWSTORM) {
+        snow_ps->Draw(dt);
+        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PAUSED)
+            blizzardsound.get_sound().play();
+        if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+            thundersound.get_sound().pause();
+    }
+    else {
+        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+            blizzardsound.get_sound().pause();
+        if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+            thundersound.get_sound().pause();
     }
 
     // UI PASS (Keep it at last)

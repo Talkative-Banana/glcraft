@@ -469,20 +469,20 @@ int main(int, char **) {
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
       rain_ps->Draw(dt);
-      if (thundersound.get_sound().getStatus() == sf::Sound::Paused)
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PAUSED)
         thundersound.get_sound().play();
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
         blizzardsound.get_sound().pause();
     } else if (world->getWeather() == WEATHER::SNOWSTORM) {
       snow_ps->Draw(dt);
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Paused)
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PAUSED)
         blizzardsound.get_sound().play();
-      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
         thundersound.get_sound().pause();
     } else {
-      if (blizzardsound.get_sound().getStatus() == sf::Sound::Playing)
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
         blizzardsound.get_sound().pause();
-      if (thundersound.get_sound().getStatus() == sf::Sound::Playing)
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
         thundersound.get_sound().pause();
     }
 

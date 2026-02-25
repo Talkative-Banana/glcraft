@@ -31,8 +31,7 @@ public:
   const glm::vec3 &GetOrientation() const { return m_Orientation; }
 
   void SetOrientation(const glm::vec3 &orientation) {
-    m_Orientation = orientation;
-    glm::normalize(m_Orientation);
+    m_Orientation = glm::normalize(orientation);
     RecalculateViewMatrix();
   }
 
