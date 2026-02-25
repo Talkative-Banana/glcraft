@@ -11,7 +11,7 @@ static void load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos,
                    bool display, int type) {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      int idx = CHUNK_COUNTZ * i + j;
+      int idx = CHUNK_COUNTX * i + j;
       chunks[i][j] = std::make_shared<Chunk>(idx, Biomepos, glm::ivec3(i, 0, j),
                                              display, type);
     }
@@ -21,7 +21,6 @@ static void load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos,
 static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      int idx = CHUNK_COUNTZ * i + j;
       auto _chunk = chunks[i][j];
       if (firstRun) {
         _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr);
@@ -35,21 +34,13 @@ static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
               [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
             std::shared_ptr<Chunk> left, front, right, back;
             left = world->get_chunk_by_center(
-                vec +
-                glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
-                           0));
+                vec + glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
             front = world->get_chunk_by_center(
-                vec +
-                glm::ivec3(0, 0,
-                           static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+                vec + glm::ivec3(0, 0, static_cast<int>(CHUNK_LENGTH)));
             right = world->get_chunk_by_center(
-                vec -
-                glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
-                           0));
+                vec - glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
             back = world->get_chunk_by_center(
-                vec -
-                glm::ivec3(0, 0,
-                           static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+                vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_LENGTH)));
             return {left, front, right, back};
           };
 
@@ -64,7 +55,8 @@ static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
       }
       auto biome = world->get_biome_by_center(_chunk->chunkpos +
                                               glm::ivec3(HALF_BLOCK_SIZE));
-      biome->chunks_ready.fetch_add(1, std::memory_order_release);
+      if (biome)
+        biome->chunks_ready.fetch_add(1, std::memory_order_release);
     }
   }
 }
@@ -74,12 +66,8 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   Biomepos = pos;
   displaybiome = display;
 
-  GLuint idx = 0;
   dirtybit = false;
-  std::thread thread =
-      std::thread(load_p, std::ref(chunks), std::ref(Biomepos), true, t);
-
-  thread.join();
+  load_p(chunks, Biomepos, true, t);
 
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
@@ -88,7 +76,7 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   }
 }
 
-void Biome::RenderBiome(bool firstRun) {
+void Biome::SetupBiome(bool firstRun) {
   if (!displaybiome)
     return;
 

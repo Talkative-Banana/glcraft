@@ -11,12 +11,20 @@ constexpr static float FAR_PLANE = 1000.0f;
 constexpr static int TOTAL_STEPS = 32;
 constexpr static float STEP_SIZE = 1.0;
 constexpr static int CHUNK_COUNTX = 4;
-constexpr static int BIOME_COUNTX = 1024;
+constexpr static int BIOME_COUNTX = 8192;
 constexpr static int CHUNK_COUNTZ = 4;
-constexpr static int BIOME_COUNTZ = 1024;
+constexpr static int BIOME_COUNTZ = 8192;
+constexpr static int BIOME_COUNTY = 8192;
 constexpr static int CHUNK_BLOCK_COUNT = 32;
 constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
 constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
+
+constexpr static int BIOME_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
+constexpr static int BIOME_LENGTH = CHUNK_COUNTX * BIOME_HEIGHT;
+constexpr static int BIOME_WIDTH = CHUNK_COUNTZ * BIOME_HEIGHT;
+
+constexpr static int CHUNK_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
+constexpr static int CHUNK_LENGTH = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 
 constexpr static float OFFSET = 0.01f;
 constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
@@ -74,10 +82,10 @@ enum class WEATHER {
 };
 
 enum class SOUNDSTATUS {
-    STOPPED,
-    PAUSED,
-    PLAYING,
-    UNKNOWN,
+  STOPPED,
+  PAUSED,
+  PLAYING,
+  UNKNOWN,
 };
 
 enum class OBJ_TYPE {

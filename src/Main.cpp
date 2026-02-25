@@ -391,14 +391,17 @@ int main(int, char **) {
                         ->m_cameracontroller->GetCamera()
                         ->GetProjectionViewMatrix();
     // World Calculations
-    world->SetupWorld(playerpos);
-    // Render first pass
-    world->RenderWorld(true);
+    world->EnqueueVisibleBiomes(playerpos);
+
+    // Setup biomes [first pass]
+    world->SetupBiomesPass1();
+
     // Do Binding for first pass
     world->DoBindTask(true);
 
-    // Render second pass
-    world->RenderWorld(false);
+    // Setup biomes [second pass]
+    world->SetupBiomesPass2();
+
     // Do Binding for second pass
     world->DoBindTask(false);
 

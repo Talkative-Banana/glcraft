@@ -5,21 +5,21 @@
 #include "Utils.h"
 
 class SnowEffect : public Effect {
- private:
+private:
   glm::vec2 m_pos = {4096.0f, 2048.0f};
   uint32_t m_count{128};
-  float m_damping = 0.0001f, m_size = 1.2f, m_alpha = 0.999f, m_velxfac = -200.0f,
-        m_velyfac = -200.0f, m_initialsize = 512.0f;
+  float m_damping = 0.0001f, m_size = 1.2f, m_alpha = 0.999f,
+        m_velxfac = -200.0f, m_velyfac = -200.0f, m_initialsize = 512.0f;
 
- public:
-  SnowEffect(uint32_t);
+public:
+  explicit SnowEffect(uint32_t);
   virtual ~SnowEffect() = default;
   virtual void run(float);
   virtual void setup();
 
   const uint32_t get_count() const;
 
-  const glm::vec2& get_position() const;
+  const glm::vec2 &get_position() const;
 
   float get_initial_size() const;
 
@@ -35,7 +35,7 @@ class SnowEffect : public Effect {
 
   void set_count(uint32_t);
 
-  void set_position(const glm::vec2&);
+  void set_position(const glm::vec2 &);
 
   void set_position(float, float);
 

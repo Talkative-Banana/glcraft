@@ -32,20 +32,19 @@ Block *World::get_block_by_center(const glm::ivec3 &pos) {
   int x = pos_cpy.x / (BLOCK_SIZE), y = pos_cpy.y / (BLOCK_SIZE),
       z = pos_cpy.z / (BLOCK_SIZE);
 
-  if (pos_cpy.x < 0 || pos_cpy.y < 0 || pos_cpy.z < 0)
-    return nullptr;
-
-  if (y < 0 || y >= CHUNK_BLOCK_COUNT)
+  if (pos_cpy.x < 0 || pos_cpy.z < 0)
     return nullptr;
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
-      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ);
+      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ),
+      biomey = y / (CHUNK_BLOCK_COUNT);
 
-  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ)
+  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ ||
+      biomey >= BIOME_COUNTY)
     return nullptr;
 
-  auto biome = biomes[biomex][biomez];
+  auto biome = biomes.get(biomey, biomex, biomez);
   if (!biome)
     return nullptr;
   // get the chunk
@@ -58,10 +57,8 @@ Block *World::get_block_by_center(const glm::ivec3 &pos) {
 
   if (!chunk)
     return nullptr;
-  // get the block
-  if (y >= CHUNK_BLOCK_COUNT)
-    return nullptr;
-  auto &block = chunk->blocks[x % CHUNK_BLOCK_COUNT][y][z % CHUNK_BLOCK_COUNT];
+  auto &block = chunk->blocks[x % CHUNK_BLOCK_COUNT][y % CHUNK_BLOCK_COUNT]
+                             [z % CHUNK_BLOCK_COUNT];
   return &block;
 }
 
@@ -69,19 +66,22 @@ std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
-  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
+  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE),
+      y = pos_cpy.y / (BLOCK_SIZE);
 
   if (pos_cpy.x < 0 || pos_cpy.z < 0)
     return nullptr;
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
-      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ);
+      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ),
+      biomey = y / (CHUNK_BLOCK_COUNT);
 
-  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ)
+  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ ||
+      biomey >= BIOME_COUNTY)
     return nullptr;
 
-  auto biome = biomes[biomex][biomez];
+  auto biome = biomes.get(biomey, biomex, biomez);
   if (!biome)
     return nullptr;
   // get the chunk
@@ -99,19 +99,22 @@ std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
-  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE);
+  int x = pos_cpy.x / (BLOCK_SIZE), z = pos_cpy.z / (BLOCK_SIZE),
+      y = pos_cpy.y / (BLOCK_SIZE);
 
   if (pos_cpy.x < 0 || pos_cpy.z < 0)
     return nullptr;
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
-      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ);
+      biomez = z / (CHUNK_BLOCK_COUNT * CHUNK_COUNTZ),
+      biomey = y / (CHUNK_BLOCK_COUNT);
 
-  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ)
+  if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ ||
+      biomey >= BIOME_COUNTY)
     return nullptr;
 
-  auto biome = biomes[biomex][biomez];
+  auto biome = biomes.get(biomey, biomex, biomez);
   if (!biome)
     return nullptr;
 
@@ -141,77 +144,86 @@ void World::workerLoop() {
     if (!running)
       break;
 
-    auto [i, j, pos] = job_queue.front();
+    auto &[i, j, k, pos] = job_queue.front();
     job_queue.pop();
     lock.unlock();
 
     // heavy work outside lock
-    int idx = BIOME_COUNTX * i + j;
-    if (biomes[i][j])
+    if (biomes.get(k, i, j))
       continue;
     auto biome = std::make_shared<Biome>(0, pos, true);
 
     {
       std::lock_guard<std::mutex> g(setup_mutex);
-      biomes[i][j] = biome;
+      biomes.set(k, i, j, biome);
       setup_queue.push(biome);
     }
   }
 }
 
-void World::SetupWorld(glm::vec3 playerpos) {
+void World::EnqueueVisibleBiomes(glm::vec3 playerpos) {
   // Do not set up for all the biomes
-  for (int i = 0; i < BIOME_COUNTX; i++) {
-    for (int j = 0; j < BIOME_COUNTZ; j++) {
-      int idx = BIOME_COUNTX * i + j;
-      float common = CHUNK_COUNTX * CHUNK_BLOCK_COUNT * BLOCK_SIZE;
-      glm::ivec3 biome_pos = glm::ivec3(common * i, 0, common * j);
-      int X = biome_pos.x - playerpos.x, Z = biome_pos.z - playerpos.z;
-      auto biome = biomes[i][j];
-      if (((X <= RENDER_DISTANCE) && (Z <= RENDER_DISTANCE)) &&
-          (job_scheduled.find(idx) == job_scheduled.end())) {
-        // Costly move it to a seprate thread
-        {
-          std::lock_guard<std::mutex> lock(setup_mutex);
-          job_queue.emplace(i, j, m_worldpos + biome_pos);
-          job_scheduled.insert(idx);
+  int player_k = playerpos.y / BIOME_HEIGHT;
+  int player_j = playerpos.z / BIOME_LENGTH;
+  int player_i = playerpos.x / BIOME_LENGTH;
+
+  if (player_k >= BIOME_COUNTY) {
+    return;
+  }
+  for (int k = player_k; k >= std::max(player_k - 10, 0); k--) {
+    for (int i = std::max(0, player_i - 10);
+         i <= std::min(player_i + 10, BIOME_COUNTX - 1); i++) {
+      for (int j = std::max(0, player_j - 10);
+           j <= std::min(player_j + 10, BIOME_COUNTZ - 1); j++) {
+        uint32_t idx = k * (BIOME_COUNTX * BIOME_COUNTZ) + BIOME_COUNTX * i + j;
+
+        glm::ivec3 biome_pos =
+            glm::ivec3(BIOME_LENGTH * i, BIOME_HEIGHT * k, BIOME_LENGTH * j);
+        int X = abs(biome_pos.x - playerpos.x),
+            Z = abs(biome_pos.z - playerpos.z),
+            Y = abs(biome_pos.y - playerpos.y);
+        if (((X <= RENDER_DISTANCE) && (Z <= RENDER_DISTANCE) &&
+             (Y <= CHUNK_HEIGHT * 2)) &&
+            (job_scheduled.find(idx) == job_scheduled.end())) {
+          // Costly move it to a seprate thread
+          {
+            std::lock_guard<std::mutex> lock(setup_mutex);
+            job_queue.emplace(i, j, k, m_worldpos + biome_pos);
+            job_scheduled.insert(idx);
+          }
+          setup_cv.notify_one();
         }
-        setup_cv.notify_one();
-      } else if (Z > RENDER_DISTANCE) {
-        break;
-      } else if (X > RENDER_DISTANCE) {
-        i = BIOME_COUNTX;
-        break;
       }
     }
   }
 }
 
-void World::RenderWorld(bool firstRun) {
+void World::SetupBiomesPass1() {
   std::lock_guard<std::mutex> lock(setup_mutex);
-  if (firstRun) {
-    while (!setup_queue.empty()) {
-      auto b = setup_queue.front();
-      setup_queue.pop();
-      b->RenderBiome(true); // firstRun
-      b->isrerenderiter = false;
-      if (render_queue.find(b) == render_queue.end())
-        render_queue.insert(b);
-    }
-  } else {
-    while (!rerender_queue.empty()) {
-      auto b = rerender_queue.front();
-      rerender_queue.pop();
-      b->RenderBiome(false); // ReRun
-      b->isrerenderiter = true;
-      if (render_queue.find(b) == render_queue.end())
-        render_queue.insert(b);
-    }
+  while (!setup_queue.empty()) {
+    auto b = setup_queue.front();
+    setup_queue.pop();
+    b->SetupBiome(true); // firstRun
+    b->isrerenderiter = false;
+    if (render_queue.find(b) == render_queue.end())
+      render_queue.insert(b);
+  }
+}
+
+void World::SetupBiomesPass2() {
+  std::lock_guard<std::mutex> lock(setup_mutex);
+  while (!rerender_queue.empty()) {
+    auto b = rerender_queue.front();
+    rerender_queue.pop();
+    b->SetupBiome(false); // ReRun
+    b->isrerenderiter = true;
+    if (render_queue.find(b) == render_queue.end())
+      render_queue.insert(b);
   }
 }
 
 void World::Draw(OBJ_TYPE type) {
-  // Do not render all the chunks just what biome wants to using its
+  // Do not render all the biomes just what world wants to using its
   // render_queue
   for (auto biome : render_queue) {
     if (!biome) {
@@ -435,17 +447,19 @@ void World::save(std::string _save_file) {
   // Save All the dirty chunks
   for (int i = 0; i < BIOME_COUNTZ; i++) {
     for (int j = 0; j < BIOME_COUNTX; j++) {
-      auto biome = biomes[i][j];
-      if (!biome || !biome->dirtybit)
-        continue;
-      for (int k = 0; k < CHUNK_COUNTZ; k++) {
-        for (int l = 0; l < CHUNK_COUNTX; l++) {
-          auto chunk = biome->chunks[k][l];
-          if (!chunk || !chunk->dirtybit)
-            continue;
-          std::cout << "Saving chunk with ID: " << i << " " << j << " " << k
-                    << " " << l << std::endl;
-          save_map[chunk->save_id] = chunk;
+      for (int h = 0; h < BIOME_COUNTY; h++) {
+        auto biome = biomes.get(h, i, j);
+        if (!biome || !biome->dirtybit)
+          continue;
+        for (int k = 0; k < CHUNK_COUNTZ; k++) {
+          for (int l = 0; l < CHUNK_COUNTX; l++) {
+            auto chunk = biome->chunks[k][l];
+            if (!chunk || !chunk->dirtybit)
+              continue;
+            std::cout << "Saving chunk with ID: " << i << " " << j << " " << k
+                      << " " << l << std::endl;
+            save_map[chunk->save_id] = chunk;
+          }
         }
       }
     }
