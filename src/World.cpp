@@ -222,7 +222,7 @@ void World::SetupBiomesPass2() {
   }
 }
 
-void World::Draw(OBJ_TYPE type) {
+void World::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   // Do not render all the biomes just what world wants to using its
   // render_queue
   for (auto biome : render_queue) {
@@ -232,7 +232,7 @@ void World::Draw(OBJ_TYPE type) {
     }
     if (biome->chunks_ready.load(std::memory_order_acquire) >=
         CHUNK_COUNTX * CHUNK_COUNTZ) {
-      biome->Draw(type);
+      biome->Draw(type, cameraPos);
     }
   }
 }

@@ -85,7 +85,7 @@ public:
   void load_model(glm::ivec3, std::string, bool refresh_chunk = true);
   void SetupBiomesPass1();
   void SetupBiomesPass2();
-  void Draw(OBJ_TYPE);
+  void Draw(OBJ_TYPE, glm::vec3);
   void Update_queue(glm::vec3, glm::mat4);
   void save(std::string);
   int getSeed();

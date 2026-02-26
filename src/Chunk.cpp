@@ -20,17 +20,16 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   type = _type;
   biomepos = _biomepos;
   displaychunk = display;
-  int i = abs(_biomepos.x / (CHUNK_BLOCK_COUNT * BLOCK_SIZE * CHUNK_COUNTX));
-  int j = abs(_biomepos.z / (CHUNK_BLOCK_COUNT * BLOCK_SIZE * CHUNK_COUNTZ));
-  int k = abs(_biomepos.y) / (CHUNK_BLOCK_COUNT * BLOCK_SIZE);
+  int i = abs(_biomepos.x / (BIOME_LENGTH));
+  int j = abs(_biomepos.z / (BIOME_LENGTH));
+  int k = abs(_biomepos.y) / (BIOME_HEIGHT);
   uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   save_id =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
-  chunkpos = glm::vec3(
-      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id / CHUNK_COUNTX) + biomepos.x,
-      biomepos.y,
-      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id % CHUNK_COUNTZ) + biomepos.z);
+  chunkpos =
+      glm::ivec3(CHUNK_LENGTH * (id / CHUNK_COUNTX) + biomepos.x, biomepos.y,
+                 CHUNK_LENGTH * (id % CHUNK_COUNTZ) + biomepos.z);
 
   if (world->load_map.find(save_id) != world->load_map.end()) {
     // Empty Chunk
@@ -39,9 +38,8 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
     blocks = loaded_chunk.blocks;
     dirtybit = true;
   } else {
-    Setup_Landscape(
-        position.x + (_biomepos.z / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)),
-        position.z + (_biomepos.x / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+    Setup_Landscape(position.x + (_biomepos.z / (CHUNK_LENGTH)),
+                    position.z + (_biomepos.x / (CHUNK_LENGTH)));
     dirtybit = false;
   }
 }
@@ -527,12 +525,13 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   }
 }
 
-void Chunk::Draw(OBJ_TYPE type) {
+void Chunk::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   if (!displaychunk)
     return;
   if (type == OBJ_TYPE::OPAQUE_) {
     chunkva->Bind();
-    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    glUniform3f(chunkpos_uniform, chunkpos.x - cameraPos.x,
+                chunkpos.y - cameraPos.y, chunkpos.z - cameraPos.z);
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       glDrawElements(GL_LINES, cntblocks, GL_UNSIGNED_INT, nullptr);
@@ -546,7 +545,9 @@ void Chunk::Draw(OBJ_TYPE type) {
     chunkva->Unbind();
   } else if (type == OBJ_TYPE::TRANSPARENT_) {
     chunkvatrans->Bind();
-    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    glUniform3f(chunkpos_uniform, chunkpos.x - cameraPos.x,
+                chunkpos.y - cameraPos.y, chunkpos.z - cameraPos.z);
+
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       glDrawElements(GL_LINES, cntblockstrans, GL_UNSIGNED_INT, nullptr);

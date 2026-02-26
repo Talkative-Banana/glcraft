@@ -5,44 +5,103 @@ glm::vec3 toBlockCenter(const glm::vec3 &p) {
 }
 
 bool Ray::did_hit(std::unique_ptr<World> &world) {
-  // step size of 1 is fine as block are of 2 size
-  // will cast for 32 steps
-  glm::vec3 point = m_pos;
-  glm::ivec3 prevCenter = toBlockCenter(point);
-  for (size_t step = 0; step <= TOTAL_STEPS; step++) {
-    // check if its inside a solid block
-    glm::ivec3 center = toBlockCenter(point);
-    if (world->isSolid(center)) {
-      m_hitcords = center;
-      glm::ivec3 diff = center - prevCenter;
-      m_hitnormal = -glm::sign(diff);
+  const double maxDistance = TOTAL_STEPS * STEP_SIZE;
+
+  glm::dvec3 rayOrigin = m_pos;
+  glm::dvec3 rayDir = glm::normalize(m_dir);
+
+  // voxel index (integer grid)
+  glm::ivec3 voxel(int(std::floor(rayOrigin.x / BLOCK_SIZE)),
+                   int(std::floor(rayOrigin.y / BLOCK_SIZE)),
+                   int(std::floor(rayOrigin.z / BLOCK_SIZE)));
+
+  glm::ivec3 step;
+  glm::dvec3 tMax;
+  glm::dvec3 tDelta;
+
+  for (int axis = 0; axis < 3; ++axis) {
+    if (rayDir[axis] > 0.0) {
+      step[axis] = 1;
+
+      double nextBoundary = (double(voxel[axis] + 1) * BLOCK_SIZE);
+
+      tMax[axis] = (nextBoundary - rayOrigin[axis]) / rayDir[axis];
+
+      tDelta[axis] = BLOCK_SIZE / rayDir[axis];
+    } else if (rayDir[axis] < 0.0) {
+      step[axis] = -1;
+
+      double nextBoundary = (double(voxel[axis]) * BLOCK_SIZE);
+
+      tMax[axis] = (nextBoundary - rayOrigin[axis]) / rayDir[axis];
+
+      tDelta[axis] = -BLOCK_SIZE / rayDir[axis];
+    } else {
+      step[axis] = 0;
+      tMax[axis] = std::numeric_limits<double>::infinity();
+      tDelta[axis] = std::numeric_limits<double>::infinity();
+    }
+  }
+
+  double traveled = 0.0;
+
+  while (traveled <= maxDistance) {
+    glm::ivec3 blockCenter =
+        voxel * static_cast<int>(BLOCK_SIZE) + glm::ivec3(HALF_BLOCK_SIZE);
+
+    if (world->isSolid(blockCenter)) {
+      m_hitcords = blockCenter;
+
+      glm::ivec3 normal(0);
+      if (tMax.x < tMax.y && tMax.x < tMax.z)
+        normal.x = -step.x;
+      else if (tMax.y < tMax.z)
+        normal.y = -step.y;
+      else
+        normal.z = -step.z;
+
+      m_hitnormal = normal;
       return m_hit = true;
     }
-    prevCenter = center;
-    point += STEP_SIZE * m_dir;
+
+    if (tMax.x < tMax.y) {
+      if (tMax.x < tMax.z) {
+        voxel.x += step.x;
+        traveled = tMax.x;
+        tMax.x += tDelta.x;
+      } else {
+        voxel.z += step.z;
+        traveled = tMax.z;
+        tMax.z += tDelta.z;
+      }
+    } else {
+      if (tMax.y < tMax.z) {
+        voxel.y += step.y;
+        traveled = tMax.y;
+        tMax.y += tDelta.y;
+      } else {
+        voxel.z += step.z;
+        traveled = tMax.z;
+        tMax.z += tDelta.z;
+      }
+    }
   }
   return m_hit = false;
 }
 
-Ray screenPosToWorldRay(
-    GLFWwindow *window,
-    double mouseX,
-    double mouseY,
-    const glm::mat4 &view,
-    const glm::mat4 &projection) {
+Ray screenPosToWorldRay(GLFWwindow *window, double mouseX, double mouseY,
+                        const glm::dmat4 &view, const glm::dmat4 &projection) {
   int width, height;
   glfwGetWindowSize(window, &width, &height);
 
   glm::ivec4 viewport(0, 0, width, height);
 
-  // OpenGL expects Y flipped (0 is bottom)
-  glm::vec3 screenNear(mouseX, height - mouseY,
-                       0.0f);                          // depth = 0 -> near plane
-  glm::vec3 screenFar(mouseX, height - mouseY, 1.0f);  // depth = 1 -> far plane
+  glm::dvec3 screenNear(mouseX, height - mouseY, 0.0);
+  glm::dvec3 screenFar(mouseX, height - mouseY, 1.0);
 
-  glm::vec3 worldNear = glm::unProject(screenNear, view, projection, viewport);
-  glm::vec3 worldFar = glm::unProject(screenFar, view, projection, viewport);
+  glm::dvec3 worldNear = glm::unProject(screenNear, view, projection, viewport);
 
-  Ray ray(worldNear, glm::normalize(worldFar - worldNear));
-  return ray;
+  glm::dvec3 worldFar = glm::unProject(screenFar, view, projection, viewport);
+
+  return Ray(worldNear, glm::normalize(worldFar - worldNear));
 }

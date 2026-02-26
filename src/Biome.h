@@ -27,7 +27,7 @@ public:
   std::unordered_set<std::shared_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);
   void SetupBiome(bool firstRun);
-  void Draw(OBJ_TYPE type);
+  void Draw(OBJ_TYPE type, glm::vec3 cameraPos);
   void Update_queue(glm::vec3 playerpos, glm::mat4 VP);
 };
 

@@ -94,13 +94,13 @@ void Biome::SetupBiome(bool firstRun) {
   }
 }
 
-void Biome::Draw(OBJ_TYPE type) {
+void Biome::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   for (auto chunk : render_queue) {
     if (!chunk) {
       std::cerr << "[ERROR] BIOME::Draw chunk is null\n";
       continue;
     }
-    chunk->Draw(type);
+    chunk->Draw(type, cameraPos);
   }
 }
 

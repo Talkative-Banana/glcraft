@@ -52,8 +52,6 @@ GLint chunkpos_uniform = -1;
 GLint vColor_uniform = -1;
 GLint vVertex_attrib = -1;
 GLint vNormal_attrib = -1;
-GLint cameraPos_uniform = -1;
-GLint lightpos_uniform = -1;
 GLint atlas_uniform = -1;
 GLint ui_uniform = -1;
 GLint skyColor_uniform = -1;
@@ -61,7 +59,7 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
-glm::mat4 modelT, viewT,
+glm::mat4 modelT, viewT, viewRotateT,
     projectionT; // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
@@ -179,25 +177,6 @@ void bind_uniforms() {
     vNormal_attrib = glGetAttribLocation(shaderProgram2, "vNormal");
     if (vNormal_attrib == -1) {
       std::cout << "Could not bind location: vNormal\n";
-      exit(0);
-    }
-  }
-
-  // Get handle to eye normal variable in shader
-  if (cameraPos_uniform == -1) {
-    cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
-    if (cameraPos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting "
-                      "Switched Off.\n");
-      exit(0);
-    }
-  }
-
-  // Moved outside of loop
-  if (lightpos_uniform == -1) {
-    lightpos_uniform = glGetUniformLocation(shaderProgram2, "lightpos");
-    if (lightpos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: lightpos\n");
       exit(0);
     }
   }
@@ -452,14 +431,14 @@ int main(int, char **) {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
-    world->Draw(OBJ_TYPE::OPAQUE_);
+    world->Draw(OBJ_TYPE::OPAQUE_, playerpos);
 
     // TRANSPARENT PASS
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    world->Draw(OBJ_TYPE::TRANSPARENT_);
+    world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
 
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);

@@ -232,7 +232,8 @@ void Player::handle_input(float dt) {
     double mouseX, mouseY;
     glfwGetCursorPos(window, &mouseX, &mouseY);
 
-    Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
+    Ray ray =
+        screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
 
     if (ray.did_hit(world)) { // Remove a block
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
@@ -265,7 +266,8 @@ void Player::handle_input(float dt) {
     double mouseX, mouseY;
     glfwGetCursorPos(window, &mouseX, &mouseY);
 
-    Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
+    Ray ray =
+        screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
 
     if (ray.did_hit(world)) {
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
@@ -306,7 +308,8 @@ void Player::handle_input(float dt) {
       double mouseX, mouseY;
       glfwGetCursorPos(window, &mouseX, &mouseY);
 
-      Ray ray = screenPosToWorldRay(window, mouseX, mouseY, viewT, projectionT);
+      Ray ray =
+          screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
 
       if (ray.did_hit(world)) {
         std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x
@@ -401,10 +404,10 @@ void Player::handle_stats() {
     ImGui::Text("Key Description: %s", textKeyDescription);
     ImGui::Text("Active Player: %d", activePlayer);
     ImGui::Text("Block Selected: %s", BLOCK_ARRAY[bltype].c_str());
+    glm::vec3 playerPos = m_cameracontroller->GetCamera()->GetPosition();
+    // playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
     ImGui::Text("Player %d position: (%.2f, %.2f, %.2f)", activePlayer,
-                m_cameracontroller->GetCamera()->GetPosition().x,
-                m_cameracontroller->GetCamera()->GetPosition().y,
-                m_cameracontroller->GetCamera()->GetPosition().z);
+                playerPos.x, playerPos.y, playerPos.z);
   }
 
   // Enable Physics
@@ -548,7 +551,8 @@ void Player::setupViewTransformation(unsigned int &program,
   // Viewing transformations (World -> Camera coordinates
   //  viewT = glm::lookAt(glm::vec3(camPosition), glm::vec3(0.0, 0.0, 0.0),
   //  glm::vec3(0.0, 1.0, 0.0));
-  viewT = occ->GetCamera()->GetViewMatrix();
+  viewT = occ->GetCamera()->GetViewRenderMatrix();
+  viewRotateT = occ->GetCamera()->GetViewMatrix();
 
   // Pass-on the viewing matrix to the vertex shader
   glUseProgram(program);
@@ -593,18 +597,8 @@ void Player::handle_transformations() {
 
   // Render the mesh
   for (auto mesh : meshes) {
-    mesh->render(m_cameracontroller);
+    mesh->render(m_cameracontroller, m_position);
   }
-
-  glUniform3f(lightpos_uniform,
-              m_cameracontroller->GetCamera()->GetPosition().x,
-              m_cameracontroller->GetCamera()->GetPosition().y,
-              m_cameracontroller->GetCamera()->GetPosition().z);
-
-  glUniform3f(cameraPos_uniform,
-              m_cameracontroller->GetCamera()->GetPosition().x,
-              m_cameracontroller->GetCamera()->GetPosition().y,
-              m_cameracontroller->GetCamera()->GetPosition().z);
 
   setupModelTransformationCube(shaderProgram);
   setupViewTransformation(shaderProgram, m_cameracontroller);

@@ -18,9 +18,8 @@ extern std::unique_ptr<World> world;
 extern std::unique_ptr<AssetManager> asset_manager;
 extern GLuint activePlayer, players_cnt, shaderProgram, shaderProgram2;
 extern GLint vModel_uniform, vView_uniform, vProjection_uniform, side_uniform,
-    chunkpos_uniform, vColor_uniform, atlas_uniform, lightpos_uniform,
-    cameraPos_uniform;
-extern glm::mat4 modelT, viewT,
+    chunkpos_uniform, vColor_uniform, atlas_uniform;
+extern glm::mat4 modelT, viewT, viewRotateT,
     projectionT; // The model, view and projection transformations
 extern ImVec4 clearColor;
 extern std::vector<std::shared_ptr<Mesh>> meshes;
