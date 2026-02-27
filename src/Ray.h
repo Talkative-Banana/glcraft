@@ -14,6 +14,7 @@ public:
   glm::vec3 m_pos;
   glm::vec3 m_dir;
   glm::ivec3 m_hitcords;
+  glm::ivec3 m_hitcordsprev;
   glm::ivec3 m_hitnormal;
   bool m_hit;
 

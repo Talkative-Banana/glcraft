@@ -247,6 +247,10 @@ void bind_uniforms() {
 }
 
 int main(int, char **) {
+
+  std::cout << "Size of a block: " << sizeof(Block) << std::endl;
+  std::cout << "Size of a chunk: " << sizeof(Chunk) << std::endl;
+  std::cout << "Size of a biome: " << sizeof(Biome) << std::endl;
   // Setup window
   _window = std::make_unique<Window>(SCREEN_WIDTH, SCREEN_HEIGHT);
   ImGuiIO &io = ImGui::GetIO(); // Create IO
@@ -386,6 +390,7 @@ int main(int, char **) {
 
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
+
     atlas.Bind();
     glUniform1i(atlas_uniform, 0); // bind sampler to texture unit 0
     // skyColor.Bind();

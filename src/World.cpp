@@ -44,7 +44,7 @@ Block *World::get_block_by_center(const glm::ivec3 &pos) {
       biomey >= BIOME_COUNTY)
     return nullptr;
 
-  auto biome = biomes.get(biomey, biomex, biomez);
+  auto biome = biomes.get(biomex, biomez, biomey);
   if (!biome)
     return nullptr;
   // get the chunk
@@ -62,7 +62,7 @@ Block *World::get_block_by_center(const glm::ivec3 &pos) {
   return &block;
 }
 
-std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
+std::weak_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
@@ -70,7 +70,7 @@ std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
       y = pos_cpy.y / (BLOCK_SIZE);
 
   if (pos_cpy.x < 0 || pos_cpy.z < 0)
-    return nullptr;
+    return std::weak_ptr<Chunk>{};
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
@@ -79,12 +79,11 @@ std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
 
   if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ ||
       biomey >= BIOME_COUNTY)
-    return nullptr;
+    return std::weak_ptr<Chunk>{};
 
-  auto biome = biomes.get(biomey, biomex, biomez);
+  auto biome = biomes.get(biomex, biomez, biomey);
   if (!biome)
-    return nullptr;
-  // get the chunk
+    return std::weak_ptr<Chunk>{};
 
   // get the chunk
   int chunkx = (x / CHUNK_BLOCK_COUNT) % CHUNK_COUNTX,
@@ -92,10 +91,10 @@ std::shared_ptr<Chunk> World::get_chunk_by_center(const glm::ivec3 &pos) {
 
   auto chunk = biome->chunks[chunkx][chunkz];
 
-  return chunk ? chunk : nullptr;
+  return chunk;
 }
 
-std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
+std::weak_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
   // get the biome
   // get x and z cords
   glm::ivec3 pos_cpy = pos - glm::ivec3(HALF_BLOCK_SIZE);
@@ -103,7 +102,7 @@ std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
       y = pos_cpy.y / (BLOCK_SIZE);
 
   if (pos_cpy.x < 0 || pos_cpy.z < 0)
-    return nullptr;
+    return std::weak_ptr<Biome>{};
 
   // get the biome
   int biomex = x / (CHUNK_BLOCK_COUNT * CHUNK_COUNTX),
@@ -112,13 +111,13 @@ std::shared_ptr<Biome> World::get_biome_by_center(const glm::ivec3 &pos) {
 
   if (biomex >= BIOME_COUNTX || biomez >= BIOME_COUNTZ ||
       biomey >= BIOME_COUNTY)
-    return nullptr;
+    return std::weak_ptr<Biome>{};
 
-  auto biome = biomes.get(biomey, biomex, biomez);
+  auto biome = biomes.get(biomex, biomez, biomey);
   if (!biome)
-    return nullptr;
+    return std::weak_ptr<Biome>{};
 
-  return biome ? biome : nullptr;
+  return biome;
 }
 
 bool World::isSolid(const glm::ivec3 &pos) {
@@ -141,21 +140,23 @@ void World::workerLoop() {
     std::unique_lock<std::mutex> lock(setup_mutex);
     setup_cv.wait(lock, [this] { return !job_queue.empty() || !running; });
 
-    if (!running)
+    if (!running) {
+      lock.unlock();
       break;
+    }
 
     auto &[i, j, k, pos] = job_queue.front();
     job_queue.pop();
     lock.unlock();
 
     // heavy work outside lock
-    if (biomes.get(k, i, j))
+    if (biomes.get(i, j, k))
       continue;
     auto biome = std::make_shared<Biome>(0, pos, true);
 
     {
       std::lock_guard<std::mutex> g(setup_mutex);
-      biomes.set(k, i, j, biome);
+      biomes.set(i, j, k, biome);
       setup_queue.push(biome);
     }
   }
@@ -201,74 +202,79 @@ void World::EnqueueVisibleBiomes(glm::vec3 playerpos) {
 void World::SetupBiomesPass1() {
   std::lock_guard<std::mutex> lock(setup_mutex);
   while (!setup_queue.empty()) {
-    auto b = setup_queue.front();
+    auto b_weak = setup_queue.front();
     setup_queue.pop();
-    b->SetupBiome(true); // firstRun
-    b->isrerenderiter = false;
-    if (render_queue.find(b) == render_queue.end())
-      render_queue.insert(b);
+    if (auto b = b_weak.lock()) {
+      b->SetupBiome(true); // firstRun
+      b->isrerenderiter = false;
+      if (render_queue.find(b->m_id) == render_queue.end())
+        render_queue[b->m_id] = b_weak;
+    }
   }
 }
 
 void World::SetupBiomesPass2() {
   std::lock_guard<std::mutex> lock(setup_mutex);
   while (!rerender_queue.empty()) {
-    auto b = rerender_queue.front();
+    auto b_weak = rerender_queue.front();
     rerender_queue.pop();
-    b->SetupBiome(false); // ReRun
-    b->isrerenderiter = true;
-    if (render_queue.find(b) == render_queue.end())
-      render_queue.insert(b);
+    if (auto b = b_weak.lock()) {
+      b->SetupBiome(false); // ReRun
+      b->isrerenderiter = true;
+      if (render_queue.find(b->m_id) == render_queue.end())
+        render_queue[b->m_id] = b_weak;
+    }
   }
 }
 
 void World::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   // Do not render all the biomes just what world wants to using its
   // render_queue
-  for (auto biome : render_queue) {
-    if (!biome) {
-      std::cerr << "[ERROR] World::Draw biome is null\n";
-      continue;
-    }
-    if (biome->chunks_ready.load(std::memory_order_acquire) >=
-        CHUNK_COUNTX * CHUNK_COUNTZ) {
-      biome->Draw(type, cameraPos);
+  for (auto [_, b_weak] : render_queue) {
+    if (auto biome = b_weak.lock()) {
+      if (biome->chunks_ready.load(std::memory_order_acquire) >=
+          CHUNK_COUNTX * CHUNK_COUNTZ) {
+        biome->Draw(type, cameraPos);
+      }
     }
   }
 }
 
 void World::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
-  for (auto biome : render_queue) {
-    if (!biome) {
-      std::cerr << "[ERROR] World::Update_queue: biome is null\n";
-      continue;
-    }
-    if (biome->chunks_ready.load(std::memory_order_acquire) >=
-        CHUNK_COUNTX * CHUNK_COUNTZ) {
-      biome->Update_queue(playerpos, VP);
+  // Check for all the biomes in update_queue
+  for (auto [_, b_weak] : render_queue) {
+    if (auto biome = b_weak.lock()) {
+      if (biome->chunks_ready.load(std::memory_order_acquire) >=
+          CHUNK_COUNTX * CHUNK_COUNTZ) {
+        biome->Update_queue(playerpos, VP);
+      }
     }
   }
+
+  // Remove all of the unwanted biomes
+  biomes.cleartoRemove();
 }
 
 void World::DoBindTask(bool firstRun) {
+  std::lock_guard<std::mutex> lock(biome_mutex);
   while (!bind_queue.empty()) {
+    auto biome = bind_queue.front().lock();
     bool flag = false;
-    std::shared_ptr<Biome> biome;
     {
-      std::lock_guard<std::mutex> lock(biome_mutex);
-      biome = bind_queue.front();
       // If biome is null return early
-      if (!biome)
-        return;
+      if (!biome) {
+        bind_queue.pop();
+        break;
+      }
       if (firstRun && biome->isrerenderiter) {
         return;
       }
+    }
 
-      if (biome->isrerenderiter) {
-        int expected = 32;
-        if (biome->chunks_ready.compare_exchange_strong(expected, 16)) {
-          flag = true;
-        }
+    if (biome->isrerenderiter) {
+      int expected = 32;
+      if (biome->chunks_ready.compare_exchange_strong(expected, 16)) {
+        flag = true;
       }
     }
     if ((firstRun || flag) &&
@@ -306,11 +312,12 @@ void World::DoBindTask(bool firstRun) {
 
           chunk->chunkibtrans->Bind();
           chunk->chunkvatrans->Unbind();
-          biome->render_queue.insert(chunk);
+          biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
         }
       }
 
-      // Have a way to check if neighbor chunks are loaded before rerendering
+      // Have a way to check if neighbor chunks are loaded before
+      // rerendering
       if (firstRun) {
         rerender_queue.push(biome);
       }
@@ -374,15 +381,14 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
   input_model_bin_file.read(reinterpret_cast<char *>(&countx), sizeof(countx));
   input_model_bin_file.read(reinterpret_cast<char *>(&county), sizeof(county));
   input_model_bin_file.read(reinterpret_cast<char *>(&countz), sizeof(countz));
-  auto biome = get_biome_by_center(pos);
-  if (biome)
+  if (auto biome = get_biome_by_center(pos).lock())
     biome->dirtybit = 1;
   else {
     std::cout << "Biome is null\n";
     return;
   }
   std::cout << "Loaded " << countx * county * countz << " blocks\n";
-  if (county * BLOCK_SIZE + pos.y > CHUNK_BLOCK_COUNT * BLOCK_SIZE) {
+  if (county * BLOCK_SIZE + pos.y > BIOME_COUNTY * BIOME_HEIGHT) {
     std::cerr << "MODEL to big to fitin, select a lower altitude\n";
     return;
   }
@@ -398,13 +404,13 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
         input_model_bin_file.read(reinterpret_cast<char *>(&block),
                                   sizeof(block));
         // if (!block.isSolid()) continue;
-        auto chunk =
-            get_chunk_by_center({pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE,
-                                 pos.z + k * BLOCK_SIZE}); // 63 1 63
-        if (chunk) {
+        glm::vec3 ptr = {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE,
+                         pos.z + k * BLOCK_SIZE}; // 63 1 63
+
+        if (auto chunk = get_chunk_by_center(ptr).lock()) {
           chunk->dirtybit = 1;
         } else {
-          std::cout << "Chunk is null\n";
+          std::cout << "Chunk is null or deleted\n";
           return;
         }
         GLuint preserve_mask = ((1 << 15) - 1);
@@ -427,11 +433,15 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
         } else if (idx_z == CHUNK_BLOCK_COUNT - 1) {
           back = true;
         }
-        Block &existing = chunk->blocks[idx_x][idx_y][idx_z];
 
-        // Keep lower 15 bits of existing, replace rest from new
-        existing.blmask =
-            (existing.blmask & preserve_mask) | (block.blmask & overwrite_mask);
+        if (auto chunk = get_chunk_by_center(ptr).lock()) {
+
+          Block &existing = chunk->blocks[idx_x][idx_y][idx_z];
+
+          // Keep lower 15 bits of existing, replace rest from new
+          existing.blmask = (existing.blmask & preserve_mask) |
+                            (block.blmask & overwrite_mask);
+        }
       }
     }
   }
@@ -445,10 +455,10 @@ void World::save(std::string _save_file) {
   std::string path = "save/" + _save_file + ".bin";
   std::ofstream save_file(path.c_str(), std::ios::binary | std::ios::trunc);
   // Save All the dirty chunks
-  for (int i = 0; i < BIOME_COUNTZ; i++) {
-    for (int j = 0; j < BIOME_COUNTX; j++) {
+  for (int i = 0; i < BIOME_COUNTX; i++) {
+    for (int j = 0; j < BIOME_COUNTZ; j++) {
       for (int h = 0; h < BIOME_COUNTY; h++) {
-        auto biome = biomes.get(h, i, j);
+        auto biome = biomes.get(i, j, h);
         if (!biome || !biome->dirtybit)
           continue;
         for (int k = 0; k < CHUNK_COUNTZ; k++) {
@@ -548,8 +558,8 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
 
   // get neighbouring chunks
   auto get_neighbors =
-      [this](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
-    std::shared_ptr<Chunk> left, leftback, front, rightback, right, rightfront,
+      [this](glm::ivec3 vec) -> std::vector<std::weak_ptr<Chunk>> {
+    std::weak_ptr<Chunk> left, leftback, front, rightback, right, rightfront,
         back, leftfront;
     left = get_chunk_by_center(
         vec +
@@ -582,22 +592,23 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
   int cordz = (vec.z % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
   int cordx = (vec.x % static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE));
 
-  auto chunk = get_chunk_by_center(vec);
-  // If last block update adjacent chunk
+  if (auto chunk = get_chunk_by_center(vec).lock()) {
+    // If last block update adjacent chunk
+    chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+  }
   auto neighchunks = get_neighbors(vec);
-  chunk->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-
   if (front ||
       (cordz == static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE) - 1)) { // frnt
     front = true;
     auto neighneighchunks = get_neighbors(
         vec +
         glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[1]) {
+    if (auto n1 = neighchunks[1].lock()) {
       std::cout << "[FRONT] Updating neighbouring chunk\n";
-      neighchunks[1]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[1]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n1->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n1->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -607,11 +618,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec +
         glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    if (neighchunks[0]) {
+    if (auto n0 = neighchunks[0].lock()) {
       std::cout << "[LEFT] Updating neighbouring chunk\n";
-      neighchunks[0]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[0]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n0->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n0->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -620,11 +632,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec -
         glm::ivec3(0, 0, static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[3]) {
+    if (auto n3 = neighchunks[3].lock()) {
       std::cout << "[BACK] Updating neighbouring chunk\n";
-      neighchunks[3]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[3]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n3->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n3->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -633,11 +646,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec -
         glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0, 0));
-    if (neighchunks[2]) {
+    if (auto n2 = neighchunks[2].lock()) {
       std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      neighchunks[2]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[2]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n2->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n2->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -645,11 +659,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
                          static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[4]) {
+    if (auto n4 = neighchunks[4].lock()) {
       std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      neighchunks[4]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[4]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n4->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n4->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -657,11 +672,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec + glm::ivec3(-static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
                          static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[5]) {
+    if (auto n5 = neighchunks[5].lock()) {
       std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      neighchunks[5]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[5]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n5->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n5->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -669,11 +685,12 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec + glm::ivec3(-static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
                          -static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[6]) {
+    if (auto n6 = neighchunks[6].lock()) {
       std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      neighchunks[6]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[6]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n6->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n6->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
@@ -681,16 +698,19 @@ void World::RefreshChunks(glm::ivec3 rayhitcord, bool left, bool back,
     auto neighneighchunks = get_neighbors(
         vec + glm::ivec3(static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE), 0,
                          -static_cast<int>(CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
-    if (neighchunks[7]) {
+    if (auto n7 = neighchunks[7].lock()) {
       std::cout << "[RIGHT] Updating neighbouring chunk\n";
-      neighchunks[7]->Render(0, true, nullptr, nullptr, nullptr, nullptr);
-      neighchunks[7]->Render(0, false, neighneighchunks[0], neighneighchunks[1],
-                             neighneighchunks[2], neighneighchunks[3]);
+      n7->Render(0, true, nullptr, nullptr, nullptr, nullptr);
+      n7->Render(0, false, neighneighchunks[0].lock(),
+                 neighneighchunks[1].lock(), neighneighchunks[2].lock(),
+                 neighneighchunks[3].lock());
     }
   }
 
-  chunk->Render(0, false, neighchunks[0], neighchunks[1], neighchunks[2],
-                neighchunks[3]);
+  if (auto chunk = get_chunk_by_center(vec).lock()) {
+    chunk->Render(0, false, neighchunks[0].lock(), neighchunks[1].lock(),
+                  neighchunks[2].lock(), neighchunks[3].lock());
+  }
 }
 
 WEATHER World::getWeather() { return m_weather; }

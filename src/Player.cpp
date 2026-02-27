@@ -241,11 +241,15 @@ void Player::handle_input(float dt) {
       auto block = world->get_block_by_center(ray.m_hitcords);
       if (block)
         block->remove();
-      auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
-      auto _biome = world->get_biome_by_center(ray.m_hitcords);
-      // Set the dirty bit
-      _chunk->dirtybit = true;
-      _biome->dirtybit = true;
+
+      if (auto _chunk = world->get_chunk_by_center(ray.m_hitcords).lock()) {
+        // Set the dirty bit
+        _chunk->dirtybit = true;
+      }
+      if (auto _biome = world->get_biome_by_center(ray.m_hitcords).lock()) {
+        // Set the dirty bit
+        _biome->dirtybit = true;
+      }
 
       // Update ws to send to server
       ws.blockpos = ray.m_hitcords;
@@ -272,8 +276,7 @@ void Player::handle_input(float dt) {
     if (ray.did_hit(world)) {
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
                 << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
-      glm::ivec3 prev_blk =
-          ray.m_hitcords + ray.m_hitnormal * static_cast<int>(BLOCK_SIZE);
+      glm::ivec3 prev_blk = ray.m_hitcordsprev;
       glm::ivec3 hit_blk = ray.m_hitcords;
       auto hitblk = world->get_block_by_center(hit_blk);
       auto block = world->get_block_by_center(prev_blk);
@@ -287,11 +290,14 @@ void Player::handle_input(float dt) {
         }
       }
 
-      auto _chunk = world->get_chunk_by_center(ray.m_hitcords);
-      auto _biome = world->get_biome_by_center(ray.m_hitcords);
-      // Update dirty bit
-      _chunk->dirtybit = true;
-      _biome->dirtybit = true;
+      if (auto _chunk = world->get_chunk_by_center(ray.m_hitcords).lock()) {
+        // Update dirty bit
+        _chunk->dirtybit = true;
+      }
+      if (auto _biome = world->get_biome_by_center(ray.m_hitcords).lock()) {
+        // Update dirty bit
+        _biome->dirtybit = true;
+      }
 
       // Update ws to send to server
       ws.blockpos = prev_blk;
@@ -405,9 +411,12 @@ void Player::handle_stats() {
     ImGui::Text("Active Player: %d", activePlayer);
     ImGui::Text("Block Selected: %s", BLOCK_ARRAY[bltype].c_str());
     glm::vec3 playerPos = m_cameracontroller->GetCamera()->GetPosition();
+    glm::vec3 playerOri = m_cameracontroller->GetCamera()->GetOrientation();
     // playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
     ImGui::Text("Player %d position: (%.2f, %.2f, %.2f)", activePlayer,
                 playerPos.x, playerPos.y, playerPos.z);
+    ImGui::Text("Player %d orientation: (%.2f, %.2f, %.2f)", activePlayer,
+                playerOri.x, playerOri.y, playerOri.z);
   }
 
   // Enable Physics
@@ -483,11 +492,12 @@ void Player::handle_stats() {
 
   if (ImGui::Button("Save")) {
     // Save the model in chunk 0 included between ref
-    auto chunk = world->get_chunk_by_center(glm::ivec3(
-        X * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE, HALF_BLOCK_SIZE,
-        Y * CHUNK_BLOCK_COUNT * BLOCK_SIZE + HALF_BLOCK_SIZE));
-
-    world->save_model(chunk, std::string(model_name));
+    glm::ivec3 tmp =
+        glm::ivec3(X * CHUNK_LENGTH + HALF_BLOCK_SIZE, HALF_BLOCK_SIZE,
+                   Y * CHUNK_LENGTH + HALF_BLOCK_SIZE);
+    if (auto chunk = world->get_chunk_by_center(tmp).lock()) {
+      world->save_model(chunk, std::string(model_name));
+    }
   };
 
   ImGui::EndChild();

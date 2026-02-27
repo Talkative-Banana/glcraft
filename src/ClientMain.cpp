@@ -62,8 +62,8 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
-glm::mat4 modelT, viewT, viewRotateT,
-    projectionT; // The model, view and projection transformations
+// The model, view and projection transformations
+glm::mat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
@@ -177,14 +177,15 @@ void updatePlayer(const std::string &msg) {
     if ((st.id == activePlayer) && (st.enforce)) {
       return; // do not update my world state alreay did
     }
-    auto chunk = world->get_chunk_by_center(wst.blockpos);
-    if (chunk && chunk->chunkva) {
-      // check if block within render distance
-      world->handleNetworkRequest(wst);
-    } else {
-      // if not will apply change when block within render distance
-      std::cout << "Skipping update chunk not loaded yet\n";
-      client_operations.push_back(wst);
+    if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
+      if (chunk && chunk->chunkva) {
+        // check if block within render distance
+        world->handleNetworkRequest(wst);
+      } else {
+        // if not will apply change when block within render distance
+        std::cout << "Skipping update chunk not loaded yet\n";
+        client_operations.push_back(wst);
+      }
     }
   } else {
     std::cerr << "Invalid State Message\n";
@@ -334,13 +335,15 @@ int main(int, char **) {
       auto &wst = client_operations[i];
       auto chunk = world->get_chunk_by_center(wst.blockpos);
 
-      if (chunk && chunk->chunkva) {
-        world->handleNetworkRequest(wst);
+      if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
+        if (chunk && chunk->chunkva) {
+          world->handleNetworkRequest(wst);
 
-        std::swap(client_operations[i], client_operations.back());
-        client_operations.pop_back();
-      } else {
-        ++i;
+          std::swap(client_operations[i], client_operations.back());
+          client_operations.pop_back();
+        } else {
+          ++i;
+        }
       }
     }
     // World Calculations

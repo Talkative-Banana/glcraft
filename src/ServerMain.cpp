@@ -48,6 +48,8 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
+// The model, view and projection transformations
+glm::mat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;

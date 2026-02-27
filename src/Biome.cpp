@@ -31,8 +31,8 @@ static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
           // get the center of chunks 1st block
           glm::ivec3 p = _chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE);
           auto get_neighbors =
-              [](glm::ivec3 vec) -> std::vector<std::shared_ptr<Chunk>> {
-            std::shared_ptr<Chunk> left, front, right, back;
+              [](glm::ivec3 vec) -> std::vector<std::weak_ptr<Chunk>> {
+            std::weak_ptr<Chunk> left, front, right, back;
             left = world->get_chunk_by_center(
                 vec + glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
             front = world->get_chunk_by_center(
@@ -45,18 +45,18 @@ static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
           };
 
           auto __chunks = get_neighbors(p);
-          _chunk->Render(1, firstRun, __chunks[0], __chunks[1], __chunks[2],
-                         __chunks[3]);
+          _chunk->Render(1, firstRun, __chunks[0].lock(), __chunks[1].lock(),
+                         __chunks[2].lock(), __chunks[3].lock());
         } else {
           // Within current chunk
           _chunk->Render(1, firstRun, chunks[i + 1][j], chunks[i][j + 1],
                          chunks[i - 1][j], chunks[i][j - 1]);
         }
       }
-      auto biome = world->get_biome_by_center(_chunk->chunkpos +
-                                              glm::ivec3(HALF_BLOCK_SIZE));
-      if (biome)
+      glm::ivec3 tmp = _chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE);
+      if (auto biome = world->get_biome_by_center(tmp).lock()) {
         biome->chunks_ready.fetch_add(1, std::memory_order_release);
+      }
     }
   }
 }
@@ -65,6 +65,8 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   type = t;
   Biomepos = pos;
   displaybiome = display;
+  m_id = BIOME_COUNTX * BIOME_COUNTZ * Biomepos.y + BIOME_COUNTX * Biomepos.x +
+         Biomepos.z;
 
   dirtybit = false;
   load_p(chunks, Biomepos, true, t);
@@ -76,13 +78,28 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   }
 }
 
+Biome::~Biome() {
+  std::cout << "Destroying Biome: " << Biomepos.x << " " << Biomepos.z << " "
+            << Biomepos.y << std::endl;
+
+  if (worker1.joinable())
+    worker1.join();
+
+  if (worker2.joinable())
+    worker2.join();
+}
+
 void Biome::SetupBiome(bool firstRun) {
   if (!displaybiome)
     return;
 
   if (firstRun) {
+    if (worker1.joinable())
+      worker1.join();
     worker1 = std::thread(render_p, std::ref(chunks), firstRun);
   } else {
+    if (worker2.joinable())
+      worker2.join();
     worker2 = std::thread(render_p, std::ref(chunks), firstRun);
   }
 
@@ -95,53 +112,48 @@ void Biome::SetupBiome(bool firstRun) {
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
-  for (auto chunk : render_queue) {
-    if (!chunk) {
+  for (auto [_, weak_chunk] : render_queue) {
+    if (auto chunk = weak_chunk.lock()) {
+      chunk->Draw(type, cameraPos);
+    } else {
       std::cerr << "[ERROR] BIOME::Draw chunk is null\n";
       continue;
     }
-    chunk->Draw(type, cameraPos);
   }
 }
 
 std::array<Plane, 6> ExtractFrustumPlanes(const glm::mat4 &m) {
   std::array<Plane, 6> planes;
 
+  // Extract rows from column-major matrix
+  glm::vec4 row0 = glm::vec4(m[0][0], m[1][0], m[2][0], m[3][0]);
+  glm::vec4 row1 = glm::vec4(m[0][1], m[1][1], m[2][1], m[3][1]);
+  glm::vec4 row2 = glm::vec4(m[0][2], m[1][2], m[2][2], m[3][2]);
+  glm::vec4 row3 = glm::vec4(m[0][3], m[1][3], m[2][3], m[3][3]);
+
   // Left
-  planes[0].normal.x = m[0][3] + m[0][0];
-  planes[0].normal.y = m[1][3] + m[1][0];
-  planes[0].normal.z = m[2][3] + m[2][0];
-  planes[0].d = m[3][3] + m[3][0];
+  planes[0].normal = glm::vec3(row3 + row0);
+  planes[0].d = (row3 + row0).w;
 
   // Right
-  planes[1].normal.x = m[0][3] - m[0][0];
-  planes[1].normal.y = m[1][3] - m[1][0];
-  planes[1].normal.z = m[2][3] - m[2][0];
-  planes[1].d = m[3][3] - m[3][0];
+  planes[1].normal = glm::vec3(row3 - row0);
+  planes[1].d = (row3 - row0).w;
 
   // Bottom
-  planes[2].normal.x = m[0][3] + m[0][1];
-  planes[2].normal.y = m[1][3] + m[1][1];
-  planes[2].normal.z = m[2][3] + m[2][1];
-  planes[2].d = m[3][3] + m[3][1];
+  planes[2].normal = glm::vec3(row3 + row1);
+  planes[2].d = (row3 + row1).w;
 
   // Top
-  planes[3].normal.x = m[0][3] - m[0][1];
-  planes[3].normal.y = m[1][3] - m[1][1];
-  planes[3].normal.z = m[2][3] - m[2][1];
-  planes[3].d = m[3][3] - m[3][1];
+  planes[3].normal = glm::vec3(row3 - row1);
+  planes[3].d = (row3 - row1).w;
 
   // Near
-  planes[4].normal.x = m[0][3] + m[0][2];
-  planes[4].normal.y = m[1][3] + m[1][2];
-  planes[4].normal.z = m[2][3] + m[2][2];
-  planes[4].d = m[3][3] + m[3][2];
+  planes[4].normal = glm::vec3(row3 + row2);
+  planes[4].d = (row3 + row2).w;
 
   // Far
-  planes[5].normal.x = m[0][3] - m[0][2];
-  planes[5].normal.y = m[1][3] - m[1][2];
-  planes[5].normal.z = m[2][3] - m[2][2];
-  planes[5].d = m[3][3] - m[3][2];
+  planes[5].normal = glm::vec3(row3 - row2);
+  planes[5].d = (row3 - row2).w;
 
   for (auto &p : planes)
     p.normalize();
@@ -165,6 +177,8 @@ bool AABBInFrustum(const std::array<Plane, 6> &planes, const glm::vec3 &min,
 }
 
 void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
+  bool chunk_visible = false;
+  auto planes = ExtractFrustumPlanes(VP);
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
       auto chunk = chunks[i][j];
@@ -172,31 +186,46 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
         continue;
       glm::vec3 cpos = chunk->chunkpos;
 
-      float CHUNK_SIZE = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
       // Chunk center
       glm::vec3 center =
-          cpos + glm::vec3(CHUNK_SIZE / 2.0f, 0.0f, CHUNK_SIZE / 2.0f);
+          cpos + glm::vec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH) / 2.0f;
 
       // Distance check
-      float distXZ = glm::length(
-          glm::vec2(playerpos.x - center.x, playerpos.z - center.z));
-      bool inRange = distXZ <= RENDER_DISTANCE;
+      float dx = playerpos.x - center.x, dz = playerpos.z - center.z;
+      bool inRange = dx <= RENDER_DISTANCE || dz <= RENDER_DISTANCE;
 
       // If player is literally inside the chunk
       bool insideChunk =
-          (playerpos.x >= cpos.x && playerpos.x < cpos.x + CHUNK_SIZE) &&
-          (playerpos.z >= cpos.z && playerpos.z < cpos.z + CHUNK_SIZE);
+          (playerpos.x >= cpos.x && playerpos.x < cpos.x + CHUNK_LENGTH) &&
+          (playerpos.z >= cpos.z && playerpos.z < cpos.z + CHUNK_LENGTH);
 
       glm::vec3 min = chunk->chunkpos;
-      glm::vec3 max = min + glm::vec3(CHUNK_SIZE);
+      glm::vec3 max = min + glm::vec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH);
 
-      auto planes = ExtractFrustumPlanes(VP);
+      // TODO: Fix the inView
+      // bool inView = AABBInFrustum(planes, min, max);
+
       // Final decision
-      if ((inRange && AABBInFrustum(planes, min, max)) || insideChunk) {
+      if (inRange || insideChunk) {
         chunk->displaychunk = 1;
+        chunk_visible = true;
       } else {
         chunk->displaychunk = 0;
       }
+    }
+  }
+
+  // If none of the chunks are visible for a biome remove it
+  if (!chunk_visible) {
+    glm::ivec3 bps = {
+        Biomepos.z / BIOME_LENGTH,
+        Biomepos.x / BIOME_LENGTH,
+        Biomepos.y / BIOME_HEIGHT,
+    };
+
+    if (world->biomes.isPresent(bps.x, bps.y, bps.z)) {
+      // Removing chunk
+      world->biomes.set(bps.x, bps.y, bps.z, nullptr);
     }
   }
 }

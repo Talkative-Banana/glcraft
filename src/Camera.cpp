@@ -6,6 +6,8 @@ Camera::Camera(float left, float right, float bottom, float top)
   m_ProjectionMatrix = glm::perspective(glm::radians(m_VerticalFOV), 1.0f,
                                         NEAR_PLANE, FAR_PLANE);
   m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+
+  m_ViewProjectionRenderMatrix = m_ProjectionMatrix * m_ViewRotateMatrix;
 }
 
 void Camera::RecalculateViewMatrix() {

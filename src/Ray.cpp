@@ -62,6 +62,8 @@ bool Ray::did_hit(std::unique_ptr<World> &world) {
 
       m_hitnormal = normal;
       return m_hit = true;
+    } else {
+      m_hitcordsprev = blockCenter;
     }
 
     if (tMax.x < tMax.y) {
