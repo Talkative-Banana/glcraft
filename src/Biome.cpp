@@ -7,20 +7,24 @@
 
 extern std::unique_ptr<World> world;
 
-static void load_p(decltype(Biome::chunks) &chunks, glm::ivec3 &Biomepos,
-                   bool display, int type) {
+void Biome::allocate_chunks() {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
       int idx = CHUNK_COUNTX * i + j;
-      chunks[i][j] = std::make_shared<Chunk>(idx, Biomepos, glm::ivec3(i, 0, j),
-                                             display, type);
+      glm::ivec3 t_chunkpos = glm::ivec3(i, 0, j);
+      bool t_db = displaybiome;
+      glm::ivec3 t_bp = Biomepos;
+      chunks[i][j] = std::make_shared<Chunk>(idx, t_bp, t_chunkpos, t_db, type);
     }
   }
 }
 
-static void render_p(decltype(Biome::chunks) &chunks, bool firstRun) {
+void Biome::setup_chunks(bool firstRun) {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
+      if (!m_running) {
+        return;
+      }
       auto _chunk = chunks[i][j];
       if (firstRun) {
         _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr);
@@ -72,7 +76,7 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
          static_cast<uint64_t>(BIOME_COUNTX) * x + z;
 
   dirtybit = false;
-  load_p(chunks, Biomepos, true, t);
+  allocate_chunks();
 
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
@@ -82,6 +86,8 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
 }
 
 Biome::~Biome() {
+  // terminate worker threads
+  m_running = false;
 
   if (worker1.joinable())
     worker1.join();
@@ -97,11 +103,11 @@ void Biome::SetupBiome(bool firstRun) {
   if (firstRun) {
     if (worker1.joinable())
       worker1.join();
-    worker1 = std::thread(render_p, std::ref(chunks), firstRun);
+    worker1 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   } else {
     if (worker2.joinable())
       worker2.join();
-    worker2 = std::thread(render_p, std::ref(chunks), firstRun);
+    worker2 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   }
 
   auto biome =
@@ -225,7 +231,6 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
         Biomepos.x / BIOME_LENGTH,
         Biomepos.y / BIOME_HEIGHT,
         Biomepos.z / BIOME_LENGTH,
-
     };
     if (world->biomes.isPresent(m_id)) {
       // Removing chunk

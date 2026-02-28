@@ -345,7 +345,7 @@ int main(int, char **) {
   ss->AddSound("thunderstorm", thundersound);
   ss->AddSound("blizzard", blizzardsound);
 
-  glm::dmat4 uiProj;
+  glm::mat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
     glfwPollEvents();
@@ -453,8 +453,7 @@ int main(int, char **) {
     // PARTICLE SYSTEM
     glUseProgram(shaderProgramPS);
 
-    glm::mat4 uiProjf = glm::mat4(uiProj);
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
     water_ps->Draw(dt);
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
@@ -479,7 +478,7 @@ int main(int, char **) {
     // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);
 
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
     // ui->Draw();
 
     // Restore

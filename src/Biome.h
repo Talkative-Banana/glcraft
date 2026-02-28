@@ -16,9 +16,13 @@ private:
   int type;
   GLboolean displaybiome;
 
+  void allocate_chunks();
+  void setup_chunks(bool firstRun);
+
 public:
   uint64_t m_id;
   glm::ivec3 Biomepos;
+  std::atomic_bool m_running{true};
   std::thread worker1, worker2;
   std::atomic<int> chunks_ready{0};
   GLboolean dirtybit, isrerenderiter;

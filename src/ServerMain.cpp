@@ -49,7 +49,7 @@ GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
 // The model, view and projection transformations
-glm::mat4 modelT, viewT, viewRotateT, projectionT;
+glm::dmat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
@@ -93,7 +93,6 @@ int main(int, char **) {
     ioc.run();
   });
 
-  glm::mat4 uiProj;
   float last = glfwGetTime();
 
   while (1) {
@@ -113,7 +112,7 @@ int main(int, char **) {
     world->SetupBiomesPass1();
 
     // Do Binding for first pass
-    world->DoBindTask(true);
+    // world->DoBindTask(true);
 
     // Setup biomes [second pass]
     world->SetupBiomesPass2();
