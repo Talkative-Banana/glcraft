@@ -192,7 +192,7 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
 
       // Distance check
       float dx = playerpos.x - center.x, dz = playerpos.z - center.z;
-      bool inRange = dx <= RENDER_DISTANCE || dz <= RENDER_DISTANCE;
+      bool inRange = (dx * dx + dz * dz) <= RENDER_DISTANCE * RENDER_DISTANCE;
 
       // If player is literally inside the chunk
       bool insideChunk =
@@ -218,12 +218,12 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
   // If none of the chunks are visible for a biome remove it
   if (!chunk_visible) {
     glm::ivec3 bps = {
-        Biomepos.z / BIOME_LENGTH,
         Biomepos.x / BIOME_LENGTH,
+        Biomepos.z / BIOME_LENGTH,
         Biomepos.y / BIOME_HEIGHT,
     };
 
-    if (world->biomes.isPresent(bps.x, bps.y, bps.z)) {
+    if (world->biomes.isPresent(this->m_id)) {
       // Removing chunk
       world->biomes.set(bps.x, bps.y, bps.z, nullptr);
     }

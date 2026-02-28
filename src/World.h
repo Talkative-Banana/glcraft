@@ -23,19 +23,19 @@ extern std::vector<std::string> world_operations;
 
 struct BiomeArray {
   using bptr = std::shared_ptr<Biome>;
-  std::unordered_map<uint32_t, bptr> BiomeMap;
+  std::unordered_map<uint64_t, bptr> BiomeMap;
   std::vector<bptr> toRemove;
   std::mutex biome_mutex;
 
-  bptr get(int x, int y, int z) {
+  bptr get(uint32_t x, uint32_t y, uint32_t z) {
     std::lock_guard<std::mutex> lock(biome_mutex);
     auto it = BiomeMap.find(index(x, y, z));
     return it == BiomeMap.end() ? nullptr : it->second;
   }
 
-  void set(int x, int y, int z, bptr value) {
+  void set(uint32_t i, uint32_t j, uint32_t k, bptr value) {
     std::lock_guard<std::mutex> lock(biome_mutex);
-    int idx = index(x, y, z);
+    uint64_t idx = index(i, j, k);
     if (value == nullptr) {
       auto it = BiomeMap.find(idx);
       if (it != BiomeMap.end()) {
@@ -59,19 +59,13 @@ struct BiomeArray {
     // destruction happens here, outside lock
   }
 
-  bool isPresent(uint32_t idx) {
+  bool isPresent(uint64_t idx) {
     std::lock_guard<std::mutex> lock(biome_mutex);
-    return BiomeMap.find(idx) != BiomeMap.end();
-  }
-
-  bool isPresent(int x, int y, int z) {
-    std::lock_guard<std::mutex> lock(biome_mutex);
-    int idx = index(x, y, z);
     return BiomeMap.find(idx) != BiomeMap.end();
   }
 
 private:
-  uint32_t index(uint32_t x, uint32_t y, uint32_t z) const {
+  uint64_t index(uint32_t x, uint32_t y, uint32_t z) const {
     return BIOME_COUNTX * BIOME_COUNTZ * y + BIOME_COUNTX * x + z;
   }
 };
