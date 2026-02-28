@@ -80,11 +80,11 @@ void Player::handle_input(float dt) {
   bool position_updated = false;
   BLOCK_TYPE legblock = BLOCK_TYPE::GRASS_BLOCK;
   // Gravity
-  glm::vec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
-                glm::vec3(HALF_BLOCK_SIZE);
+  glm::dvec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
+                 glm::dvec3(HALF_BLOCK_SIZE);
   if (enable_gravity) {
     bool adjusted = false;
-    if (world && (!(world->isStandable(v - glm::vec3(0, PLAYER_HEIGHT, 0)))) &&
+    if (world && (!(world->isStandable(v - glm::dvec3(0, PLAYER_HEIGHT, 0)))) &&
         (v.y > 1.0f)) {
       v.y -= BLOCK_SIZE;
       adjusted = true;
@@ -92,17 +92,18 @@ void Player::handle_input(float dt) {
 
     float height = v.y + BLOCK_SIZE - OFFSET;
     // Case 2: If we're inside a block -> snap up
-    if (world && world->isStandable(v - glm::vec3(0, PLAYER_HEIGHT, 0)) &&
+    if (world && world->isStandable(v - glm::dvec3(0, PLAYER_HEIGHT, 0)) &&
         (v.y < height)) {
       v.y += BLOCK_SIZE; // step up until clear
       adjusted = true;
-      auto blk = world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0) +
-                                            glm::vec3(0, 2 * BLOCK_SIZE, 0));
+      auto blk =
+          world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0) +
+                                     glm::dvec3(0, 2 * BLOCK_SIZE, 0));
       if (blk)
         inside_block = blk->get_type();
 
       auto legblk =
-          world->get_block_by_center(v - glm::vec3(0, PLAYER_HEIGHT, 0));
+          world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0));
       if (legblk)
         legblock = legblk->get_type();
     }
@@ -113,14 +114,14 @@ void Player::handle_input(float dt) {
     }
   }
 
-  auto toBlockCenter = [](glm::vec3 pos) {
+  auto toBlockCenter = [](glm::dvec3 pos) {
     glm::ivec3 block = glm::floor(pos / BLOCK_SIZE); // which block
-    return (glm::vec3(block) + 0.5f) * BLOCK_SIZE -
-           glm::vec3(0, BLOCK_SIZE, 0); // center of that block
+    return (glm::dvec3(block) + 0.5) * BLOCK_SIZE -
+           glm::dvec3(0, BLOCK_SIZE, 0); // center of that block
   };
 
-  glm::vec3 planarvec =
-      glm::normalize(glm::vec3(m_forward.x, 0.0f, m_forward.z));
+  glm::dvec3 planarvec =
+      glm::normalize(glm::dvec3(m_forward.x, 0.0, m_forward.z));
 
   if (legblock == BLOCK_TYPE::WATER_BLOCK)
     m_speed = SMUGED_SPEED;
@@ -128,9 +129,9 @@ void Player::handle_input(float dt) {
     m_speed = WALKING_SPEED;
 
   if (Input::IsKeyPressed(GLFW_KEY_W)) {
-    glm::vec3 nextPos = m_position + planarvec * m_speed * dt;
-    glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
+    glm::dvec3 nextPos = m_position + planarvec * m_speed * (double)(dt);
+    glm::dvec3 blockCenter_h2 = toBlockCenter(nextPos);
+    glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
@@ -138,9 +139,9 @@ void Player::handle_input(float dt) {
       position_updated = true;
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_S)) {
-    glm::vec3 nextPos = m_position - planarvec * m_speed * dt;
-    glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
+    glm::dvec3 nextPos = m_position - planarvec * m_speed * (double)(dt);
+    glm::dvec3 blockCenter_h2 = toBlockCenter(nextPos);
+    glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
@@ -151,10 +152,10 @@ void Player::handle_input(float dt) {
 
   if (Input::IsKeyPressed(GLFW_KEY_A)) {
     // Check if obstructed by block
-    glm::vec3 nextPos =
+    glm::dvec3 nextPos =
         m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
-    glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
+    glm::ivec3 blockCenter_h2 = toBlockCenter(nextPos);
+    glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
@@ -163,10 +164,10 @@ void Player::handle_input(float dt) {
     }
   } else if (Input::IsKeyPressed(GLFW_KEY_D)) {
     // Check if obstructed by block
-    glm::vec3 nextPos =
+    glm::dvec3 nextPos =
         m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
-    glm::vec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::vec3 blockCenter_h3 = blockCenter_h2 + glm::vec3(0, BLOCK_SIZE, 0);
+    glm::ivec3 blockCenter_h2 = toBlockCenter(nextPos);
+    glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
         !enable_gravity) {
@@ -178,29 +179,29 @@ void Player::handle_input(float dt) {
   // Floating only possible in case gravity is not available
   if (!enable_gravity) {
     if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
-      m_position = m_position + m_up * m_speed * dt;
+      m_position = m_position + m_up * m_speed * double(dt);
       position_updated = true;
     } else if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
-      m_position = m_position - m_up * m_speed * dt;
+      m_position = m_position - m_up * m_speed * double(dt);
       position_updated = true;
     }
   } else {
     // Jump if gravity enabled
     if (Input::WasKeyPressed(GLFW_KEY_SPACE)) {
-      m_position = m_position + m_up * m_speed * dt * 100.0f;
+      m_position = m_position + m_up * m_speed * double(dt) * 100.0;
       position_updated = true;
     }
   }
 
   auto [x, y] = Input::GetMousePosition();
-  float rotx = m_sensitivity * (float)(y - MousePos.y);
-  float roty = m_sensitivity * (float)(x - MousePos.x);
+  double rotx = m_sensitivity * (double)(y - MousePos.y);
+  double roty = m_sensitivity * (double)(x - MousePos.x);
   MousePos = glm::vec2(x, y);
 
   ImGuiIO &io = ImGui::GetIO();
   if (!io.WantCaptureMouse) {
     if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-      glm::vec3 right = glm::normalize(glm::cross(m_forward, m_up));
+      glm::dvec3 right = glm::normalize(glm::cross(m_forward, m_up));
 
       // glm::quat qx = glm::normalize(
       //    glm::cross(glm::angleAxis(-rotx, right), glm::angleAxis(roty,
@@ -208,9 +209,9 @@ void Player::handle_input(float dt) {
       // m_Camera->SetOrientation(glm::normalize(qx *
       // m_Camera->GetOrientation()));
 
-      glm::quat qx = glm::angleAxis(-rotx, right);
-      glm::quat qy = glm::angleAxis(-roty, m_up);
-      glm::quat rotation = glm::normalize(qy * qx);
+      glm::dquat qx = glm::angleAxis(-rotx, right);
+      glm::dquat qy = glm::angleAxis(-roty, m_up);
+      glm::dquat rotation = glm::normalize(qy * qx);
       m_forward = glm::normalize(rotation * m_forward);
       position_updated = true;
     }
@@ -412,7 +413,7 @@ void Player::handle_stats() {
     ImGui::Text("Block Selected: %s", BLOCK_ARRAY[bltype].c_str());
     glm::vec3 playerPos = m_cameracontroller->GetCamera()->GetPosition();
     glm::vec3 playerOri = m_cameracontroller->GetCamera()->GetOrientation();
-    // playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
+    playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
     ImGui::Text("Player %d position: (%.2f, %.2f, %.2f)", activePlayer,
                 playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Player %d orientation: (%.2f, %.2f, %.2f)", activePlayer,
@@ -527,9 +528,9 @@ void Player::handle_stats() {
 }
 
 void Player::setupModelTransformationCube(unsigned int &program) {
-  // Modelling transformations (Model -> World coordinates)
-  modelT = glm::scale(glm::mat4(1.0f), glm::vec3(1.0, 1.0, 1.0));
-  modelT = glm::translate(modelT, glm::vec3(0.0f, 0.0f, 0.0f));
+  // Modelling transfordmations (Model -> World coordinates)
+  modelT = glm::scale(glm::dmat4(1.0f), glm::dvec3(1.0, 1.0, 1.0));
+  // modelT = glm::translate(modelT, glm::dvec3(0.0, 0.0, 0.0));
 
   // Pass on the modelling matrix to the vertex shader
   glUseProgram(program);
@@ -538,13 +539,16 @@ void Player::setupModelTransformationCube(unsigned int &program) {
     fprintf(stderr, "Could not bind location: vModel\n");
     exit(0);
   }
-  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelT));
+
+  glm::mat4 modelTf = glm::mat4(modelT);
+  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelTf));
 }
 
 void Player::setupModelTransformationAxis(unsigned int &program,
-                                          float rot_angle, glm::vec3 rot_axis) {
+                                          double rot_angle,
+                                          glm::dvec3 rot_axis) {
   // Modelling transformations (Model -> World coordinates)
-  modelT = glm::rotate(glm::mat4(1.0f), rot_angle, rot_axis);
+  modelT = glm::rotate(glm::dmat4(1.0f), rot_angle, rot_axis);
 
   // Pass on the modelling matrix to the vertex shader
   glUseProgram(program);
@@ -553,7 +557,9 @@ void Player::setupModelTransformationAxis(unsigned int &program,
     fprintf(stderr, "Could not bind location: vModel\n");
     exit(0);
   }
-  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelT));
+
+  glm::mat4 modelTf = glm::mat4(modelT);
+  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelTf));
 }
 
 void Player::setupViewTransformation(unsigned int &program,
@@ -571,7 +577,9 @@ void Player::setupViewTransformation(unsigned int &program,
     fprintf(stderr, "Could not bind location: vView\n");
     exit(0);
   }
-  glUniformMatrix4fv(vView_uniform, 1, GL_FALSE, glm::value_ptr(viewT));
+
+  glm::mat4 viewTf = glm::mat4(viewT);
+  glUniformMatrix4fv(vView_uniform, 1, GL_FALSE, glm::value_ptr(viewTf));
 }
 
 void Player::setupProjectionTransformation(
@@ -586,8 +594,10 @@ void Player::setupProjectionTransformation(
     fprintf(stderr, "Could not bind location: vProjection\n");
     exit(0);
   }
+
+  glm::mat4 projectionTf = glm::mat4(projectionT);
   glUniformMatrix4fv(vProjection_uniform, 1, GL_FALSE,
-                     glm::value_ptr(projectionT));
+                     glm::value_ptr(projectionTf));
 }
 
 void Player::handle_transformations() {

@@ -12,10 +12,10 @@ void Mesh::setup() {
   vao->AddBuffer(*vbo, Layout);
 }
 
-void Mesh::setupModelTransformationCube(glm::vec3 cameraPos) {
+void Mesh::setupModelTransformationCube(glm::dvec3 cameraPos) {
   // Modelling transformations (Model -> World coordinates)
   modelT = glm::translate(modelT, pos - cameraPos);
-  modelT = glm::scale(modelT, glm::vec3(scale, scale, scale));
+  modelT = glm::scale(modelT, glm::dvec3(scale, scale, scale));
   // Rotate along axis of rot
   modelT = glm::rotate(modelT, glm::radians(angle_of_rot),
                        glm::normalize(axis_of_rot));
@@ -26,7 +26,9 @@ void Mesh::setupModelTransformationCube(glm::vec3 cameraPos) {
     fprintf(stderr, "Could not bind location: vModel\n");
     exit(0);
   }
-  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelT));
+
+  glm::mat4 modelTf = glm::mat4(modelT);
+  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelTf));
 }
 
 void Mesh::setupViewTransformation(std::unique_ptr<CameraController> &occ) {
@@ -41,7 +43,9 @@ void Mesh::setupViewTransformation(std::unique_ptr<CameraController> &occ) {
     fprintf(stderr, "Could not bind location: vView\n");
     exit(0);
   }
-  glUniformMatrix4fv(vView_uniform, 1, GL_FALSE, glm::value_ptr(viewT));
+
+  glm::mat4 viewTf = glm::mat4(viewT);
+  glUniformMatrix4fv(vView_uniform, 1, GL_FALSE, glm::value_ptr(viewTf));
 }
 
 void Mesh::setupProjectionTransformation(
@@ -55,12 +59,14 @@ void Mesh::setupProjectionTransformation(
     fprintf(stderr, "Could not bind location: vProjection\n");
     exit(0);
   }
+
+  glm::mat4 projectionTf = glm::mat4(projectionT);
   glUniformMatrix4fv(vProjection_uniform, 1, GL_FALSE,
-                     glm::value_ptr(projectionT));
+                     glm::value_ptr(projectionTf));
 }
 
 void Mesh::render(std::unique_ptr<CameraController> &camera_controller,
-                  glm::vec3 cameraPos) {
+                  glm::dvec3 cameraPos) {
   glUseProgram(shaderProgram);
   // Setup MVP matrix
   setupModelTransformationCube(cameraPos);

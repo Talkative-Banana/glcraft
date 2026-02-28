@@ -82,8 +82,6 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
 }
 
 Biome::~Biome() {
-  std::cout << "Destroying Biome: " << Biomepos.x << " " << Biomepos.z << " "
-            << Biomepos.y << " " << m_id << '\n';
 
   if (worker1.joinable())
     worker1.join();
@@ -114,7 +112,7 @@ void Biome::SetupBiome(bool firstRun) {
   }
 }
 
-void Biome::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
+void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   for (auto [_, weak_chunk] : render_queue) {
     if (auto chunk = weak_chunk.lock()) {
       chunk->Draw(type, cameraPos);
@@ -125,37 +123,37 @@ void Biome::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   }
 }
 
-std::array<Plane, 6> ExtractFrustumPlanes(const glm::mat4 &m) {
+std::array<Plane, 6> ExtractFrustumPlanes(const glm::dmat4 &m) {
   std::array<Plane, 6> planes;
 
   // Extract rows from column-major matrix
-  glm::vec4 row0 = glm::vec4(m[0][0], m[1][0], m[2][0], m[3][0]);
-  glm::vec4 row1 = glm::vec4(m[0][1], m[1][1], m[2][1], m[3][1]);
-  glm::vec4 row2 = glm::vec4(m[0][2], m[1][2], m[2][2], m[3][2]);
-  glm::vec4 row3 = glm::vec4(m[0][3], m[1][3], m[2][3], m[3][3]);
+  glm::dvec4 row0 = glm::dvec4(m[0][0], m[1][0], m[2][0], m[3][0]);
+  glm::dvec4 row1 = glm::dvec4(m[0][1], m[1][1], m[2][1], m[3][1]);
+  glm::dvec4 row2 = glm::dvec4(m[0][2], m[1][2], m[2][2], m[3][2]);
+  glm::dvec4 row3 = glm::dvec4(m[0][3], m[1][3], m[2][3], m[3][3]);
 
   // Left
-  planes[0].normal = glm::vec3(row3 + row0);
+  planes[0].normal = glm::dvec3(row3 + row0);
   planes[0].d = (row3 + row0).w;
 
   // Right
-  planes[1].normal = glm::vec3(row3 - row0);
+  planes[1].normal = glm::dvec3(row3 - row0);
   planes[1].d = (row3 - row0).w;
 
   // Bottom
-  planes[2].normal = glm::vec3(row3 + row1);
+  planes[2].normal = glm::dvec3(row3 + row1);
   planes[2].d = (row3 + row1).w;
 
   // Top
-  planes[3].normal = glm::vec3(row3 - row1);
+  planes[3].normal = glm::dvec3(row3 - row1);
   planes[3].d = (row3 - row1).w;
 
   // Near
-  planes[4].normal = glm::vec3(row3 + row2);
+  planes[4].normal = glm::dvec3(row3 + row2);
   planes[4].d = (row3 + row2).w;
 
   // Far
-  planes[5].normal = glm::vec3(row3 - row2);
+  planes[5].normal = glm::dvec3(row3 - row2);
   planes[5].d = (row3 - row2).w;
 
   for (auto &p : planes)
@@ -164,10 +162,10 @@ std::array<Plane, 6> ExtractFrustumPlanes(const glm::mat4 &m) {
   return planes;
 }
 
-bool AABBInFrustum(const std::array<Plane, 6> &planes, const glm::vec3 &min,
-                   const glm::vec3 &max) {
+bool AABBInFrustum(const std::array<Plane, 6> &planes, const glm::dvec3 &min,
+                   const glm::dvec3 &max) {
   for (const auto &plane : planes) {
-    glm::vec3 positive;
+    glm::dvec3 positive;
 
     positive.x = (plane.normal.x >= 0) ? max.x : min.x;
     positive.y = (plane.normal.y >= 0) ? max.y : min.y;
@@ -179,7 +177,7 @@ bool AABBInFrustum(const std::array<Plane, 6> &planes, const glm::vec3 &min,
   return true;
 }
 
-void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
+void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   bool chunk_visible = false;
   auto planes = ExtractFrustumPlanes(VP);
   for (int i = 0; i < CHUNK_COUNTX; i++) {
@@ -190,7 +188,8 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
       glm::ivec3 cpos = chunk->chunkpos;
 
       // Chunk center
-      glm::vec3 center = cpos + glm::ivec3(CHUNK_LENGTH, 0, CHUNK_LENGTH) / 2;
+      glm::ivec3 center =
+          cpos + glm::ivec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH) / 2;
 
       // Distance check
       float dx = abs(playerpos.x - center.x), dz = abs(playerpos.z - center.z);
@@ -202,16 +201,18 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
           (playerpos.x >= cpos.x && playerpos.x < cpos.x + CHUNK_LENGTH) &&
           (playerpos.z >= cpos.z && playerpos.z < cpos.z + CHUNK_LENGTH);
 
-      glm::vec3 min = chunk->chunkpos;
-      glm::vec3 max = min + glm::vec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH);
+      glm::ivec3 min = chunk->chunkpos;
+      glm::ivec3 max =
+          min + glm::ivec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH);
 
-      // TODO: Fix the inView
-      // bool inView = AABBInFrustum(planes, min, max);
-
-      // Final decision
-      if (inRange || insideChunk) {
-        chunk->displaychunk = 1;
+      // If any of the chunk in range
+      if (inRange) {
         chunk_visible = true;
+      }
+      // Final decision
+      bool inView = AABBInFrustum(planes, min, max);
+      if (inView || insideChunk) {
+        chunk->displaychunk = 1;
       } else {
         chunk->displaychunk = 0;
       }

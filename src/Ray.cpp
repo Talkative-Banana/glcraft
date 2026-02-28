@@ -1,9 +1,5 @@
 #include "Ray.h"
 
-glm::vec3 toBlockCenter(const glm::vec3 &p) {
-  return glm::floor(p / BLOCK_SIZE) * BLOCK_SIZE + glm::vec3(HALF_BLOCK_SIZE);
-}
-
 bool Ray::did_hit(std::unique_ptr<World> &world) {
   const double maxDistance = TOTAL_STEPS * STEP_SIZE;
 

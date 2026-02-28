@@ -63,7 +63,7 @@ GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
 // The model, view and projection transformations
-glm::mat4 modelT, viewT, viewRotateT, projectionT;
+glm::dmat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
@@ -299,7 +299,7 @@ int main(int, char **) {
   ss->AddSound("thunderstorm", thundersound);
   ss->AddSound("blizzard", blizzardsound);
 
-  glm::mat4 uiProj;
+  glm::dmat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
     float current = glfwGetTime();
@@ -313,13 +313,16 @@ int main(int, char **) {
     player->update(dt);
 
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
+
     auto playerdir = players[activePlayer]
                          ->m_cameracontroller->GetCamera()
                          ->GetOrientation();
 
-    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
-    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
-    auto playervp =
+    sf::Listener::setPosition(
+        {float(playerpos.x), float(playerpos.y), float(playerpos.z)});
+    sf::Listener::setDirection(
+        {float(playerdir.x), float(playerdir.y), float(playerdir.z)});
+    glm::dmat4 playervp =
         player->m_cameracontroller->GetCamera()->GetProjectionViewMatrix();
 
     {
@@ -423,7 +426,8 @@ int main(int, char **) {
     // PARTICLE SYSTEM
     glUseProgram(shaderProgramPS);
 
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    glm::mat4 uiProjf = glm::mat4(uiProj);
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
     water_ps->Draw(dt);
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
@@ -448,7 +452,7 @@ int main(int, char **) {
     // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);
 
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
     // ui->Draw();
 
     // Restore

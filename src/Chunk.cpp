@@ -525,7 +525,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   }
 }
 
-void Chunk::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
+void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   if (!displaychunk)
     return;
   if (type == OBJ_TYPE::OPAQUE_) {

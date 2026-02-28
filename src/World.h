@@ -100,7 +100,7 @@ public:
   std::queue<std::weak_ptr<Biome>> bind_queue;
   World(int, const glm::ivec3 &);
   ~World();
-  void EnqueueVisibleBiomes(glm::vec3);
+  void EnqueueVisibleBiomes(glm::dvec3);
   bool isSolid(const glm::ivec3 &);
   bool isStandable(const glm::ivec3 &);
   bool isVisible(const glm::ivec3 &);
@@ -111,8 +111,8 @@ public:
   void load_model(glm::ivec3, std::string, bool refresh_chunk = true);
   void SetupBiomesPass1();
   void SetupBiomesPass2();
-  void Draw(OBJ_TYPE, glm::vec3);
-  void Update_queue(glm::vec3, glm::mat4);
+  void Draw(OBJ_TYPE, glm::dvec3);
+  void Update_queue(glm::dvec3, glm::dmat4);
   void save(std::string);
   int getSeed();
   WEATHER getWeather();

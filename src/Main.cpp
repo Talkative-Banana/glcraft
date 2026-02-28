@@ -42,7 +42,7 @@ std::unique_ptr<ParticleSystem> water_ps, smoke_ps, snow_ps, rain_ps;
 std::unique_ptr<SoundSystem> ss = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
-glm::vec3 chunkpos;
+glm::dvec3 chunkpos;
 GLuint activePlayer, players_cnt = 2;
 GLint vModel_uniform = -1;
 GLint vView_uniform = -1;
@@ -59,7 +59,7 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
-glm::mat4 modelT, viewT, viewRotateT,
+glm::dmat4 modelT, viewT, viewRotateT,
     projectionT; // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
@@ -345,7 +345,7 @@ int main(int, char **) {
   ss->AddSound("thunderstorm", thundersound);
   ss->AddSound("blizzard", blizzardsound);
 
-  glm::mat4 uiProj;
+  glm::dmat4 uiProj;
   float last = glfwGetTime();
   while (!glfwWindowShouldClose(_window->GetWindow())) {
     glfwPollEvents();
@@ -368,11 +368,13 @@ int main(int, char **) {
                          ->m_cameracontroller->GetCamera()
                          ->GetOrientation();
 
-    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
-    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
-    auto playervp = players[activePlayer]
-                        ->m_cameracontroller->GetCamera()
-                        ->GetProjectionViewMatrix();
+    sf::Listener::setPosition(
+        {float(playerpos.x), float(playerpos.y), float(playerpos.z)});
+    sf::Listener::setDirection(
+        {float(playerdir.x), float(playerdir.y), float(playerdir.z)});
+    glm::dmat4 playervp = players[activePlayer]
+                              ->m_cameracontroller->GetCamera()
+                              ->GetProjectionViewMatrix();
     // World Calculations
     world->EnqueueVisibleBiomes(playerpos);
 
@@ -451,7 +453,8 @@ int main(int, char **) {
     // PARTICLE SYSTEM
     glUseProgram(shaderProgramPS);
 
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    glm::mat4 uiProjf = glm::mat4(uiProj);
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
     water_ps->Draw(dt);
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
@@ -476,7 +479,7 @@ int main(int, char **) {
     // UI PASS (Keep it at last)
     glUseProgram(shaderProgramUI);
 
-    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProj));
+    glUniformMatrix4fv(uProjLoc_uniform, 1, GL_FALSE, glm::value_ptr(uiProjf));
     // ui->Draw();
 
     // Restore

@@ -54,7 +54,7 @@ public:
   inline GLboolean isTransparent(const std::vector<GLint> &position);
   inline GLboolean isSameKind(const std::vector<GLint> &,
                               const std::vector<GLint> &);
-  void Draw(OBJ_TYPE type, glm::vec3 cameraPos);
+  void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
   void Serialize(std::ostream &os) const;
   bool Deserialize(std::istream &is);
 };

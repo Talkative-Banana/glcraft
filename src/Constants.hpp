@@ -4,12 +4,12 @@
 #include <array>
 #include <string>
 #include <variant>
-constexpr static float BLOCK_SIZE = 2.0;      // BLOCK LENGTH
-constexpr static float HALF_BLOCK_SIZE = 1.0; // HALF_BLOCK LENGTH
-constexpr static float NEAR_PLANE = 0.01f;
-constexpr static float FAR_PLANE = 1000.0f;
+constexpr static double BLOCK_SIZE = 2.0;      // BLOCK LENGTH
+constexpr static double HALF_BLOCK_SIZE = 1.0; // HALF_BLOCK LENGTH
+constexpr static double NEAR_PLANE = 0.01f;
+constexpr static double FAR_PLANE = 1000.0f;
 constexpr static int TOTAL_STEPS = 32;
-constexpr static float STEP_SIZE = 1.0;
+constexpr static double STEP_SIZE = 1.0;
 constexpr static int CHUNK_COUNTX = 4;
 constexpr static int BIOME_COUNTX = 8192;
 constexpr static int CHUNK_COUNTZ = 4;
@@ -26,9 +26,9 @@ constexpr static int BIOME_WIDTH = CHUNK_COUNTZ * BIOME_HEIGHT;
 constexpr static int CHUNK_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 constexpr static int CHUNK_LENGTH = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 
-constexpr static float OFFSET = 0.01f;
-constexpr static float PLAYER_HEIGHT = 2 * BLOCK_SIZE;
-constexpr static float GRAVITY = 0.98f;
+constexpr static double OFFSET = 0.01f;
+constexpr static double PLAYER_HEIGHT = 2 * BLOCK_SIZE;
+constexpr static double GRAVITY = 0.98f;
 constexpr static int PLAYER_COUNT = 128;
 constexpr static int MODEL_TYPES = 4;
 constexpr static int BIOME_TYPES = 4;
@@ -122,7 +122,7 @@ static std::array<std::array<BLOCK_TYPE, BIOME_BLOCK_COUNT>, BIOME_TYPES>
                             BLOCK_TYPE::SAND_BLOCK, BLOCK_TYPE::WATER_BLOCK}}}};
 
 struct PlayerState {
-  glm::vec3 pos, fwd, vel, up;
+  glm::dvec3 pos, fwd, vel, up;
 };
 
 struct WorldState {

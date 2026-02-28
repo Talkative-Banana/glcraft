@@ -28,12 +28,12 @@ public:
   Biome(int t, glm::ivec3 pos, GLboolean display);
   ~Biome();
   void SetupBiome(bool firstRun);
-  void Draw(OBJ_TYPE type, glm::vec3 cameraPos);
-  void Update_queue(glm::vec3 playerpos, glm::mat4 VP);
+  void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
+  void Update_queue(glm::dvec3 playerpos, glm::dmat4 VP);
 };
 
 struct Plane {
-  glm::vec3 normal;
+  glm::dvec3 normal;
   float d;
 
   void normalize() {
@@ -42,5 +42,5 @@ struct Plane {
     d /= len;
   }
 
-  float distance(const glm::vec3 &p) const { return glm::dot(normal, p) + d; }
+  float distance(const glm::dvec3 &p) const { return glm::dot(normal, p) + d; }
 };

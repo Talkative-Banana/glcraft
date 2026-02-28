@@ -183,20 +183,18 @@ void World::workerLoop() {
   }
 }
 
-void World::EnqueueVisibleBiomes(glm::vec3 playerpos) {
+void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
   // Do not set up for all the biomes
   int player_k = playerpos.y / BIOME_HEIGHT;
   int player_j = playerpos.z / BIOME_LENGTH;
   int player_i = playerpos.x / BIOME_LENGTH;
 
-  if (player_k >= BIOME_COUNTY) {
-    return;
-  }
-  for (uint64_t k = player_k; k >= std::max(player_k - 10, 0); k--) {
-    for (uint64_t i = std::max(0, player_i - 10);
-         i <= std::min(player_i + 10, BIOME_COUNTX - 1); i++) {
-      for (uint64_t j = std::max(0, player_j - 10);
-           j <= std::min(player_j + 10, BIOME_COUNTZ - 1); j++) {
+  for (uint64_t k = std::min(player_k, BIOME_COUNTY - 1);
+       k >= std::max(player_k - 2, 0); k--) {
+    for (uint64_t i = std::max(0, player_i - 2);
+         i <= std::min(player_i + 2, BIOME_COUNTX - 1); i++) {
+      for (uint64_t j = std::max(0, player_j - 2);
+           j <= std::min(player_j + 2, BIOME_COUNTZ - 1); j++) {
         uint64_t idx = k * (BIOME_COUNTX * BIOME_COUNTZ) + BIOME_COUNTX * i + j;
 
         glm::ivec3 biome_pos =
@@ -211,8 +209,6 @@ void World::EnqueueVisibleBiomes(glm::vec3 playerpos) {
           if (!isPresent) {
             job_queue.emplace(i, j, k, m_worldpos + biome_pos, false);
             job_scheduled.insert(idx);
-            std::cout << "Added " << i << " " << j << " " << k << " " << idx
-                      << '\n';
           }
           setup_cv.notify_one();
         }
@@ -249,7 +245,7 @@ void World::SetupBiomesPass2() {
   }
 }
 
-void World::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
+void World::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   // Do not render all the biomes just what world wants to using its
   // render_queue
   for (auto [_, b_weak] : render_queue) {
@@ -262,7 +258,7 @@ void World::Draw(OBJ_TYPE type, glm::vec3 cameraPos) {
   }
 }
 
-void World::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
+void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // Check for all the biomes in update_queue
   for (auto [_, b_weak] : render_queue) {
     if (auto biome = b_weak.lock()) {
@@ -275,7 +271,7 @@ void World::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
 
   {
     std::lock_guard<std::mutex> lock(setup_mutex);
-    job_queue.emplace(0, 0, 0, glm::vec3{}, true);
+    job_queue.emplace(0, 0, 0, glm::dvec3{}, true);
   }
 }
 
@@ -428,8 +424,8 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
         input_model_bin_file.read(reinterpret_cast<char *>(&block),
                                   sizeof(block));
         // if (!block.isSolid()) continue;
-        glm::vec3 ptr = {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE,
-                         pos.z + k * BLOCK_SIZE}; // 63 1 63
+        glm::dvec3 ptr = {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE,
+                          pos.z + k * BLOCK_SIZE}; // 63 1 63
 
         if (auto chunk = get_chunk_by_center(ptr).lock()) {
           chunk->dirtybit = 1;
