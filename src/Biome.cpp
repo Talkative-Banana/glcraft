@@ -65,8 +65,11 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
   type = t;
   Biomepos = pos;
   displaybiome = display;
-  m_id = BIOME_COUNTX * BIOME_COUNTZ * Biomepos.y + BIOME_COUNTX * Biomepos.x +
-         Biomepos.z;
+  uint64_t x = Biomepos.x / BIOME_LENGTH;
+  uint64_t y = Biomepos.y / BIOME_HEIGHT;
+  uint64_t z = Biomepos.z / BIOME_LENGTH;
+  m_id = static_cast<uint64_t>(BIOME_COUNTX * BIOME_COUNTZ) * y +
+         static_cast<uint64_t>(BIOME_COUNTX) * x + z;
 
   dirtybit = false;
   load_p(chunks, Biomepos, true, t);
@@ -80,7 +83,7 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
 
 Biome::~Biome() {
   std::cout << "Destroying Biome: " << Biomepos.x << " " << Biomepos.z << " "
-            << Biomepos.y << std::endl;
+            << Biomepos.y << " " << m_id << '\n';
 
   if (worker1.joinable())
     worker1.join();
@@ -184,15 +187,15 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
       auto chunk = chunks[i][j];
       if (!chunk)
         continue;
-      glm::vec3 cpos = chunk->chunkpos;
+      glm::ivec3 cpos = chunk->chunkpos;
 
       // Chunk center
-      glm::vec3 center =
-          cpos + glm::vec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH) / 2.0f;
+      glm::vec3 center = cpos + glm::ivec3(CHUNK_LENGTH, 0, CHUNK_LENGTH) / 2;
 
       // Distance check
-      float dx = playerpos.x - center.x, dz = playerpos.z - center.z;
-      bool inRange = (dx * dx + dz * dz) <= RENDER_DISTANCE * RENDER_DISTANCE;
+      float dx = abs(playerpos.x - center.x), dz = abs(playerpos.z - center.z);
+      bool inRange = dx <= RENDER_DISTANCE + CHUNK_LENGTH &&
+                     dz <= RENDER_DISTANCE + CHUNK_LENGTH;
 
       // If player is literally inside the chunk
       bool insideChunk =
@@ -219,11 +222,11 @@ void Biome::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
   if (!chunk_visible) {
     glm::ivec3 bps = {
         Biomepos.x / BIOME_LENGTH,
-        Biomepos.z / BIOME_LENGTH,
         Biomepos.y / BIOME_HEIGHT,
-    };
+        Biomepos.z / BIOME_LENGTH,
 
-    if (world->biomes.isPresent(this->m_id)) {
+    };
+    if (world->biomes.isPresent(m_id)) {
       // Removing chunk
       world->biomes.set(bps.x, bps.y, bps.z, nullptr);
     }

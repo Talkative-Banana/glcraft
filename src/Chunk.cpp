@@ -33,7 +33,7 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
 
   if (world->load_map.find(save_id) != world->load_map.end()) {
     // Empty Chunk
-    std::cout << "Setting A chunk with loaded ID: " << save_id << std::endl;
+    std::cout << "Setting A chunk with loaded ID: " << save_id << '\n';
     Chunk &loaded_chunk = world->load_map[save_id];
     blocks = loaded_chunk.blocks;
     dirtybit = true;

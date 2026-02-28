@@ -27,13 +27,13 @@ struct BiomeArray {
   std::vector<bptr> toRemove;
   std::mutex biome_mutex;
 
-  bptr get(uint32_t x, uint32_t y, uint32_t z) {
+  bptr get(uint64_t x, uint64_t y, uint64_t z) {
     std::lock_guard<std::mutex> lock(biome_mutex);
     auto it = BiomeMap.find(index(x, y, z));
     return it == BiomeMap.end() ? nullptr : it->second;
   }
 
-  void set(uint32_t i, uint32_t j, uint32_t k, bptr value) {
+  void set(uint64_t i, uint64_t j, uint64_t k, bptr value) {
     std::lock_guard<std::mutex> lock(biome_mutex);
     uint64_t idx = index(i, j, k);
     if (value == nullptr) {
@@ -47,7 +47,7 @@ struct BiomeArray {
     BiomeMap[idx] = std::move(value);
   }
 
-  void cleartoRemove() {
+  uint64_t cleartoRemove() {
     bptr temp;
     {
       std::lock_guard<std::mutex> lock(biome_mutex);
@@ -57,6 +57,7 @@ struct BiomeArray {
       }
     }
     // destruction happens here, outside lock
+    return temp ? temp->m_id : 0;
   }
 
   bool isPresent(uint64_t idx) {
@@ -65,12 +66,14 @@ struct BiomeArray {
   }
 
 private:
-  uint64_t index(uint32_t x, uint32_t y, uint32_t z) const {
+  uint64_t index(uint64_t x, uint64_t y, uint64_t z) const {
     return BIOME_COUNTX * BIOME_COUNTZ * y + BIOME_COUNTX * x + z;
   }
 };
 
 class World {
+  friend class BiomeArray;
+
 private:
   int m_seed;
   glm::ivec3 m_worldpos;
@@ -78,24 +81,25 @@ private:
   std::unordered_map<uint64_t, std::weak_ptr<Biome>> render_queue;
   std::queue<std::weak_ptr<Biome>> setup_queue;
   std::queue<std::weak_ptr<Biome>> rerender_queue;
-  std::set<GLuint64> job_scheduled;
+  std::set<uint64_t> job_scheduled;
   void workerLoop();
   std::thread worker;
-  std::atomic<bool> running{true};
+  std::atomic<bool> m_running{true};
   std::atomic<bool> run_rerender_task{false};
 
   std::mutex setup_mutex;
   std::condition_variable setup_cv;
 
-  std::queue<std::tuple<int, int, int, glm::ivec3>> job_queue;
+  std::queue<std::tuple<int, int, int, glm::ivec3, bool>> job_queue;
 
 public:
   BiomeArray biomes;
   std::unordered_map<uint, Chunk> load_map;
   std::mutex biome_mutex;
-  std::unordered_map<uint, std::shared_ptr<Chunk>> save_map;
+  std::unordered_map<uint, std::weak_ptr<Chunk>> save_map;
   std::queue<std::weak_ptr<Biome>> bind_queue;
   World(int, const glm::ivec3 &);
+  ~World();
   void EnqueueVisibleBiomes(glm::vec3);
   bool isSolid(const glm::ivec3 &);
   bool isStandable(const glm::ivec3 &);

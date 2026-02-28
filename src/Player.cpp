@@ -237,7 +237,7 @@ void Player::handle_input(float dt) {
 
     if (ray.did_hit(world)) { // Remove a block
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
-                << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
+                << ray.m_hitcords.y << " " << ray.m_hitcords.z << '\n';
       auto block = world->get_block_by_center(ray.m_hitcords);
       if (block)
         block->remove();
@@ -275,7 +275,7 @@ void Player::handle_input(float dt) {
 
     if (ray.did_hit(world)) {
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
-                << ray.m_hitcords.y << " " << ray.m_hitcords.z << std::endl;
+                << ray.m_hitcords.y << " " << ray.m_hitcords.z << '\n';
       glm::ivec3 prev_blk = ray.m_hitcordsprev;
       glm::ivec3 hit_blk = ray.m_hitcords;
       auto hitblk = world->get_block_by_center(hit_blk);

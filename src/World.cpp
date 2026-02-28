@@ -20,10 +20,19 @@ World::World(int seed, const glm::ivec3 &pos) : m_seed(seed), m_worldpos(pos) {
     Chunk chunk;
     if (!chunk.Deserialize(input_bin_file))
       break;
-    std::cout << "Loaded a chunk with ID: " << chunk.save_id << std::endl;
+    std::cout << "Loaded a chunk with ID: " << chunk.save_id << '\n';
     load_map[chunk.save_id] = std::move(chunk);
   }
 };
+
+World::~World() {
+  m_running = false;
+  setup_cv.notify_all();
+
+  if (worker.joinable()) {
+    worker.join();
+  }
+}
 
 Block *World::get_block_by_center(const glm::ivec3 &pos) {
   // get the biome
@@ -136,28 +145,40 @@ bool World::isVisible(const glm::ivec3 &pos) {
 }
 
 void World::workerLoop() {
-  while (running) {
-    std::unique_lock<std::mutex> lock(setup_mutex);
-    setup_cv.wait(lock, [this] { return !job_queue.empty() || !running; });
-
-    if (!running) {
-      lock.unlock();
-      break;
-    }
-
-    auto &[i, j, k, pos] = job_queue.front();
-    job_queue.pop();
-    lock.unlock();
-
-    // heavy work outside lock
-    if (biomes.get(i, k, j))
-      continue;
-    auto biome = std::make_shared<Biome>(0, pos, true);
-
+  while (m_running) {
+    // Add and Remove Biome
     {
-      std::lock_guard<std::mutex> g(setup_mutex);
-      biomes.set(i, k, j, biome);
-      setup_queue.push(biome);
+      std::unique_lock<std::mutex> lock(setup_mutex);
+      setup_cv.wait(lock, [this] { return !job_queue.empty() || !m_running; });
+      if (!m_running) {
+        lock.unlock();
+        break;
+      }
+      auto [i, j, k, pos, isremove] = job_queue.front();
+      job_queue.pop();
+      lock.unlock();
+
+      if (isremove) {
+        // Remove all of the unwanted biomes
+        uint64_t id = biomes.cleartoRemove();
+        if (id) {
+          std::lock_guard<std::mutex> lck(setup_mutex);
+          job_scheduled.erase(id);
+          render_queue.erase(id);
+        }
+        continue; // Was a deletion request
+      }
+
+      // heavy work outside lock
+      if (biomes.get(i, k, j))
+        continue;
+      auto biome = std::make_shared<Biome>(0, pos, true);
+
+      {
+        std::lock_guard<std::mutex> g(setup_mutex);
+        biomes.set(i, k, j, biome);
+        setup_queue.push(biome);
+      }
     }
   }
 }
@@ -171,26 +192,27 @@ void World::EnqueueVisibleBiomes(glm::vec3 playerpos) {
   if (player_k >= BIOME_COUNTY) {
     return;
   }
-  for (int k = player_k; k >= std::max(player_k - 10, 0); k--) {
-    for (int i = std::max(0, player_i - 10);
+  for (uint64_t k = player_k; k >= std::max(player_k - 10, 0); k--) {
+    for (uint64_t i = std::max(0, player_i - 10);
          i <= std::min(player_i + 10, BIOME_COUNTX - 1); i++) {
-      for (int j = std::max(0, player_j - 10);
+      for (uint64_t j = std::max(0, player_j - 10);
            j <= std::min(player_j + 10, BIOME_COUNTZ - 1); j++) {
-        uint32_t idx = k * (BIOME_COUNTX * BIOME_COUNTZ) + BIOME_COUNTX * i + j;
+        uint64_t idx = k * (BIOME_COUNTX * BIOME_COUNTZ) + BIOME_COUNTX * i + j;
 
         glm::ivec3 biome_pos =
             glm::ivec3(BIOME_LENGTH * i, BIOME_HEIGHT * k, BIOME_LENGTH * j);
-        int X = abs(biome_pos.x - playerpos.x),
-            Z = abs(biome_pos.z - playerpos.z),
-            Y = abs(biome_pos.y - playerpos.y);
-        if (((X <= RENDER_DISTANCE) && (Z <= RENDER_DISTANCE) &&
-             (Y <= CHUNK_HEIGHT * 2)) &&
-            (job_scheduled.find(idx) == job_scheduled.end())) {
+        bool insideX = abs(biome_pos.x - playerpos.x) <= RENDER_DISTANCE,
+             insideZ = abs(biome_pos.z - playerpos.z) <= RENDER_DISTANCE,
+             insideY = abs(biome_pos.y - playerpos.y) <= CHUNK_HEIGHT * 2;
+        if (insideX && insideZ && insideY) {
+          std::lock_guard<std::mutex> lock(setup_mutex);
+          bool isPresent = job_scheduled.find(idx) != job_scheduled.end();
           // Costly move it to a seprate thread
-          {
-            std::lock_guard<std::mutex> lock(setup_mutex);
-            job_queue.emplace(i, j, k, m_worldpos + biome_pos);
+          if (!isPresent) {
+            job_queue.emplace(i, j, k, m_worldpos + biome_pos, false);
             job_scheduled.insert(idx);
+            std::cout << "Added " << i << " " << j << " " << k << " " << idx
+                      << '\n';
           }
           setup_cv.notify_one();
         }
@@ -251,8 +273,10 @@ void World::Update_queue(glm::vec3 playerpos, glm::mat4 VP) {
     }
   }
 
-  // Remove all of the unwanted biomes
-  biomes.cleartoRemove();
+  {
+    std::lock_guard<std::mutex> lock(setup_mutex);
+    job_queue.emplace(0, 0, 0, glm::vec3{}, true);
+  }
 }
 
 void World::DoBindTask(bool firstRun) {
@@ -467,7 +491,7 @@ void World::save(std::string _save_file) {
             if (!chunk || !chunk->dirtybit)
               continue;
             std::cout << "Saving chunk with ID: " << i << " " << j << " " << k
-                      << " " << l << std::endl;
+                      << " " << l << '\n';
             save_map[chunk->save_id] = chunk;
           }
         }
@@ -477,9 +501,11 @@ void World::save(std::string _save_file) {
   int count = save_map.size();
   save_file.write(reinterpret_cast<char *>(&count), sizeof(count));
   std::cout << "Saving " << count << " chunks\n";
-  for (auto [id, chunk] : save_map) {
-    std::cout << "Saving chunk with ID: " << id << std::endl;
-    chunk->Serialize(save_file);
+  for (auto [id, chunk_weak] : save_map) {
+    std::cout << "Saving chunk with ID: " << id << '\n';
+    if (auto chunk = chunk_weak.lock()) {
+      chunk->Serialize(save_file);
+    }
   }
   std::cout << "Game Saved\n";
 }
