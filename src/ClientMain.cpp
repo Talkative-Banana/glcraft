@@ -55,8 +55,6 @@ GLint chunkpos_uniform = -1;
 GLint vColor_uniform = -1;
 GLint vVertex_attrib = -1;
 GLint vNormal_attrib = -1;
-GLint cameraPos_uniform = -1;
-GLint lightpos_uniform = -1;
 GLint atlas_uniform = -1;
 GLint ui_uniform = -1;
 GLint skyColor_uniform = -1;
@@ -64,8 +62,8 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
-glm::mat4 modelT, viewT,
-    projectionT; // The model, view and projection transformations
+// The model, view and projection transformations
+glm::dmat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
@@ -89,25 +87,6 @@ void bind_uniforms() {
     vNormal_attrib = glGetAttribLocation(shaderProgram2, "vNormal");
     if (vNormal_attrib == -1) {
       std::cout << "Could not bind location: vNormal\n";
-      exit(0);
-    }
-  }
-
-  // Get handle to eye normal variable in shader
-  if (cameraPos_uniform == -1) {
-    cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
-    if (cameraPos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting "
-                      "Switched Off.\n");
-      exit(0);
-    }
-  }
-
-  // Moved outside of loop
-  if (lightpos_uniform == -1) {
-    lightpos_uniform = glGetUniformLocation(shaderProgram2, "lightpos");
-    if (lightpos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: lightpos\n");
       exit(0);
     }
   }
@@ -198,14 +177,15 @@ void updatePlayer(const std::string &msg) {
     if ((st.id == activePlayer) && (st.enforce)) {
       return; // do not update my world state alreay did
     }
-    auto chunk = world->get_chunk_by_center(wst.blockpos);
-    if (chunk && chunk->chunkva) {
-      // check if block within render distance
-      world->handleNetworkRequest(wst);
-    } else {
-      // if not will apply change when block within render distance
-      std::cout << "Skipping update chunk not loaded yet\n";
-      client_operations.push_back(wst);
+    if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
+      if (chunk && chunk->chunkva) {
+        // check if block within render distance
+        world->handleNetworkRequest(wst);
+      } else {
+        // if not will apply change when block within render distance
+        std::cout << "Skipping update chunk not loaded yet\n";
+        client_operations.push_back(wst);
+      }
     }
   } else {
     std::cerr << "Invalid State Message\n";
@@ -333,13 +313,16 @@ int main(int, char **) {
     player->update(dt);
 
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
+
     auto playerdir = players[activePlayer]
                          ->m_cameracontroller->GetCamera()
                          ->GetOrientation();
 
-    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
-    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
-    auto playervp =
+    sf::Listener::setPosition(
+        {float(playerpos.x), float(playerpos.y), float(playerpos.z)});
+    sf::Listener::setDirection(
+        {float(playerdir.x), float(playerdir.y), float(playerdir.z)});
+    glm::dmat4 playervp =
         player->m_cameracontroller->GetCamera()->GetProjectionViewMatrix();
 
     {
@@ -355,24 +338,29 @@ int main(int, char **) {
       auto &wst = client_operations[i];
       auto chunk = world->get_chunk_by_center(wst.blockpos);
 
-      if (chunk && chunk->chunkva) {
-        world->handleNetworkRequest(wst);
+      if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
+        if (chunk && chunk->chunkva) {
+          world->handleNetworkRequest(wst);
 
-        std::swap(client_operations[i], client_operations.back());
-        client_operations.pop_back();
-      } else {
-        ++i;
+          std::swap(client_operations[i], client_operations.back());
+          client_operations.pop_back();
+        } else {
+          ++i;
+        }
       }
     }
     // World Calculations
-    world->SetupWorld(playerpos);
-    // Render first pass
-    world->RenderWorld(true);
+    world->EnqueueVisibleBiomes(playerpos);
+
+    // Setup biomes [first pass]
+    world->SetupBiomesPass1();
+
     // Do Binding for first pass
     world->DoBindTask(true);
 
-    // Render second pass
-    world->RenderWorld(false);
+    // Setup biomes [second pass]
+    world->SetupBiomesPass2();
+
     // Do Binding for second pass
     world->DoBindTask(false);
 
@@ -423,14 +411,14 @@ int main(int, char **) {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
-    world->Draw(OBJ_TYPE::OPAQUE_);
+    world->Draw(OBJ_TYPE::OPAQUE_, playerpos);
 
     // TRANSPARENT PASS
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    world->Draw(OBJ_TYPE::TRANSPARENT_);
+    world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
 
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
@@ -442,24 +430,22 @@ int main(int, char **) {
     water_ps->Draw(dt);
 
     if (world->getWeather() == WEATHER::HAILSTORM) {
-        rain_ps->Draw(dt);
-        if (thundersound.getSoundStatus() == SOUNDSTATUS::PAUSED)
-            thundersound.get_sound().play();
-        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
-            blizzardsound.get_sound().pause();
-    }
-    else if (world->getWeather() == WEATHER::SNOWSTORM) {
-        snow_ps->Draw(dt);
-        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PAUSED)
-            blizzardsound.get_sound().play();
-        if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
-            thundersound.get_sound().pause();
-    }
-    else {
-        if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
-            blizzardsound.get_sound().pause();
-        if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
-            thundersound.get_sound().pause();
+      rain_ps->Draw(dt);
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PAUSED)
+        thundersound.get_sound().play();
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+        blizzardsound.get_sound().pause();
+    } else if (world->getWeather() == WEATHER::SNOWSTORM) {
+      snow_ps->Draw(dt);
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PAUSED)
+        blizzardsound.get_sound().play();
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+        thundersound.get_sound().pause();
+    } else {
+      if (blizzardsound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+        blizzardsound.get_sound().pause();
+      if (thundersound.getSoundStatus() == SOUNDSTATUS::PLAYING)
+        thundersound.get_sound().pause();
     }
 
     // UI PASS (Keep it at last)

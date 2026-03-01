@@ -4,7 +4,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <unordered_set>
+#include <unordered_map>
 
 #include "Chunk.h"
 #include "Constants.hpp"
@@ -16,23 +16,29 @@ private:
   int type;
   GLboolean displaybiome;
 
+  void allocate_chunks();
+  void setup_chunks(bool firstRun);
+
 public:
-  GLuint x_cord, z_cord;
+  uint64_t m_id;
   glm::ivec3 Biomepos;
+  std::atomic_bool m_running{true};
   std::thread worker1, worker2;
   std::atomic<int> chunks_ready{0};
   GLboolean dirtybit, isrerenderiter;
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
       chunks;
-  std::unordered_set<std::shared_ptr<Chunk>> render_queue;
+  std::unordered_map<uint64_t, std::weak_ptr<Chunk>> render_queue;
   Biome(int t, glm::ivec3 pos, GLboolean display);
-  void RenderBiome(bool firstRun);
-  void Draw(OBJ_TYPE type);
-  void Update_queue(glm::vec3 playerpos, glm::mat4 VP);
+  ~Biome();
+  void SetupBiome(bool firstRun);
+  void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
+  void Update_queue(glm::dvec3 playerpos, glm::dmat4 VP);
+  void save(std::string);
 };
 
 struct Plane {
-  glm::vec3 normal;
+  glm::dvec3 normal;
   float d;
 
   void normalize() {
@@ -41,5 +47,5 @@ struct Plane {
     d /= len;
   }
 
-  float distance(const glm::vec3 &p) const { return glm::dot(normal, p) + d; }
+  float distance(const glm::dvec3 &p) const { return glm::dot(normal, p) + d; }
 };

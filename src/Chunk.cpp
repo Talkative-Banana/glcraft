@@ -20,24 +20,26 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   type = _type;
   biomepos = _biomepos;
   displaychunk = display;
-  uint biome_uq_id = BIOME_COUNTZ * _biomepos.x + _biomepos.z;
+  int i = abs(_biomepos.x / (BIOME_LENGTH));
+  int j = abs(_biomepos.z / (BIOME_LENGTH));
+  int k = abs(_biomepos.y) / (BIOME_HEIGHT);
+  uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   save_id =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
-  chunkpos = glm::vec3(
-      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id / CHUNK_COUNTX) + biomepos.x, 0.0,
-      CHUNK_BLOCK_COUNT * BLOCK_SIZE * (id % CHUNK_COUNTZ) + biomepos.z);
+  chunkpos =
+      glm::ivec3(CHUNK_LENGTH * (id / CHUNK_COUNTX) + biomepos.x, biomepos.y,
+                 CHUNK_LENGTH * (id % CHUNK_COUNTZ) + biomepos.z);
 
   if (world->load_map.find(save_id) != world->load_map.end()) {
     // Empty Chunk
-    std::cout << "Setting A chunk with loaded ID: " << save_id << std::endl;
+    std::cout << "Setting A chunk with loaded ID: " << save_id << '\n';
     Chunk &loaded_chunk = world->load_map[save_id];
     blocks = loaded_chunk.blocks;
     dirtybit = true;
   } else {
-    Setup_Landscape(
-        position.x + (_biomepos.z / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)),
-        position.z + (_biomepos.x / (CHUNK_BLOCK_COUNT * BLOCK_SIZE)));
+    Setup_Landscape(position.x + (_biomepos.z / (CHUNK_LENGTH)),
+                    position.z + (_biomepos.x / (CHUNK_LENGTH)));
     dirtybit = false;
   }
 }
@@ -129,6 +131,21 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
 }
 
 void Chunk::Setup_Landscape(GLint X, GLint Z) {
+  // Early return
+  if (chunkpos.y != ((BIOME_COUNTY - 1) * CHUNK_HEIGHT)) {
+    for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
+      for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
+        for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
+          glm::ivec3 ofs = {z, y, x};
+          auto &biome_bltypes = BIOME_BLOCK_TYPES[type];
+          BLOCK_TYPE &bltype = biome_bltypes[3];
+          blocks[z][y][x] = Block(std::move(ofs), true, bltype);
+        }
+      }
+    }
+    return;
+  }
+
   // Generate a random seed
   int randomSeed = world->getSeed();
 
@@ -181,13 +198,11 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
         glm::ivec3 ofs = {z, y, x};
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
         BLOCK_TYPE bltype;
-        if (y == 0) {
-          bltype = BLOCK_TYPE::BEDROCK_BLOCK; // BASE Block BEDROCK
-        } else if (y == height - 1) {
+        if (y == height - 1) {
           if (y <= 10) {
             bltype = biome_bltypes[2]; // Depth top block GRAVEL
           } else if (y <= 15) {
-            bltype = biome_bltypes[4]; // Depth top middle block DIRT
+            bltype = biome_bltypes[4]; // Depth top middle block SAND
           } else {
             bltype = biome_bltypes[0]; // Top Block GRASS
           }
@@ -212,9 +227,9 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   // if (!displaychunk) return;
   // Render OPAQUE blocks
   {
-    rendervert.clear();
-    cube_vertices.clear();
-    cube_indices.clear();
+    rendervert.resize(0);
+    cube_vertices.resize(0);
+    cube_indices.resize(0);
     count = 0;
     GLuint idx = 0;
 
@@ -364,9 +379,9 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
   // Render transparent blocks
   {
-    renderverttrans.clear();
-    cube_verticestrans.clear();
-    cube_indicestrans.clear();
+    renderverttrans.resize(0);
+    cube_verticestrans.resize(0);
+    cube_indicestrans.resize(0);
     counttrans = 0;
     GLuint idx = 0;
 
@@ -510,12 +525,13 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   }
 }
 
-void Chunk::Draw(OBJ_TYPE type) {
+void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   if (!displaychunk)
     return;
   if (type == OBJ_TYPE::OPAQUE_) {
     chunkva->Bind();
-    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    glUniform3f(chunkpos_uniform, chunkpos.x - cameraPos.x,
+                chunkpos.y - cameraPos.y, chunkpos.z - cameraPos.z);
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       glDrawElements(GL_LINES, cntblocks, GL_UNSIGNED_INT, nullptr);
@@ -529,7 +545,9 @@ void Chunk::Draw(OBJ_TYPE type) {
     chunkva->Unbind();
   } else if (type == OBJ_TYPE::TRANSPARENT_) {
     chunkvatrans->Bind();
-    glUniform3f(chunkpos_uniform, chunkpos.x, chunkpos.y, chunkpos.z);
+    glUniform3f(chunkpos_uniform, chunkpos.x - cameraPos.x,
+                chunkpos.y - cameraPos.y, chunkpos.z - cameraPos.z);
+
     if (wireframemode) {
       // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
       glDrawElements(GL_LINES, cntblockstrans, GL_UNSIGNED_INT, nullptr);

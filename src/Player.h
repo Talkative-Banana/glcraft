@@ -18,9 +18,8 @@ extern std::unique_ptr<World> world;
 extern std::unique_ptr<AssetManager> asset_manager;
 extern GLuint activePlayer, players_cnt, shaderProgram, shaderProgram2;
 extern GLint vModel_uniform, vView_uniform, vProjection_uniform, side_uniform,
-    chunkpos_uniform, vColor_uniform, atlas_uniform, lightpos_uniform,
-    cameraPos_uniform;
-extern glm::mat4 modelT, viewT,
+    chunkpos_uniform, vColor_uniform, atlas_uniform;
+extern glm::dmat4 modelT, viewT, viewRotateT,
     projectionT; // The model, view and projection transformations
 extern ImVec4 clearColor;
 extern std::vector<std::shared_ptr<Mesh>> meshes;
@@ -43,7 +42,7 @@ public:
   void handleNetworkRequest(PlayerState &st);
   void handle_transformations();
   void setupModelTransformationCube(unsigned int &);
-  void setupModelTransformationAxis(unsigned int &, float, glm::vec3);
+  void setupModelTransformationAxis(unsigned int &, double, glm::dvec3);
   void setupViewTransformation(unsigned int &,
                                std::unique_ptr<CameraController> &);
   void setupProjectionTransformation(unsigned int &,
@@ -54,14 +53,17 @@ public:
   BLOCK_TYPE InsideBlock();
 
 private:
-  glm::vec3 m_position = glm::vec3(70.0, 100.0, 85.0);
-  glm::vec3 m_forward = glm::vec3(0.0, 0.0, 1.0);
-  glm::vec3 m_velocity = glm::vec3(0.0, 0.0, 0.0);
-  glm::vec3 m_up = glm::vec3(0.0, 1.0, 0.0);
-  float m_speed = WALKING_SPEED;
-  float m_sensitivity = 0.002f;
-  glm::vec2 MousePos = {0.0f, 0.0f};
-  bool enable_gravity = 1;
+  glm::dvec3 m_position = glm::dvec3(BIOME_COUNTX * CHUNK_LENGTH / 2.0,
+                                     (BIOME_COUNTY + 1) * CHUNK_HEIGHT,
+                                     BIOME_COUNTX *CHUNK_LENGTH / 2.0);
+
+  glm::dvec3 m_forward = glm::dvec3(0.0, 0.0, 1.0);
+  glm::dvec3 m_velocity = glm::dvec3(0.0, 0.0, 0.0);
+  glm::dvec3 m_up = glm::dvec3(0.0, 1.0, 0.0);
+  double m_speed = WALKING_SPEED;
+  double m_sensitivity = 0.002f;
+  glm::dvec2 MousePos = {0.0f, 0.0f};
+  bool enable_gravity = 0;
   char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
   char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};
   int display_w, display_h;

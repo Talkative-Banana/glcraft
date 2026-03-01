@@ -12,7 +12,7 @@ private:
         m_velyfac = -800.0f, m_initialsize = 256.0f;
 
 public:
-  RainEffect(uint32_t);
+  explicit RainEffect(uint32_t);
   virtual ~RainEffect() = default;
   virtual void run(float);
   virtual void setup();

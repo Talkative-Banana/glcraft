@@ -5,13 +5,10 @@ FILE *AssetManager::LoadModel(const char *path) {
   return file;
 }
 
-uint64_t AssetManager::loadMeshObject(
-    const char *modelpath,
-    unsigned int shaderProgram,
-    float scale,
-    float angle,
-    glm::vec3 pos,
-    glm::vec3 axis) {
+uint64_t AssetManager::loadMeshObject(const char *modelpath,
+                                      unsigned int shaderProgram, double scale,
+                                      double angle, glm::dvec3 pos,
+                                      glm::dvec3 axis) {
   std::vector<int> vertex_indices, uv_indices, normal_indices;
   std::vector<glm::vec3> temp_vertices;
   std::vector<glm::vec2> temp_uvs;
@@ -28,7 +25,8 @@ uint64_t AssetManager::loadMeshObject(
     char head[128];
     // read the first word of the line
     int res = fscanf(file, "%s", head);
-    if (res == EOF) break;  // EOF = End Of File. Quit the loop.
+    if (res == EOF)
+      break; // EOF = End Of File. Quit the loop.
 
     if (strcmp(head, "v") == 0) {
       glm::vec3 vertex;
@@ -55,18 +53,10 @@ uint64_t AssetManager::loadMeshObject(
       int vertexIndex[3], uvIndex[3], normalIndex[3];
       long int pos = ftell(file);
       // Try to read faces in the format of v/t/n
-      int matches = fscanf(
-          file,
-          "%d/%d/%d %d/%d/%d %d/%d/%d\n",
-          &vertexIndex[0],
-          &uvIndex[0],
-          &normalIndex[0],
-          &vertexIndex[1],
-          &uvIndex[1],
-          &normalIndex[1],
-          &vertexIndex[2],
-          &uvIndex[2],
-          &normalIndex[2]);
+      int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
+                           &vertexIndex[0], &uvIndex[0], &normalIndex[0],
+                           &vertexIndex[1], &uvIndex[1], &normalIndex[1],
+                           &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
 
       if (matches == 9) {
         vertex_indices.push_back(vertexIndex[0]);
@@ -83,15 +73,9 @@ uint64_t AssetManager::loadMeshObject(
         fseek(file, pos, SEEK_SET);
 
         // Try to read faces in the format of v//n
-        matches = fscanf(
-            file,
-            "%d//%d %d//%d %d//%d\n",
-            &vertexIndex[0],
-            &normalIndex[0],
-            &vertexIndex[1],
-            &normalIndex[1],
-            &vertexIndex[2],
-            &normalIndex[2]);
+        matches = fscanf(file, "%d//%d %d//%d %d//%d\n", &vertexIndex[0],
+                         &normalIndex[0], &vertexIndex[1], &normalIndex[1],
+                         &vertexIndex[2], &normalIndex[2]);
 
         if (matches == 6) {
           vertex_indices.push_back(vertexIndex[0]);
@@ -110,7 +94,8 @@ uint64_t AssetManager::loadMeshObject(
   fclose(file);
 
   std::vector<float> shape_vertices(vertex_indices.size() * 3),
-      vertex_normals(normal_indices.size() * 3), uv_normals(uv_indices.size() * 3);
+      vertex_normals(normal_indices.size() * 3),
+      uv_normals(uv_indices.size() * 3);
 
   // vertex_indices => consecutive three triangle coords
   for (size_t i = 0; i < vertex_indices.size(); i++) {
@@ -120,13 +105,12 @@ uint64_t AssetManager::loadMeshObject(
     shape_vertices[i * 3 + 2] = temp_vertices[vertex_index - 1][2];
   }
 
-
   // generated normals for the triangle mesh
   for (int i = 0; i < vertex_indices.size(); i += 3) {
-    glm::vec3 v1 = glm::vec3(
-        shape_vertices[(i + 1) * 3] - shape_vertices[i * 3],
-        shape_vertices[(i + 1) * 3 + 1] - shape_vertices[i * 3 + 1],
-        shape_vertices[(i + 1) * 3 + 2] - shape_vertices[i * 3 + 2]);
+    glm::vec3 v1 =
+        glm::vec3(shape_vertices[(i + 1) * 3] - shape_vertices[i * 3],
+                  shape_vertices[(i + 1) * 3 + 1] - shape_vertices[i * 3 + 1],
+                  shape_vertices[(i + 1) * 3 + 2] - shape_vertices[i * 3 + 2]);
     glm::vec3 v2 = glm::vec3(
         shape_vertices[(i + 2) * 3] - shape_vertices[(i + 1) * 3],
         shape_vertices[(i + 2) * 3 + 1] - shape_vertices[(i + 1) * 3 + 1],
@@ -148,14 +132,15 @@ uint64_t AssetManager::loadMeshObject(
   std::vector<AssetVertex> vertices;
 
   for (int i = 0; i < vertex_indices.size(); i++) {
-    vertices.push_back(
-        {{shape_vertices[i * 3], shape_vertices[i * 3 + 1], shape_vertices[i * 3 + 2]},
-         {vertex_normals[i * 3], vertex_normals[i * 3 + 1], vertex_normals[i * 3 + 2]}});
+    vertices.push_back({{shape_vertices[i * 3], shape_vertices[i * 3 + 1],
+                         shape_vertices[i * 3 + 2]},
+                        {vertex_normals[i * 3], vertex_normals[i * 3 + 1],
+                         vertex_normals[i * 3 + 2]}});
   }
 
   static glm::uint64 handle = 1;
-  std::shared_ptr<Mesh> mesh =
-      std::make_shared<Mesh>(std::move(vertices), shaderProgram, scale, angle, pos, axis);
+  std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(
+      std::move(vertices), shaderProgram, scale, angle, pos, axis);
   m_assets.emplace(++handle, mesh);
 
   return handle;

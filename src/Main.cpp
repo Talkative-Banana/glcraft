@@ -42,7 +42,7 @@ std::unique_ptr<ParticleSystem> water_ps, smoke_ps, snow_ps, rain_ps;
 std::unique_ptr<SoundSystem> ss = nullptr;
 std::unique_ptr<World> world = nullptr;
 std::unique_ptr<Window> _window = nullptr;
-glm::vec3 chunkpos;
+glm::dvec3 chunkpos;
 GLuint activePlayer, players_cnt = 2;
 GLint vModel_uniform = -1;
 GLint vView_uniform = -1;
@@ -52,8 +52,6 @@ GLint chunkpos_uniform = -1;
 GLint vColor_uniform = -1;
 GLint vVertex_attrib = -1;
 GLint vNormal_attrib = -1;
-GLint cameraPos_uniform = -1;
-GLint lightpos_uniform = -1;
 GLint atlas_uniform = -1;
 GLint ui_uniform = -1;
 GLint skyColor_uniform = -1;
@@ -61,7 +59,7 @@ GLint quadpos_uniform = -1;
 GLint uProjLoc_uniform = -1;
 GLuint wireframemode, shaderProgram, shaderProgram2, shaderProgramUI,
     shaderProgramPS;
-glm::mat4 modelT, viewT,
+glm::dmat4 modelT, viewT, viewRotateT,
     projectionT; // The model, view and projection transformations
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
@@ -183,25 +181,6 @@ void bind_uniforms() {
     }
   }
 
-  // Get handle to eye normal variable in shader
-  if (cameraPos_uniform == -1) {
-    cameraPos_uniform = glGetUniformLocation(shaderProgram2, "cameraPos");
-    if (cameraPos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: cameraPos. Specular Lighting "
-                      "Switched Off.\n");
-      exit(0);
-    }
-  }
-
-  // Moved outside of loop
-  if (lightpos_uniform == -1) {
-    lightpos_uniform = glGetUniformLocation(shaderProgram2, "lightpos");
-    if (lightpos_uniform == -1) {
-      fprintf(stderr, "Could not bind location: lightpos\n");
-      exit(0);
-    }
-  }
-
   if (side_uniform == -1) {
     side_uniform = glGetUniformLocation(shaderProgram, "side");
     if (side_uniform == -1) {
@@ -268,6 +247,10 @@ void bind_uniforms() {
 }
 
 int main(int, char **) {
+
+  std::cout << "Size of a block: " << sizeof(Block) << '\n';
+  std::cout << "Size of a chunk: " << sizeof(Chunk) << '\n';
+  std::cout << "Size of a biome: " << sizeof(Biome) << '\n';
   // Setup window
   _window = std::make_unique<Window>(SCREEN_WIDTH, SCREEN_HEIGHT);
   ImGuiIO &io = ImGui::GetIO(); // Create IO
@@ -385,25 +368,31 @@ int main(int, char **) {
                          ->m_cameracontroller->GetCamera()
                          ->GetOrientation();
 
-    sf::Listener::setPosition({playerpos.x, playerpos.y, playerpos.z});
-    sf::Listener::setDirection({playerdir.x, playerdir.y, playerdir.z});
-    auto playervp = players[activePlayer]
-                        ->m_cameracontroller->GetCamera()
-                        ->GetProjectionViewMatrix();
+    sf::Listener::setPosition(
+        {float(playerpos.x), float(playerpos.y), float(playerpos.z)});
+    sf::Listener::setDirection(
+        {float(playerdir.x), float(playerdir.y), float(playerdir.z)});
+    glm::dmat4 playervp = players[activePlayer]
+                              ->m_cameracontroller->GetCamera()
+                              ->GetProjectionViewMatrix();
     // World Calculations
-    world->SetupWorld(playerpos);
-    // Render first pass
-    world->RenderWorld(true);
+    world->EnqueueVisibleBiomes(playerpos);
+
+    // Setup biomes [first pass]
+    world->SetupBiomesPass1();
+
     // Do Binding for first pass
     world->DoBindTask(true);
 
-    // Render second pass
-    world->RenderWorld(false);
+    // Setup biomes [second pass]
+    world->SetupBiomesPass2();
+
     // Do Binding for second pass
     world->DoBindTask(false);
 
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
+
     atlas.Bind();
     glUniform1i(atlas_uniform, 0); // bind sampler to texture unit 0
     // skyColor.Bind();
@@ -449,14 +438,14 @@ int main(int, char **) {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
-    world->Draw(OBJ_TYPE::OPAQUE_);
+    world->Draw(OBJ_TYPE::OPAQUE_, playerpos);
 
     // TRANSPARENT PASS
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    world->Draw(OBJ_TYPE::TRANSPARENT_);
+    world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
 
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);

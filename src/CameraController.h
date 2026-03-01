@@ -4,13 +4,14 @@
 #include "Main.h"
 
 class CameraController {
- private:
-  float m_AspectRatio;
+private:
+  double m_AspectRatio;
   Camera *m_Camera = nullptr;
 
- public:
-  void UpdateCamera(glm::vec3 pos, glm::vec3 dir);
+public:
+  void UpdateCamera(glm::dvec3 pos, glm::dvec3 dir);
   Camera *GetCamera();
-  CameraController(float aspectratio);
-  void SetAspectRatio(float aspectratio);
+  CameraController(double aspectratio);
+  ~CameraController();
+  void SetAspectRatio(double aspectratio);
 };
