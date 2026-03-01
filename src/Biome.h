@@ -34,6 +34,7 @@ public:
   void SetupBiome(bool firstRun);
   void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
   void Update_queue(glm::dvec3 playerpos, glm::dmat4 VP);
+  void save(std::string);
 };
 
 struct Plane {

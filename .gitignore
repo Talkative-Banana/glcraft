@@ -10,6 +10,7 @@ GLCraft.exemaps/
 maps/*
 perf*
 save/*.bin
+save/tmp/*.bin
 .vs*/
 Debug/
 Release/

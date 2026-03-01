@@ -16,6 +16,7 @@
 #include "UI.h"
 #include "Utils.h"
 #include "VertexArray.h"
+#include <filesystem>
 
 #ifdef BUILD_SERVER
 extern std::vector<std::string> world_operations;
@@ -56,6 +57,10 @@ struct BiomeArray {
         toRemove.pop_back();
       }
     }
+    // if dirty dump and store to disk
+    if (temp && temp->dirtybit) {
+      temp->save(std::to_string(temp->m_id));
+    }
     // destruction happens here, outside lock
     return temp ? temp->m_id : 0;
   }
@@ -65,7 +70,6 @@ struct BiomeArray {
     return BiomeMap.find(idx) != BiomeMap.end();
   }
 
-private:
   uint64_t index(uint64_t x, uint64_t y, uint64_t z) const {
     return BIOME_COUNTX * BIOME_COUNTZ * y + BIOME_COUNTX * x + z;
   }

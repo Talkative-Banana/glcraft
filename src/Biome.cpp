@@ -238,3 +238,26 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
     }
   }
 }
+
+void Biome::save(std::string _save_file) {
+  std::string path = "save/tmp/" + _save_file + ".bin";
+  std::ofstream save_file(path.c_str(), std::ios::binary | std::ios::trunc);
+  // Save All the dirty chunks
+  for (int k = 0; k < CHUNK_COUNTZ; k++) {
+    for (int l = 0; l < CHUNK_COUNTX; l++) {
+      auto chunk = chunks[k][l];
+      if (!chunk || !chunk->dirtybit)
+        continue;
+      world->save_map.emplace(chunk->save_id, chunk);
+    }
+  }
+
+  int count = world->save_map.size();
+  save_file.write(reinterpret_cast<char *>(&count), sizeof(count));
+  for (auto [id, chunk_weak] : world->save_map) {
+    if (auto chunk = chunk_weak.lock()) {
+      chunk->Serialize(save_file);
+    }
+  }
+  std::cout << "Biome Saved\n";
+}

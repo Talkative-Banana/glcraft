@@ -21,7 +21,7 @@ World::World(int seed, const glm::ivec3 &pos) : m_seed(seed), m_worldpos(pos) {
     if (!chunk.Deserialize(input_bin_file))
       break;
     std::cout << "Loaded a chunk with ID: " << chunk.save_id << '\n';
-    load_map[chunk.save_id] = std::move(chunk);
+    load_map.emplace(chunk.save_id, std::move(chunk));
   }
 };
 
@@ -168,10 +168,27 @@ void World::workerLoop() {
         }
         continue; // Was a deletion request
       }
-
+      std::string biomeId = std::to_string(biomes.index(i, k, j));
+      std::string file_name = "save/tmp/" + biomeId + ".bin";
       // heavy work outside lock
-      if (biomes.get(i, k, j))
+      if (biomes.get(i, k, j)) {
         continue;
+      } else if (std::filesystem::exists(file_name)) {
+        std::ifstream input_bin_file(file_name, std::ios::binary);
+        if (!input_bin_file) {
+          std::cerr << "Failed to open biome file.\n";
+          return;
+        }
+        int count = 1;
+        input_bin_file.read(reinterpret_cast<char *>(&count), sizeof(count));
+        for (int i = 0; i < count; i++) {
+          Chunk chunk;
+          if (!chunk.Deserialize(input_bin_file))
+            break;
+          std::cout << "Loading chunk: " << chunk.save_id << '\n';
+          load_map.emplace(chunk.save_id, std::move(chunk));
+        }
+      }
       auto biome = std::make_shared<Biome>(0, pos, true);
 
       {
@@ -475,24 +492,22 @@ void World::save(std::string _save_file) {
   std::string path = "save/" + _save_file + ".bin";
   std::ofstream save_file(path.c_str(), std::ios::binary | std::ios::trunc);
   // Save All the dirty chunks
-  for (int i = 0; i < BIOME_COUNTX; i++) {
-    for (int j = 0; j < BIOME_COUNTZ; j++) {
-      for (int h = 0; h < BIOME_COUNTY; h++) {
-        auto biome = biomes.get(i, h, j);
-        if (!biome || !biome->dirtybit)
+
+  auto save_chunk = [this](std::shared_ptr<Biome> biome) {
+    for (int k = 0; k < CHUNK_COUNTZ; k++) {
+      for (int l = 0; l < CHUNK_COUNTX; l++) {
+        auto chunk = biome->chunks[k][l];
+        if (!chunk || !chunk->dirtybit)
           continue;
-        for (int k = 0; k < CHUNK_COUNTZ; k++) {
-          for (int l = 0; l < CHUNK_COUNTX; l++) {
-            auto chunk = biome->chunks[k][l];
-            if (!chunk || !chunk->dirtybit)
-              continue;
-            std::cout << "Saving chunk with ID: " << i << " " << j << " " << k
-                      << " " << l << '\n';
-            save_map[chunk->save_id] = chunk;
-          }
-        }
+        save_map[chunk->save_id] = chunk;
       }
     }
+  };
+
+  for (auto [_, biome] : biomes.BiomeMap) {
+    if (!biome || !biome->dirtybit)
+      continue;
+    save_chunk(biome);
   }
   int count = save_map.size();
   save_file.write(reinterpret_cast<char *>(&count), sizeof(count));
