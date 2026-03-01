@@ -110,12 +110,9 @@ void Biome::SetupBiome(bool firstRun) {
     worker2 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   }
 
-  auto biome =
-      world->get_biome_by_center(Biomepos + glm::ivec3(HALF_BLOCK_SIZE));
-  {
-    std::lock_guard<std::mutex> lock(world->biome_mutex);
-    world->bind_queue.push(biome);
-  }
+  auto pos = Biomepos + glm::ivec3(HALF_BLOCK_SIZE);
+  auto biome = world->get_biome_by_center(pos);
+  world->bind_queue.push(biome);
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {

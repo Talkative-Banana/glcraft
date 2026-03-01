@@ -190,10 +190,9 @@ void World::workerLoop() {
         }
       }
       auto biome = std::make_shared<Biome>(0, pos, true);
-
+      biomes.set(i, k, j, biome);
       {
         std::lock_guard<std::mutex> g(setup_mutex);
-        biomes.set(i, k, j, biome);
         setup_queue.push(biome);
       }
     }
@@ -223,7 +222,7 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
           std::lock_guard<std::mutex> lock(setup_mutex);
           bool isPresent = job_scheduled.find(idx) != job_scheduled.end();
           // Costly move it to a seprate thread
-          if (!isPresent) {
+          if (!isPresent) { // Addition of a new biome
             job_queue.emplace(i, j, k, m_worldpos + biome_pos, false);
             job_scheduled.insert(idx);
           }
@@ -242,22 +241,19 @@ void World::SetupBiomesPass1() {
     if (auto b = b_weak.lock()) {
       b->SetupBiome(true); // firstRun
       b->isrerenderiter = false;
-      if (render_queue.find(b->m_id) == render_queue.end())
-        render_queue[b->m_id] = b_weak;
+      render_queue[b->m_id] = b_weak;
     }
   }
 }
 
 void World::SetupBiomesPass2() {
-  std::lock_guard<std::mutex> lock(setup_mutex);
   while (!rerender_queue.empty()) {
     auto b_weak = rerender_queue.front();
     rerender_queue.pop();
     if (auto b = b_weak.lock()) {
       b->SetupBiome(false); // ReRun
       b->isrerenderiter = true;
-      if (render_queue.find(b->m_id) == render_queue.end())
-        render_queue[b->m_id] = b_weak;
+      render_queue[b->m_id] = b_weak;
     }
   }
 }
@@ -286,6 +282,7 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
     }
   }
 
+  // Mark for removal
   {
     std::lock_guard<std::mutex> lock(setup_mutex);
     job_queue.emplace(0, 0, 0, glm::dvec3{}, true);
@@ -293,7 +290,6 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
 }
 
 void World::DoBindTask(bool firstRun) {
-  std::lock_guard<std::mutex> lock(biome_mutex);
   while (!bind_queue.empty()) {
     auto biome = bind_queue.front().lock();
     bool flag = false;

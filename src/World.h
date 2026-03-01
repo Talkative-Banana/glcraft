@@ -99,7 +99,6 @@ private:
 public:
   BiomeArray biomes;
   std::unordered_map<uint, Chunk> load_map;
-  std::mutex biome_mutex;
   std::unordered_map<uint, std::weak_ptr<Chunk>> save_map;
   std::queue<std::weak_ptr<Biome>> bind_queue;
   World(int, const glm::ivec3 &);
