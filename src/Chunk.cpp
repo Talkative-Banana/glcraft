@@ -359,10 +359,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
     // Return early in case of server as we dont want to perform any graphic
     // operations there
-#ifdef BUILD_SERVER
-    return;
-#endif
-
+#ifndef BUILD_SERVER
     if (!setup) {
       chunkva->Bind();
       VertexBufferLayout layout;
@@ -375,6 +372,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
       chunkib->Bind();
       chunkva->Unbind();
     }
+#endif
   }
 
   // Render transparent blocks
@@ -509,6 +507,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                                inds.end());
     }
 
+#ifndef BUILD_SERVER
     if (!setup) {
       chunkvatrans->Bind();
       VertexBufferLayout layout;
@@ -522,6 +521,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
       chunkibtrans->Bind();
       chunkvatrans->Unbind();
     }
+#endif
   }
 }
 
