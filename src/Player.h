@@ -56,9 +56,10 @@ private:
   glm::dvec3 m_position = glm::dvec3(BIOME_COUNTX * CHUNK_LENGTH / 2.0,
                                      (BIOME_COUNTY + 1) * CHUNK_HEIGHT,
                                      BIOME_COUNTX *CHUNK_LENGTH / 2.0);
-  glm::dvec3 m_forward = glm::vec3(0.0, 0.0, 1.0);
-  glm::dvec3 m_velocity = glm::vec3(0.0, 0.0, 0.0);
-  glm::dvec3 m_up = glm::vec3(0.0, 1.0, 0.0);
+
+  glm::dvec3 m_forward = glm::dvec3(0.0, 0.0, 1.0);
+  glm::dvec3 m_velocity = glm::dvec3(0.0, 0.0, 0.0);
+  glm::dvec3 m_up = glm::dvec3(0.0, 1.0, 0.0);
   double m_speed = WALKING_SPEED;
   double m_sensitivity = 0.002f;
   glm::dvec2 MousePos = {0.0f, 0.0f};

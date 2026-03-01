@@ -19,7 +19,7 @@ extern glm::dmat4 modelT, viewT, projectionT;
 class Mesh {
 public:
   Mesh(std::vector<AssetVertex> &&vertex, unsigned int _shaderprogram,
-       float _scale, float _angle, glm::dvec3 _pos, glm::dvec3 _axis)
+       double _scale, double _angle, glm::dvec3 _pos, glm::dvec3 _axis)
       : m_vertex(vertex), shaderProgram(_shaderprogram), scale(_scale),
         angle_of_rot(_angle), pos(_pos), axis_of_rot(_axis) {};
   Mesh(const Mesh &) = delete;
@@ -34,8 +34,8 @@ public:
 
 public:
   double scale = 0.025, angle_of_rot = 180.0;
-  glm::dvec3 pos = glm::dvec3(70.0f, 100.0f, 85.0f);
-  glm::dvec3 axis_of_rot = glm::dvec3(0.0f, 1.0f, 1.0f);
+  glm::dvec3 pos = glm::dvec3(70.0, 100.0, 85.0);
+  glm::dvec3 axis_of_rot = glm::dvec3(0.0, 1.0, 1.0);
 
 private:
   unsigned int shaderProgram;

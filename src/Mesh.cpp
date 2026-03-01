@@ -14,6 +14,7 @@ void Mesh::setup() {
 
 void Mesh::setupModelTransformationCube(glm::dvec3 cameraPos) {
   // Modelling transformations (Model -> World coordinates)
+  modelT = glm::dmat4(1.0);
   modelT = glm::translate(modelT, pos - cameraPos);
   modelT = glm::scale(modelT, glm::dvec3(scale, scale, scale));
   // Rotate along axis of rot

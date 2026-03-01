@@ -1,7 +1,7 @@
 #include "Camera.h"
 
-Camera::Camera(float left, float right, float bottom, float top)
-    : m_ViewMatrix(1.0f), m_AspectRatio(1.0f) {
+Camera::Camera(double left, double right, double bottom, double top)
+    : m_ViewMatrix(1.0), m_AspectRatio(1.0) {
   // Perspective Addition
   m_ProjectionMatrix = glm::perspective(glm::radians(double(m_VerticalFOV)),
                                         1.0, NEAR_PLANE, FAR_PLANE);
@@ -27,7 +27,7 @@ void Camera::RecalculateViewRenderMatrix() {
   m_ViewProjectionRenderMatrix = m_ProjectionMatrix * m_ViewRotateMatrix;
 }
 
-void Camera::SetAspectRatio(float aspectratio) {
+void Camera::SetAspectRatio(double aspectratio) {
   m_AspectRatio = aspectratio;
   m_ProjectionMatrix =
       glm::perspective(glm::radians(double(m_VerticalFOV)), double(aspectratio),
@@ -35,8 +35,8 @@ void Camera::SetAspectRatio(float aspectratio) {
 }
 
 // Compute horizontal FOV based on aspect ratio
-float Camera::GetHorizontalFOV() const {
-  float vFovRad = glm::radians(m_VerticalFOV);
-  float hFovRad = 2.0f * atan(tan(vFovRad / 2.0f) * m_AspectRatio);
+double Camera::GetHorizontalFOV() const {
+  double vFovRad = glm::radians(m_VerticalFOV);
+  double hFovRad = 2.0 * atan(tan(vFovRad / 2.0) * m_AspectRatio);
   return glm::degrees(hFovRad);
 }

@@ -132,7 +132,7 @@ GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
 
 void Chunk::Setup_Landscape(GLint X, GLint Z) {
   // Early return
-  if (chunkpos.y != ((BIOME_COUNTY - 1) * CHUNK_BLOCK_COUNT * BLOCK_SIZE)) {
+  if (chunkpos.y != ((BIOME_COUNTY - 1) * CHUNK_HEIGHT)) {
     for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
       for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
         for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {

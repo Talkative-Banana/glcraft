@@ -13,15 +13,15 @@ private:
   glm::dvec3 m_Up = glm::dvec3(0.0, 1.0, 0.0);
   glm::dvec3 m_Position = glm::dvec3(0.0, 0.0, -80.0);
   glm::dvec3 m_Orientation = glm::dvec3(0.0, 0.0, 1.0);
-  float m_VerticalFOV = 45.0f;
-  float m_AspectRatio = 1.0f;
+  double m_VerticalFOV = 45.0f;
+  double m_AspectRatio = 1.0f;
 
   void RecalculateViewMatrix();
 
   void RecalculateViewRenderMatrix();
 
 public:
-  Camera(float left, float right, float bottom, float top);
+  Camera(double left, double right, double bottom, double top);
 
   const glm::dvec3 &GetPosition() const { return m_Position; }
 
@@ -61,7 +61,7 @@ public:
     return m_ViewProjectionRenderMatrix;
   }
 
-  void SetAspectRatio(float aspectratio);
+  void SetAspectRatio(double aspectratio);
 
-  float GetHorizontalFOV() const;
+  double GetHorizontalFOV() const;
 };

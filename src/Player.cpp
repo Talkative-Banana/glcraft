@@ -16,9 +16,10 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
 
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  l_mesh->setup();
-  meshes.push_back(l_mesh);
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    l_mesh->setup();
+    meshes.push_back(l_mesh);
+  }
 }
 
 Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
@@ -31,9 +32,10 @@ Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
 
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  l_mesh->setup();
-  meshes.push_back(l_mesh);
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    l_mesh->setup();
+    meshes.push_back(l_mesh);
+  }
 }
 
 Player::Player(const uint64_t id, const uint64_t shaderProgram) : m_id(id) {
@@ -45,9 +47,10 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram) : m_id(id) {
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
 
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  l_mesh->setup();
-  meshes.push_back(l_mesh);
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    l_mesh->setup();
+    meshes.push_back(l_mesh);
+  }
 }
 
 Player::Player(const uint64_t id) : m_id(id) {
@@ -58,8 +61,9 @@ Player::Player(const uint64_t id) : m_id(id) {
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
 
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  meshes.push_back(l_mesh);
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    meshes.push_back(l_mesh);
+  }
 }
 
 void Player::handleNetworkRequest(PlayerState &pt) {
@@ -71,8 +75,11 @@ void Player::handleNetworkRequest(PlayerState &pt) {
 
   // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  l_mesh->pos = m_position;
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    l_mesh->pos = m_position;
+  } else {
+    std::cerr << "Mesh not found\n";
+  }
 }
 
 void Player::handle_input(float dt) {
@@ -219,8 +226,11 @@ void Player::handle_input(float dt) {
 
   // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-  auto l_mesh = asset_manager->get_mesh(m_meshhandle);
-  l_mesh->pos = m_position;
+  if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
+    l_mesh->pos = m_position;
+  } else {
+    std::cerr << "Mesh not found\n";
+  }
 
   // default initialize to indicate no updates
   WorldState ws{};
