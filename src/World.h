@@ -7,6 +7,7 @@
 #include <mutex>
 #include <queue>
 #include <set>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include "Biome.h"
@@ -26,17 +27,17 @@ struct BiomeArray {
   using bptr = std::shared_ptr<Biome>;
   std::unordered_map<uint64_t, bptr> BiomeMap;
   std::vector<bptr> toRemove;
-  std::mutex biome_mutex;
+  std::shared_mutex biome_mutex;
 
   bptr get(uint64_t x, uint64_t y, uint64_t z) {
-    std::lock_guard<std::mutex> lock(biome_mutex);
+    std::shared_lock<std::shared_mutex> lock(biome_mutex);
     auto it = BiomeMap.find(index(x, y, z));
     return it == BiomeMap.end() ? nullptr : it->second;
   }
 
   void set(uint64_t i, uint64_t j, uint64_t k, bptr value) {
-    std::lock_guard<std::mutex> lock(biome_mutex);
     uint64_t idx = index(i, j, k);
+    std::unique_lock<std::shared_mutex> lock(biome_mutex);
     if (value == nullptr) {
       auto it = BiomeMap.find(idx);
       if (it != BiomeMap.end()) {
@@ -44,14 +45,15 @@ struct BiomeArray {
         BiomeMap.erase(it);
         return;
       }
+    } else {
+      BiomeMap[idx] = std::move(value);
     }
-    BiomeMap[idx] = std::move(value);
   }
 
   uint64_t cleartoRemove() {
     bptr temp;
     {
-      std::lock_guard<std::mutex> lock(biome_mutex);
+      std::unique_lock<std::shared_mutex> lock(biome_mutex);
       if (!toRemove.empty()) {
         temp = toRemove.back();
         toRemove.pop_back();
@@ -66,7 +68,7 @@ struct BiomeArray {
   }
 
   bool isPresent(uint64_t idx) {
-    std::lock_guard<std::mutex> lock(biome_mutex);
+    std::shared_lock<std::shared_mutex> lock(biome_mutex);
     return BiomeMap.find(idx) != BiomeMap.end();
   }
 

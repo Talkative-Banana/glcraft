@@ -57,4 +57,23 @@ public:
   void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
   void Serialize(std::ostream &os) const;
   bool Deserialize(std::istream &is);
+  static void SetupNoise(uint64_t seed) {
+    // Set random seed for mountains
+    s_mountainTerrain.SetSeed(seed);
+    // s_mountainTerrain.SetFrequency(1.0 / 128.0);
+
+    // Set random seed for flat terrain
+    s_baseFlatTerrain.SetFrequency(2.0);
+    s_baseFlatTerrain.SetSeed(seed);
+
+    s_flatTerrain.SetSourceModule(0, s_baseFlatTerrain);
+    s_flatTerrain.SetScale(0.085);
+  };
+
+private:
+  // 4 5 6 7
+  // 0 1 2 3
+  static inline noise::module::RidgedMulti s_mountainTerrain;
+  static inline noise::module::Billow s_baseFlatTerrain;
+  static inline noise::module::ScaleBias s_flatTerrain;
 };

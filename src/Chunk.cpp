@@ -145,55 +145,60 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
     }
     return;
   }
+  //
+  // noise::utils::NoiseMap heightMap;
+  // noise::utils::NoiseMapBuilderPlane heightMapBuilder;
+  // heightMapBuilder.SetSourceModule(s_mountainTerrain);
+  // heightMapBuilder.SetDestNoiseMap(heightMap);
+  // heightMapBuilder.SetDestSize(128, 128);
+  // int biomex = X / 4, biomez = Z / 4;
+  // heightMapBuilder.SetBounds(biomex, biomex + 1, biomez, biomez + 1);
+  // heightMapBuilder.Build();
+  //
+  // noise::utils::RendererImage renderer;
+  // noise::utils::Image image;
+  // renderer.SetSourceNoiseMap(heightMap);
+  // renderer.SetDestImage(image);
+  // renderer.Render();
 
-  // Generate a random seed
-  int randomSeed = world->getSeed();
+  // noise::utils::WriterBMP writer;
+  // writer.SetSourceImage(image);
+  // writer.SetDestFilename("maps/tutorial" + std::to_string((4 * X + Z) / 16) +
+  //                        ".bmp");
+  // writer.WriteDestFile();
 
-  // 4 5 6 7
-  // 0 1 2 3
-  noise::module::RidgedMulti mountainTerrain;
-  mountainTerrain.SetSeed(randomSeed); // Set random seed for mountains
+  // X %= 4, Z %= 4;
 
-  noise::module::Billow baseFlatTerrain;
-  baseFlatTerrain.SetFrequency(2.0);
-  baseFlatTerrain.SetSeed(randomSeed); // Set random seed for flat terrain
-
-  noise::module::ScaleBias flatTerrain;
-  flatTerrain.SetSourceModule(0, baseFlatTerrain);
-  flatTerrain.SetScale(0.085);
-
-  noise::utils::NoiseMap heightMap;
-  noise::utils::NoiseMapBuilderPlane heightMapBuilder;
-  heightMapBuilder.SetSourceModule(mountainTerrain);
-  heightMapBuilder.SetDestNoiseMap(heightMap);
-  heightMapBuilder.SetDestSize(128, 128);
   int biomex = X / 4, biomez = Z / 4;
-  heightMapBuilder.SetBounds(biomex, biomex + 1, biomez, biomez + 1);
-  heightMapBuilder.Build();
-
-  noise::utils::RendererImage renderer;
-  noise::utils::Image image;
-  renderer.SetSourceNoiseMap(heightMap);
-  renderer.SetDestImage(image);
-  renderer.Render();
-
-  noise::utils::WriterBMP writer;
-  writer.SetSourceImage(image);
-  writer.SetDestFilename("maps/tutorial" + std::to_string((4 * X + Z) / 16) +
-                         ".bmp");
   X %= 4, Z %= 4;
-  writer.WriteDestFile();
 
   for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
     for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
       // Use the noise library to get the height value of x, z
-      noise::utils::Color color =
-          image.GetValue(CHUNK_BLOCK_COUNT * Z + x, CHUNK_BLOCK_COUNT * X + z);
-      // Extract the height value from the color's red channel (assuming height
-      // is encoded in the red channel)
-      // Donot expose BEDROCK
-      int height = std::max(2, static_cast<int>((color.blue / 255.0f) * 32.0f));
+      // noise::utils::Color color = image.GetValue(chunkx + x, chunkz + z);
       // Use the height map texture to get the height value of x, z
+      // int height = std::max(2, static_cast<int>((color.blue / 255.0f)
+      // * 32.0f));
+
+      int chunkx = CHUNK_BLOCK_COUNT * Z, chunkz = CHUNK_BLOCK_COUNT * X;
+      int pixelX = chunkx + x;
+      int pixelZ = chunkz + z;
+
+      double nx = biomex + (double)pixelX / 128.0;
+      double nz = biomez + (double)pixelZ / 128.0;
+
+      double value = s_mountainTerrain.GetValue(nx, 0, nz);
+
+      // Normalize exactly like RendererImage
+      double normalized = (value + 1.0) * 0.5;
+
+      // Clamp to [0,1] because renderer clamps
+      normalized = glm::clamp(normalized, 0.0, 1.0);
+
+      // Convert to 0–255
+      unsigned char blue = static_cast<unsigned char>(normalized * 255.0 + 0.5);
+      int height = std::max(2, static_cast<int>((blue / 255.0f) * 32.0f));
+
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
         auto biome_bltypes = BIOME_BLOCK_TYPES[type];
@@ -287,11 +292,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          glm::ivec3 block_pos =
-              chunkpos +
-              glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-              glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
-
           // Offsets for 8 neighbors around this block (XZ plane)
           static const glm::ivec3 neighborOffsets[8] = {
               {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
@@ -304,19 +304,56 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
           };
 
-          GLuint ac = 0;
-          for (int n = 0; n < 8; n++) {
-            auto neighbor =
-                world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_standable()) {
-              ac |= (1u << n); // set bit if solid
-            }
-          }
+          static const glm::ivec3 neighborOffsetsIdx[8] = {
+              {0, 1, -1},  // b0
+              {-1, 1, -1}, // b1   543
+              {-1, 1, 0},  // b2   6 2
+              {-1, 1, 1},  // b3   701
+              {0, 1, 1},   // b4
+              {1, 1, 1},   // b5
+              {1, 1, 0},   // b6
+              {1, 1, -1}   // b7
+          };
 
-          if (auto b0 = world->get_block_by_center(
-                  block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_standable())
+          GLuint ac = 0;
+          bool isBoundary = false;
+          isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
+          isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
+          isBoundary |= k == 0 || k == CHUNK_BLOCK_COUNT - 1;
+
+          if (isBoundary) {
+            glm::ivec3 block_pos =
+                chunkpos +
+                glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+                glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
+
+            for (int n = 0; n < 8; n++) {
+              auto neighbor =
+                  world->get_block_by_center(block_pos + neighborOffsets[n]);
+              if (neighbor && neighbor->is_standable()) {
+                ac |= (1u << n); // set bit if solid
+              }
+            }
+
+            if (auto b0 = world->get_block_by_center(
+                    block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+              if (b0->is_standable())
+                ac |= (1u << 8);
+            }
+          } else {
+            glm::ivec3 block_pos = glm::ivec3(i, j, k);
+            for (int n = 0; n < 8; n++) {
+              auto Idx = block_pos + neighborOffsetsIdx[n];
+              auto &neighbor = blocks[Idx.x][Idx.y][Idx.z];
+              if (neighbor.is_standable()) {
+                ac |= (1u << n); // set bit if solid
+              }
+            }
+
+            auto &b0 = blocks[block_pos.x][block_pos.y + 1][block_pos.z - 1];
+            if (b0.is_standable()) {
               ac |= (1u << 8);
+            }
           }
           std::vector<GLuint> indices;
           std::vector<GLuint> blockrendervert;
@@ -436,11 +473,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          glm::ivec3 block_pos =
-              chunkpos +
-              glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-              glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
-
           // Offsets for 8 neighbors around this block (XZ plane)
           static const glm::ivec3 neighborOffsets[8] = {
               {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
@@ -453,19 +485,56 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
           };
 
-          GLuint ac = 0;
-          for (int n = 0; n < 8; n++) {
-            auto neighbor =
-                world->get_block_by_center(block_pos + neighborOffsets[n]);
-            if (neighbor && neighbor->is_standable()) {
-              ac |= (1u << n); // set bit if solid
-            }
-          }
+          static const glm::ivec3 neighborOffsetsIdx[8] = {
+              {0, 1, -1},  // b0
+              {-1, 1, -1}, // b1   543
+              {-1, 1, 0},  // b2   6 2
+              {-1, 1, 1},  // b3   701
+              {0, 1, 1},   // b4
+              {1, 1, 1},   // b5
+              {1, 1, 0},   // b6
+              {1, 1, -1}   // b7
+          };
 
-          if (auto b0 = world->get_block_by_center(
-                  block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
-            if (b0->is_standable())
+          GLuint ac = 0;
+          bool isBoundary = false;
+          isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
+          isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
+          isBoundary |= k == 0 || k == CHUNK_BLOCK_COUNT - 1;
+
+          if (isBoundary) {
+            glm::ivec3 block_pos =
+                chunkpos +
+                glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+                glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
+
+            for (int n = 0; n < 8; n++) {
+              auto neighbor =
+                  world->get_block_by_center(block_pos + neighborOffsets[n]);
+              if (neighbor && neighbor->is_standable()) {
+                ac |= (1u << n); // set bit if solid
+              }
+            }
+
+            if (auto b0 = world->get_block_by_center(
+                    block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+              if (b0->is_standable())
+                ac |= (1u << 8);
+            }
+          } else {
+            glm::ivec3 block_pos = glm::ivec3(i, j, k);
+            for (int n = 0; n < 8; n++) {
+              auto Idx = block_pos + neighborOffsetsIdx[n];
+              auto &neighbor = blocks[Idx.x][Idx.y][Idx.z];
+              if (neighbor.is_standable()) {
+                ac |= (1u << n); // set bit if solid
+              }
+            }
+
+            auto &b0 = blocks[block_pos.x][block_pos.y + 1][block_pos.z - 1];
+            if (b0.is_standable()) {
               ac |= (1u << 8);
+            }
           }
           std::vector<GLuint> indices;
           std::vector<GLuint> blockrendervert;

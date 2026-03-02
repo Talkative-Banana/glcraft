@@ -229,7 +229,10 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
         Biomepos.y / BIOME_HEIGHT,
         Biomepos.z / BIOME_LENGTH,
     };
-    if (world->biomes.isPresent(m_id)) {
+
+    // Only mark for removal after both the threads are done setting up
+    bool setupComplete = worker1.joinable() && worker2.joinable();
+    if (world->biomes.isPresent(m_id) && setupComplete) {
       // Removing chunk
       world->biomes.set(bps.x, bps.y, bps.z, nullptr);
     }
