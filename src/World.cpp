@@ -251,12 +251,20 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
 }
 
 void World::SetupBiomesPass1() {
-  std::lock_guard<std::mutex> lock(setup_mutex);
-  while (!setup_queue.empty()) {
-    auto b_weak = setup_queue.front();
-    setup_queue.pop();
+  while (true) {
+    std::weak_ptr<Biome> b_weak;
+
+    {
+      std::lock_guard<std::mutex> lock(setup_mutex);
+      if (setup_queue.empty())
+        break;
+
+      b_weak = setup_queue.front();
+      setup_queue.pop();
+    }
+
     if (auto b = b_weak.lock()) {
-      b->SetupBiome(true); // firstRun
+      b->SetupBiome(true);
       b->isrerenderiter = false;
       render_queue[b->m_id] = b_weak;
     }
