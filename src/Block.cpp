@@ -40,13 +40,12 @@ glm::ivec3 Block::get_pos() {
   return glm::ivec3(posx, posy, posz);
 }
 
-std::vector<GLuint> Block::GenerateVerticies(GLuint ambient_occ) {
+void Block::GenerateVerticies(GLuint ambient_occ,
+                              std::vector<GLuint> &vertices) {
   GLuint x = (blmask >> 10) & 31, y = (blmask >> 5) & 31, z = (blmask) & 31,
          blktype = (blmask >> 23) & 63;
   // Vertex Position
   // 24 verticies per block
-
-  std::vector<GLuint> vertices;
 
   // Back Face 0123
   vertices.push_back(Mask(x, y, z, 7, 0, blktype, 0)); // 0
@@ -116,8 +115,6 @@ std::vector<GLuint> Block::GenerateVerticies(GLuint ambient_occ) {
   // verticies.push_back({x + hside, y - hside, z + hside, x, y, z}); // 7 22
   vertices.push_back(Mask(x + 1, y, z, 3, 5, blktype, 0)); // 3
   // verticies.push_back({x + hside, y - hside, z - hside, x, y, z}); // 3 23
-
-  return vertices;
 }
 
 bool Block::is_transparent() {
@@ -133,23 +130,26 @@ bool Block::is_removable() {
           get_type() != BLOCK_TYPE::WATER_BLOCK);
 }
 
-void Block::Render(GLuint mask, GLuint ambient_occ,
-                   std::vector<GLuint> &indices,
-                   std::vector<GLuint> &rendervert) {
+GLuint Block::Render(GLuint mask, GLuint ambient_occ, GLuint offset,
+                     std::vector<GLuint> &indices,
+                     std::vector<GLuint> &rendervert) {
   if (!is_solid())
-    return; // not solid
-  rendervert = GenerateVerticies(ambient_occ);
+    return 0; // not solid
+  GenerateVerticies(ambient_occ, rendervert);
 
-  GLuint idx = 0;
+  GLuint idx = 0, icnt = 0;
   // If a transparent block
   while (mask != 0) {
     blmask |= (1 << 16); // mark them visible if any side is visble
     if (mask & 1) {
-      for (int i = 0; i < 6; i++)
-        indices.push_back(faceindices[idx][i]);
+      for (int i = 0; i < 6; i++) {
+        icnt++;
+        indices.push_back(offset + faceindices[idx][i]);
+      }
     }
     mask >>= 1, idx++;
   }
+  return icnt;
 }
 
 void Block::remove() {
@@ -166,5 +166,5 @@ void Block::add(BLOCK_TYPE bltype) {
 
 bool Block::is_solid() { return blmask & (1 << 15); }
 bool Block::is_standable() {
-  return is_solid() && this->get_type() != BLOCK_TYPE::WATER_BLOCK;
+  return is_solid() && get_type() != BLOCK_TYPE::WATER_BLOCK;
 }

@@ -42,39 +42,41 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
                     position.z + (_biomepos.x / (CHUNK_LENGTH)));
     dirtybit = false;
   }
+
+  // Reserve for vectors
+  cube_indices.reserve(50'000);
+  cube_indicestrans.reserve(50'000);
+
+  cube_vertices.reserve(10'00'000);
+  cube_verticestrans.reserve(10'00'000);
 }
 
-inline GLboolean Chunk::isSolid(const std::vector<GLint> &position) {
-  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
-      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
-      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
+inline GLboolean Chunk::isSolid(int x, int y, int z) {
+  if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
+      (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung block is solid
-    return ((blocks[position[0]][position[1]][position[2]].is_solid()));
+    return ((blocks[x][y][z].is_solid()));
   }
   return false;
 }
 
-inline GLboolean Chunk::isTransparent(const std::vector<GLint> &position) {
-  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
-      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
-      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
+inline GLboolean Chunk::isTransparent(int x, int y, int z) {
+  if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
+      (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung block is transparent
-    return ((blocks[position[0]][position[1]][position[2]].is_transparent()));
+    return ((blocks[x][y][z].is_transparent()));
   }
   return false;
 }
 
-inline GLboolean Chunk::isSameKind(const std::vector<GLint> &position,
-                                   const std::vector<GLint> &pos) {
-  if ((position[0] >= 0) && (position[0] < CHUNK_BLOCK_COUNT) &&
-      (position[1] >= 0) && (position[1] < CHUNK_BLOCK_COUNT) &&
-      (position[2] >= 0) && (position[2] < CHUNK_BLOCK_COUNT)) {
+inline GLboolean Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
+  if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
+      (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
     // Check if neibhourung blocks are of same kind
-    auto res = (blocks[position[0]][position[1]][position[2]].get_type() ==
-                blocks[pos[0]][pos[1]][pos[2]].get_type());
+    bool res = (blocks[x][y][z].get_type() == blocks[X][Y][Z].get_type());
     return res;
   }
   return false;
@@ -83,50 +85,52 @@ inline GLboolean Chunk::isSameKind(const std::vector<GLint> &position,
 // k blue i red j green
 // ctrl x -> red facing me
 
-GLuint Chunk::RenderFace(std::vector<GLint> &&position) {
-  // 1 -> back face: 2 -> front face: 3 -> left face: 4 -> right face: 5 -> top
-  // face: 6 -> bottom face
+GLuint Chunk::RenderFace(int x, int y, int z) {
+  // 1 -> back face
+  // 2 -> front face
+  // 3 -> left face
+  // 4 -> right face
+  // 5 -> top face
+  // 6 -> bottom face
+
   GLuint mask = 0;
-  std::vector<GLint> tmp = position;
-  for (GLuint face = 1; face <= 6; face++) {
-    if (face == 1) {
-      // No Need to draw back face if block behind is solid
-      tmp[2] -= 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[2] += 1;
-    } else if (face == 2) {
-      // No Need to draw front face if block in front is solid
-      tmp[2] += 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[2] -= 1;
-    } else if (face == 3) {
-      // No Need to draw left face if block in left is solid
-      tmp[0] -= 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[0] += 1;
-    } else if (face == 4) {
-      // No Need to draw right face if block in right is solid
-      tmp[0] += 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[0] -= 1;
-    } else if (face == 5) {
-      // No Need to draw top face if block on top is solid
-      tmp[1] += 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[1] -= 1;
-    } else if (face == 6) {
-      // No Need to draw bottom face if block on bottom is solid
-      tmp[1] -= 1;
-      if (!isSolid(tmp) || (isTransparent(tmp) && !isSameKind(tmp, position)))
-        mask |= (1 << (face - 1));
-      tmp[1] += 1;
-    }
-  }
+
+  // Back face (z - 1)
+  // No Need to draw back face if block behind is solid
+  if (!isSolid(x, y, z - 1) ||
+      (isTransparent(x, y, z - 1) && !isSameKind(x, y, z, x, y, z - 1)))
+    mask |= (1 << 0);
+
+  // Front face (z + 1)
+  // No Need to draw front face if block in front is solid
+  if (!isSolid(x, y, z + 1) ||
+      (isTransparent(x, y, z + 1) && !isSameKind(x, y, z, x, y, z + 1)))
+    mask |= (1 << 1);
+
+  // Left face (x - 1)
+  // No Need to draw left face if block in left is solid
+  if (!isSolid(x - 1, y, z) ||
+      (isTransparent(x - 1, y, z) && !isSameKind(x, y, z, x - 1, y, z)))
+    mask |= (1 << 2);
+
+  // Right face (x + 1)
+  // No Need to draw right face if block in right is solid
+  if (!isSolid(x + 1, y, z) ||
+      (isTransparent(x + 1, y, z) && !isSameKind(x, y, z, x + 1, y, z)))
+    mask |= (1 << 3);
+
+  // Top face (y + 1)
+  // No Need to draw top face if block on top is solid
+  if (!isSolid(x, y + 1, z) ||
+      (isTransparent(x, y + 1, z) && !isSameKind(x, y, z, x, y + 1, z)))
+    mask |= (1 << 4);
+
+  // Bottom face (y - 1)
+  // No Need to draw bottom face if block on bottom is solid
+  if (!isSolid(x, y - 1, z) ||
+      (isTransparent(x, y - 1, z) && !isSameKind(x, y, z, x, y - 1, z)))
+    mask |= (1 << 5);
+
   return mask;
 }
 
@@ -231,10 +235,68 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   // Rerendering
   // if (!displaychunk) return;
   // Render OPAQUE blocks
+
+  static const glm::ivec3 neighborOffsetsIdx[8] = {
+      {0, 1, -1},  // b0
+      {-1, 1, -1}, // b1   543
+      {-1, 1, 0},  // b2   6 2
+      {-1, 1, 1},  // b3   701
+      {0, 1, 1},   // b4
+      {1, 1, 1},   // b5
+      {1, 1, 0},   // b6
+      {1, 1, -1}   // b7
+  };
+
+  auto GetBlock = [&](glm::ivec3 &blockpos, glm::ivec3 offset) -> Block * {
+    int i = blockpos.x, j = blockpos.y, k = blockpos.z;
+    glm::ivec3 newPos = blockpos + offset;
+
+    bool withinChunk = true;
+    withinChunk &= newPos.x != -1 && newPos.x != CHUNK_BLOCK_COUNT;
+    withinChunk &= newPos.y != -1 && newPos.y != CHUNK_BLOCK_COUNT;
+    withinChunk &= newPos.z != -1 && newPos.z != CHUNK_BLOCK_COUNT;
+
+    if (withinChunk) {
+      return &this->blocks[newPos.x][newPos.y][newPos.z];
+    }
+
+    bool validX = newPos.x != -1 && newPos.x != CHUNK_BLOCK_COUNT;
+    bool validY = newPos.y != -1 && newPos.y != CHUNK_BLOCK_COUNT;
+    bool validZ = newPos.z != -1 && newPos.z != CHUNK_BLOCK_COUNT;
+
+    if (!validX && validY && validZ) {
+      if (newPos.x == -1 && right) {
+        return &right->blocks[CHUNK_BLOCK_COUNT - 1][newPos.y][newPos.z];
+      }
+      if (newPos.x == CHUNK_BLOCK_COUNT && left) {
+        return &left->blocks[0][newPos.y][newPos.z];
+      }
+    }
+
+    if (!validZ && validX && validY) {
+      if (newPos.z == -1 && back) {
+        return &back->blocks[newPos.x][newPos.y][CHUNK_BLOCK_COUNT - 1];
+      }
+      if (newPos.z == CHUNK_BLOCK_COUNT && front) {
+        return &front->blocks[newPos.x][newPos.y][0];
+      }
+    }
+
+    // TODO: Remove it if not needed [just here for optimisation]
+    if (!validY && validX && validZ) {
+      return nullptr;
+    }
+
+    glm::ivec3 block_pos =
+        chunkpos + glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
+        glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE) +
+        offset * static_cast<int>(BLOCK_SIZE);
+    return world->get_block_by_center(blockpos);
+  };
+
   {
-    rendervert.resize(0);
-    cube_vertices.resize(0);
-    cube_indices.resize(0);
+    cube_vertices.clear();
+    cube_indices.clear();
     count = 0;
     GLuint idx = 0;
 
@@ -249,7 +311,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           GLuint mask = 0;
           if (firstRun) {
             // If its first run just save the mask
-            mask = Chunk::RenderFace({i, j, k});
+            mask = Chunk::RenderFace(i, j, k);
             blocks[i][j][k].blmask &= ~FACE_MASK;
             blocks[i][j][k].blmask |= (mask << 17);
             // continue;
@@ -292,29 +354,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          // Offsets for 8 neighbors around this block (XZ plane)
-          static const glm::ivec3 neighborOffsets[8] = {
-              {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
-              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}, // b1   543
-              {-BLOCK_SIZE, BLOCK_SIZE, 0},           // b2   6 2
-              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},  // b3   701
-              {0, BLOCK_SIZE, BLOCK_SIZE},            // b4
-              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b5
-              {BLOCK_SIZE, BLOCK_SIZE, 0},            // b6
-              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
-          };
-
-          static const glm::ivec3 neighborOffsetsIdx[8] = {
-              {0, 1, -1},  // b0
-              {-1, 1, -1}, // b1   543
-              {-1, 1, 0},  // b2   6 2
-              {-1, 1, 1},  // b3   701
-              {0, 1, 1},   // b4
-              {1, 1, 1},   // b5
-              {1, 1, 0},   // b6
-              {1, 1, -1}   // b7
-          };
-
           GLuint ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
@@ -322,21 +361,15 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           isBoundary |= k == 0 || k == CHUNK_BLOCK_COUNT - 1;
 
           if (isBoundary) {
-            glm::ivec3 block_pos =
-                chunkpos +
-                glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-                glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
-
+            glm::ivec3 block_pos = glm::ivec3(i, j, k);
             for (int n = 0; n < 8; n++) {
-              auto neighbor =
-                  world->get_block_by_center(block_pos + neighborOffsets[n]);
+              auto neighbor = GetBlock(block_pos, neighborOffsetsIdx[n]);
               if (neighbor && neighbor->is_standable()) {
                 ac |= (1u << n); // set bit if solid
               }
             }
-
-            if (auto b0 = world->get_block_by_center(
-                    block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            glm::ivec3 offset = glm::ivec3(0, 1, -1);
+            if (auto b0 = GetBlock(block_pos, offset)) {
               if (b0->is_standable())
                 ac |= (1u << 8);
             }
@@ -355,45 +388,12 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          std::vector<GLuint> indices;
-          std::vector<GLuint> blockrendervert;
-          blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
-          for (auto &ind : indices)
-            ind += idx;
-          rendervert.push_back({blockrendervert, indices});
+          cntblocks += blocks[i][j][k].Render(mask, ac, idx, cube_indices,
+                                              cube_vertices);
           idx += 24, count++;
         }
       }
     }
-
-    const GLuint cnt = count;
-    const GLuint rsize = static_cast<GLuint>(rendervert.size());
-
-    GLuint vcnt = 0, icnt = 0;
-
-    for (GLuint i = 0; i < rsize; ++i) {
-      auto &vert_ind = rendervert[i];
-      const auto &verts = vert_ind.first;
-      const auto &inds = vert_ind.second;
-
-      vcnt += static_cast<GLuint>(verts.size());
-      icnt += static_cast<GLuint>(inds.size());
-    }
-
-    cntblocks = icnt;
-    cube_vertices.reserve(vcnt);
-    cube_indices.reserve(icnt);
-
-    for (GLuint i = 0; i < rsize; ++i) {
-      // if (FrustumCull[i]) continue;
-      auto &vert_ind = rendervert[i];
-      const auto &verts = vert_ind.first;
-      const auto &inds = vert_ind.second;
-
-      cube_vertices.insert(cube_vertices.end(), verts.begin(), verts.end());
-      cube_indices.insert(cube_indices.end(), inds.begin(), inds.end());
-    }
-
     // Return early in case of server as we dont want to perform any graphic
     // operations there
 #ifndef BUILD_SERVER
@@ -414,9 +414,8 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
   // Render transparent blocks
   {
-    renderverttrans.resize(0);
-    cube_verticestrans.resize(0);
-    cube_indicestrans.resize(0);
+    cube_verticestrans.clear();
+    cube_indicestrans.clear();
     counttrans = 0;
     GLuint idx = 0;
 
@@ -432,7 +431,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           GLuint mask = 0;
           if (firstRun) {
             // If its first run just save the mask
-            mask = Chunk::RenderFace({i, j, k});
+            mask = Chunk::RenderFace(i, j, k);
             blocks[i][j][k].blmask &= ~FACE_MASK;
             blocks[i][j][k].blmask |= (mask << 17);
             // continue;
@@ -473,29 +472,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          // Offsets for 8 neighbors around this block (XZ plane)
-          static const glm::ivec3 neighborOffsets[8] = {
-              {0, BLOCK_SIZE, -BLOCK_SIZE},           // b0
-              {-BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}, // b1   543
-              {-BLOCK_SIZE, BLOCK_SIZE, 0},           // b2   6 2
-              {-BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},  // b3   701
-              {0, BLOCK_SIZE, BLOCK_SIZE},            // b4
-              {BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE},   // b5
-              {BLOCK_SIZE, BLOCK_SIZE, 0},            // b6
-              {BLOCK_SIZE, BLOCK_SIZE, -BLOCK_SIZE}   // b7
-          };
-
-          static const glm::ivec3 neighborOffsetsIdx[8] = {
-              {0, 1, -1},  // b0
-              {-1, 1, -1}, // b1   543
-              {-1, 1, 0},  // b2   6 2
-              {-1, 1, 1},  // b3   701
-              {0, 1, 1},   // b4
-              {1, 1, 1},   // b5
-              {1, 1, 0},   // b6
-              {1, 1, -1}   // b7
-          };
-
           GLuint ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
@@ -503,21 +479,15 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           isBoundary |= k == 0 || k == CHUNK_BLOCK_COUNT - 1;
 
           if (isBoundary) {
-            glm::ivec3 block_pos =
-                chunkpos +
-                glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
-                glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE);
-
+            glm::ivec3 block_pos = glm::ivec3(i, j, k);
             for (int n = 0; n < 8; n++) {
-              auto neighbor =
-                  world->get_block_by_center(block_pos + neighborOffsets[n]);
+              auto neighbor = GetBlock(block_pos, neighborOffsetsIdx[n]);
               if (neighbor && neighbor->is_standable()) {
                 ac |= (1u << n); // set bit if solid
               }
             }
-
-            if (auto b0 = world->get_block_by_center(
-                    block_pos + glm::ivec3(0, BLOCK_SIZE, -BLOCK_SIZE))) {
+            glm::ivec3 offset = glm::ivec3(0, 1, -1);
+            if (auto b0 = GetBlock(block_pos, offset)) {
               if (b0->is_standable())
                 ac |= (1u << 8);
             }
@@ -536,46 +506,12 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          std::vector<GLuint> indices;
-          std::vector<GLuint> blockrendervert;
-          blocks[i][j][k].Render(mask, ac, indices, blockrendervert);
-          for (auto &ind : indices)
-            ind += idx;
-          renderverttrans.push_back({blockrendervert, indices});
+          cntblockstrans += blocks[i][j][k].Render(
+              mask, ac, idx, cube_indicestrans, cube_verticestrans);
           idx += 24, counttrans++;
         }
       }
     }
-
-    const GLuint cnt = counttrans;
-    const GLuint rsize = static_cast<GLuint>(renderverttrans.size());
-
-    GLuint vcnt = 0, icnt = 0;
-
-    for (GLuint i = 0; i < rsize; ++i) {
-      auto &vert_ind = renderverttrans[i];
-      const auto &verts = vert_ind.first;
-      const auto &inds = vert_ind.second;
-
-      vcnt += static_cast<GLuint>(verts.size());
-      icnt += static_cast<GLuint>(inds.size());
-    }
-
-    cntblockstrans = icnt;
-    cube_vertices.reserve(vcnt);
-    cube_indices.reserve(icnt);
-
-    for (GLuint i = 0; i < rsize; ++i) {
-      auto &vert_ind = renderverttrans[i];
-      const auto &verts = vert_ind.first;
-      const auto &inds = vert_ind.second;
-
-      cube_verticestrans.insert(cube_verticestrans.end(), verts.begin(),
-                                verts.end());
-      cube_indicestrans.insert(cube_indicestrans.end(), inds.begin(),
-                               inds.end());
-    }
-
 #ifndef BUILD_SERVER
     if (!setup) {
       chunkvatrans->Bind();

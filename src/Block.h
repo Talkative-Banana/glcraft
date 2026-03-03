@@ -6,7 +6,7 @@
 
 class Block {
 private:
-  std::vector<GLuint> GenerateVerticies(GLuint ambient_occ);
+  void GenerateVerticies(GLuint, std::vector<GLuint> &);
 
 public:
   // visible solid
@@ -28,8 +28,8 @@ public:
   Block(const glm::ivec3 &pos, GLboolean solid, BLOCK_TYPE bltype);
   Block();
 
-  void Render(GLuint mask, GLuint ambient_occ, std::vector<GLuint> &indices,
-              std::vector<GLuint> &rendervert);
+  GLuint Render(GLuint mask, GLuint ambient_occ, GLuint offset,
+                std::vector<GLuint> &indices, std::vector<GLuint> &rendervert);
   void add(BLOCK_TYPE bltype);
   void remove();
   bool is_solid();

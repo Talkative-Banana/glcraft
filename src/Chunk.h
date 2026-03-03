@@ -24,20 +24,12 @@ public:
       std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>,
       CHUNK_BLOCK_COUNT>
       blocks;
-  std::vector<GLuint> cube_vertices;
-  std::vector<GLuint> cube_indices;
-  std::unique_ptr<VertexArray> chunkva;
-  std::unique_ptr<VertexBuffer> chunkvb;
-  std::unique_ptr<IndexBuffer> chunkib;
-  std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>> rendervert;
+  std::vector<GLuint> cube_vertices, cube_verticestrans;
+  std::vector<GLuint> cube_indices, cube_indicestrans;
 
-  std::vector<GLuint> cube_verticestrans;
-  std::vector<GLuint> cube_indicestrans;
-  std::unique_ptr<VertexArray> chunkvatrans;
-  std::unique_ptr<VertexBuffer> chunkvbtrans;
-  std::unique_ptr<IndexBuffer> chunkibtrans;
-  std::vector<std::pair<std::vector<GLuint>, std::vector<GLuint>>>
-      renderverttrans;
+  std::unique_ptr<VertexArray> chunkva, chunkvatrans;
+  std::unique_ptr<VertexBuffer> chunkvb, chunkvbtrans;
+  std::unique_ptr<IndexBuffer> chunkib, chunkibtrans;
 
   Chunk();
   Chunk(uint _id, glm::ivec3 biomepos, glm::ivec3 position, GLboolean display,
@@ -49,11 +41,10 @@ public:
               std::shared_ptr<Chunk>,  // right
               std::shared_ptr<Chunk>); // back
   void Setup_Landscape(GLint X, GLint Y);
-  GLuint RenderFace(std::vector<GLint> &&position);
-  inline GLboolean isSolid(const std::vector<GLint> &postion);
-  inline GLboolean isTransparent(const std::vector<GLint> &position);
-  inline GLboolean isSameKind(const std::vector<GLint> &,
-                              const std::vector<GLint> &);
+  GLuint RenderFace(int, int, int);
+  inline GLboolean isSolid(int, int, int);
+  inline GLboolean isTransparent(int, int, int);
+  inline GLboolean isSameKind(int, int, int, int, int, int);
   void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
   void Serialize(std::ostream &os) const;
   bool Deserialize(std::istream &is);
