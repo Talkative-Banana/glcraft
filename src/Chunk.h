@@ -48,6 +48,8 @@ public:
   void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
   void Serialize(std::ostream &os) const;
   bool Deserialize(std::istream &is);
+  void SetupVertexObjects();
+  void UpdateVertexObjects();
   static void SetupNoise(uint64_t seed) {
     // Set random seed for mountains
     s_mountainTerrain.SetSeed(seed);

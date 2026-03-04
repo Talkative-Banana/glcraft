@@ -122,7 +122,9 @@ public:
   int getSeed();
   WEATHER getWeather();
   void setWeather(WEATHER weather);
-  void DoBindTask(bool);
+  void MarkBiomesReadyForPass1();
+  void MarkBiomesReadyForPass2();
+
   void RefreshChunks(glm::ivec3, bool left = false, bool back = false,
                      bool right = false, bool front = false);
 

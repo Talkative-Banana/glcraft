@@ -328,70 +328,69 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   }
 }
 
-void World::DoBindTask(bool firstRun) {
+void World::MarkBiomesReadyForPass1() {
   while (!bind_queue.empty()) {
     auto biome = bind_queue.front().lock();
-    bool flag = false;
-    {
-      // If biome is null return early
-      if (!biome) {
-        bind_queue.pop();
-        break;
-      }
-      if (firstRun && biome->isrerenderiter) {
-        return;
-      }
+    // If biome is null return early
+    if (!biome) {
+      bind_queue.pop();
+      continue;
     }
 
     if (biome->isrerenderiter) {
-      int expected = 32;
-      if (biome->chunks_ready.compare_exchange_strong(expected, 16)) {
-        flag = true;
-      }
+      // Biome already done with Pass 1
+      return;
     }
 
     constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
     bool isReady = biome->chunks_ready.load(std::memory_order_acquire) == count;
-    if ((firstRun || flag) && isReady) {
+    // All the chunks belonging to biome are done with setup
+    if (isReady) {
+      bind_queue.pop();
+      // Mark these chunks ready for rendering
+      for (int i = 0; i < CHUNK_COUNTX; i++) {
+        for (int j = 0; j < CHUNK_COUNTZ; j++) {
+          auto chunk = biome->chunks[i][j];
+          chunk->SetupVertexObjects();
+          biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
+        }
+      }
+      // TODO: Check if neighor biome chunks are done with setup
+      rerender_queue.push(biome);
+    } else {
+      return;
+    }
+  }
+}
+
+void World::MarkBiomesReadyForPass2() {
+  while (!bind_queue.empty()) {
+    auto biome = bind_queue.front().lock();
+    // If biome is null return early
+    if (!biome) {
+      bind_queue.pop();
+      continue;
+    }
+
+    if (!biome->isrerenderiter) {
+      // Biome not done with Pass 1
+      return;
+    }
+
+    bool isReady = false;
+    constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX * 2;
+    if (biome->chunks_ready.load(std::memory_order_acquire) == count) {
+      isReady = true;
+    }
+
+    if (isReady) {
       bind_queue.pop();
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
           auto chunk = biome->chunks[i][j];
-          // OPAQUE PASS
-          chunk->chunkva = std::make_unique<VertexArray>();
-          chunk->chunkva->Bind();
-          VertexBufferLayout layout;
-          layout.Push(GL_UNSIGNED_INT, 1);
-          chunk->chunkvb = std::make_unique<VertexBuffer>(
-              chunk->cube_vertices.data(),
-              chunk->cube_vertices.size() * sizeof(GLuint));
-          chunk->chunkva->AddBuffer(*(chunk->chunkvb), layout);
-          chunk->chunkib = std::make_unique<IndexBuffer>(
-              chunk->cube_indices.data(), chunk->cube_indices.size());
-          chunk->chunkib->Bind();
-          chunk->chunkva->Unbind();
-
-          // TRANSPARENT PASS
-          chunk->chunkvatrans = std::make_unique<VertexArray>();
-          chunk->chunkvatrans->Bind();
-          VertexBufferLayout layouttrans;
-          layouttrans.Push(GL_UNSIGNED_INT, 1);
-          chunk->chunkvbtrans = std::make_unique<VertexBuffer>(
-              chunk->cube_verticestrans.data(),
-              chunk->cube_verticestrans.size() * sizeof(GLuint));
-          chunk->chunkvatrans->AddBuffer(*(chunk->chunkvbtrans), layouttrans);
-          chunk->chunkibtrans = std::make_unique<IndexBuffer>(
-              chunk->cube_indicestrans.data(), chunk->cube_indicestrans.size());
-
-          chunk->chunkibtrans->Bind();
-          chunk->chunkvatrans->Unbind();
+          chunk->UpdateVertexObjects();
           biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
         }
-      }
-
-      // TODO: Have a way to check if neighbor chunks are loaded
-      if (firstRun) {
-        rerender_queue.push(biome);
       }
     } else {
       return;

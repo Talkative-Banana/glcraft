@@ -394,22 +394,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
         }
       }
     }
-    // Return early in case of server as we dont want to perform any graphic
-    // operations there
-#ifndef BUILD_SERVER
-    if (!setup) {
-      chunkva->Bind();
-      VertexBufferLayout layout;
-      layout.Push(GL_UNSIGNED_INT, 1);
-      chunkvb = std::make_unique<VertexBuffer>(
-          cube_vertices.data(), cube_vertices.size() * sizeof(GLuint));
-      chunkva->AddBuffer(*chunkvb, layout);
-      chunkib = std::make_unique<IndexBuffer>(cube_indices.data(),
-                                              cube_indices.size());
-      chunkib->Bind();
-      chunkva->Unbind();
-    }
-#endif
   }
 
   // Render transparent blocks
@@ -512,22 +496,64 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
         }
       }
     }
-#ifndef BUILD_SERVER
-    if (!setup) {
-      chunkvatrans->Bind();
-      VertexBufferLayout layout;
-      layout.Push(GL_UNSIGNED_INT, 1);
-      chunkvbtrans = std::make_unique<VertexBuffer>(cube_verticestrans.data(),
-                                                    cube_verticestrans.size() *
-                                                        sizeof(GLuint));
-      chunkvatrans->AddBuffer(*chunkvbtrans, layout);
-      chunkibtrans = std::make_unique<IndexBuffer>(cube_indicestrans.data(),
-                                                   cube_indicestrans.size());
-      chunkibtrans->Bind();
-      chunkvatrans->Unbind();
-    }
-#endif
   }
+
+  // firstRun is called by worker threads (cant make opengl calls from here)
+  // !firstRun is called by main threads
+  if (!firstRun)
+    UpdateVertexObjects();
+}
+
+void Chunk::UpdateVertexObjects() {
+  // Return early in case of server as we dont want to perform any graphics
+  // operations there
+#ifdef BUILD_SERVER
+  return;
+#endif
+  chunkvb->UpdateBuffer(cube_vertices.data(),
+                        cube_vertices.size() * sizeof(GLuint));
+
+  chunkvbtrans->UpdateBuffer(cube_verticestrans.data(),
+                             cube_verticestrans.size() * sizeof(GLuint));
+
+  chunkib->UpdateBuffer(cube_indices.data(), cube_indices.size());
+
+  chunkibtrans->UpdateBuffer(cube_indicestrans.data(),
+                             cube_indicestrans.size());
+}
+
+void Chunk::SetupVertexObjects() {
+  // Return early in case of server as we dont want to perform any graphic
+  // operations there
+#ifdef BUILD_SERVER
+  return;
+#endif
+  // OPAQUE PASS
+  chunkva = std::make_unique<VertexArray>();
+  chunkva->Bind();
+  VertexBufferLayout layout;
+  layout.Push(GL_UNSIGNED_INT, 1);
+  chunkvb =
+      std::make_unique<VertexBuffer>(cube_vertices.capacity() * sizeof(GLuint));
+  chunkva->AddBuffer(*(chunkvb), layout);
+  chunkib = std::make_unique<IndexBuffer>(cube_indices.data(),
+                                          cube_indices.capacity());
+  chunkib->Bind();
+  chunkva->Unbind();
+
+  // TRANSPARENT PASS
+  chunkvatrans = std::make_unique<VertexArray>();
+  chunkvatrans->Bind();
+  VertexBufferLayout layouttrans;
+  layouttrans.Push(GL_UNSIGNED_INT, 1);
+  chunkvbtrans = std::make_unique<VertexBuffer>(cube_verticestrans.capacity() *
+                                                sizeof(GLuint));
+  chunkvatrans->AddBuffer(*(chunkvbtrans), layouttrans);
+  chunkibtrans = std::make_unique<IndexBuffer>(cube_indicestrans.data(),
+                                               cube_indicestrans.capacity());
+
+  chunkibtrans->Bind();
+  chunkvatrans->Unbind();
 }
 
 void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {

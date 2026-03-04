@@ -355,14 +355,14 @@ int main(int, char **) {
     // Setup biomes [first pass]
     world->SetupBiomesPass1();
 
-    // Do Binding for first pass
-    world->DoBindTask(true);
+    // Update VAOs for biomes [first pass]
+    world->MarkBiomesReadyForPass1();
 
     // Setup biomes [second pass]
     world->SetupBiomesPass2();
 
-    // Do Binding for second pass
-    world->DoBindTask(false);
+    // Update VAOs for biomes[second pass]
+    world->MarkBiomesReadyForPass2();
 
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
