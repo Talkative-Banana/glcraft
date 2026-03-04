@@ -42,8 +42,10 @@ glm::ivec3 Block::get_pos() {
 
 void Block::GenerateVerticies(GLuint ambient_occ,
                               std::vector<GLuint> &vertices) {
-  GLuint x = (blmask >> 10) & 31, y = (blmask >> 5) & 31, z = (blmask) & 31,
-         blktype = (blmask >> 23) & 63;
+  GLuint x = (blmask >> 10) & 31;
+  GLuint y = (blmask >> 05) & 31;
+  GLuint z = (blmask >> 00) & 31;
+  GLuint blktype = (blmask >> 23) & 63;
   // Vertex Position
   // 24 verticies per block
 

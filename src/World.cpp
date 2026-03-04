@@ -271,6 +271,7 @@ void World::SetupBiomesPass1() {
   }
 }
 
+// Responsible for removing hidden block faces
 void World::SetupBiomesPass2() {
   while (!rerender_queue.empty()) {
     auto b_weak = rerender_queue.front();
@@ -288,8 +289,8 @@ void World::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   // render_queue
   for (auto [_, b_weak] : render_queue) {
     if (auto biome = b_weak.lock()) {
-      if (biome->chunks_ready.load(std::memory_order_acquire) >=
-          CHUNK_COUNTX * CHUNK_COUNTZ) {
+      constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
+      if (biome->chunks_ready.load(std::memory_order_acquire) >= count) {
         biome->Draw(type, cameraPos);
       }
     }
@@ -300,25 +301,30 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // Check for all the biomes in update_queue
   for (auto [_, b_weak] : render_queue) {
     if (auto biome = b_weak.lock()) {
-      if (biome->chunks_ready.load(std::memory_order_acquire) >=
-          CHUNK_COUNTX * CHUNK_COUNTZ) {
+      constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
+      if (biome->chunks_ready.load(std::memory_order_acquire) >= count) {
         biome->Update_queue(playerpos, VP);
       }
     }
   }
   // remove all expired
+  bool isRemoved = false;
   for (auto it = render_queue.begin(); it != render_queue.end();) {
     if (it->second.expired()) {
       it = render_queue.erase(it);
+      isRemoved |= true;
     } else {
       ++it;
     }
   }
 
   // Mark for removal
-  {
-    std::lock_guard<std::mutex> lock(setup_mutex);
-    job_queue.emplace(0, 0, 0, glm::dvec3{}, true);
+  if (isRemoved) {
+    {
+      std::lock_guard<std::mutex> lock(setup_mutex);
+      job_queue.emplace(0, 0, 0, glm::dvec3{}, true);
+    }
+    setup_cv.notify_one();
   }
 }
 
@@ -343,9 +349,10 @@ void World::DoBindTask(bool firstRun) {
         flag = true;
       }
     }
-    if ((firstRun || flag) &&
-        biome->chunks_ready.load(std::memory_order_acquire) ==
-            CHUNK_COUNTZ * CHUNK_COUNTX) {
+
+    constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
+    bool isReady = biome->chunks_ready.load(std::memory_order_acquire) == count;
+    if ((firstRun || flag) && isReady) {
       bind_queue.pop();
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
@@ -382,8 +389,7 @@ void World::DoBindTask(bool firstRun) {
         }
       }
 
-      // Have a way to check if neighbor chunks are loaded before
-      // rerendering
+      // TODO: Have a way to check if neighbor chunks are loaded
       if (firstRun) {
         rerender_queue.push(biome);
       }
