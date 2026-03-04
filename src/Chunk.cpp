@@ -47,8 +47,8 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   cube_indices.reserve(50'000);
   cube_indicestrans.reserve(50'000);
 
-  cube_vertices.reserve(10'00'000);
-  cube_verticestrans.reserve(10'00'000);
+  cube_vertices.reserve(8'00'000);
+  cube_verticestrans.reserve(8'00'000);
 }
 
 inline GLboolean Chunk::isSolid(int x, int y, int z) {
@@ -297,7 +297,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   {
     cube_vertices.clear();
     cube_indices.clear();
-    count = 0;
+    count = 0, cntblocks = 0;
     GLuint idx = 0;
 
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
@@ -416,7 +416,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   {
     cube_verticestrans.clear();
     cube_indicestrans.clear();
-    counttrans = 0;
+    counttrans = 0, cntblockstrans = 0;
     GLuint idx = 0;
 
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
