@@ -16,7 +16,7 @@
 extern std::unique_ptr<Window> _window;
 extern std::unique_ptr<World> world;
 extern std::unique_ptr<AssetManager> asset_manager;
-extern GLuint activePlayer, players_cnt, shaderProgram, shaderProgram2;
+extern GLuint activePlayer, players_cnt;
 extern GLint vModel_uniform, vView_uniform, vProjection_uniform, side_uniform,
     chunkpos_uniform, vColor_uniform, atlas_uniform;
 extern glm::dmat4 modelT, viewT, viewRotateT,
@@ -28,10 +28,11 @@ extern void add_player(uint32_t);
 class Player {
 public:
   std::unique_ptr<CameraController> m_cameracontroller;
-  Player(const uint64_t);
   Player(const uint64_t, const uint64_t);
-  Player(const uint64_t, const glm::vec3 &, const glm::vec3 &, const uint64_t);
-  Player(const uint64_t, const uint64_t, const std::string &,
+  Player(const uint64_t, const uint64_t, const uint64_t);
+  Player(const uint64_t, const glm::vec3 &, const glm::vec3 &, const uint64_t,
+         const uint64_t);
+  Player(const uint64_t, const uint64_t, const uint64_t, const std::string &,
          const std::string &, boost::asio::io_context &,
          std::function<void(const std::string &)>);
 
@@ -39,7 +40,7 @@ public:
   std::shared_ptr<std::string> handle_client_input(const std::string &);
   void update(float);
   void handle_stats();
-  void handleNetworkRequest(PlayerState &st);
+  void handleNetworkRequest(PlayerState &);
   void handle_transformations();
   void setupModelTransformationCube(unsigned int &);
   void setupModelTransformationAxis(unsigned int &, double, glm::dvec3);
@@ -69,6 +70,7 @@ private:
   int display_w, display_h;
   GLFWwindow *window;
   GLuint bltype = 0, mdtype = 0, Nokeypressed = 0, m_id = 0;
+  GLuint m_shaderProgram, m_shaderProgram2;
   uint64_t m_meshhandle;
   Inventory m_inventory;
   BLOCK_TYPE inside_block;

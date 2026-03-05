@@ -29,8 +29,6 @@ endif()
 
 set(SOURCES
   "src/Main.cpp"
-  # "src/ClientMain.cpp"
-  # "src/ServerMain.cpp"
   "src/Utils.cpp"
   "src/Renderer.cpp"
   "src/IndexBuffer.cpp"
@@ -44,6 +42,7 @@ set(SOURCES
   "src/Chunk.cpp"
   "src/Biome.cpp"
   "src/Window.cpp"
+  "src/Game.cpp"
   "src/WindowsInput.cpp"
   "src/Material.cpp"
   "src/Ray.cpp"
@@ -61,87 +60,6 @@ set(SOURCES
   "src/RainEffect.cpp"
   "src/SnowEffect.cpp"
   "src/WaterEffect.cpp"
-  "src/Client.cpp"
-  # "src/Server.cpp"
-
-  "depends/libnoise/noiseutils.cpp"
-  "depends/imgui/imgui_impl_glfw.cpp"
-  "depends/imgui/imgui_impl_opengl3.cpp"
-  "depends/imgui/imgui.cpp"
-  "depends/imgui/imgui_demo.cpp"
-  "depends/imgui/imgui_draw.cpp"
-  "depends/imgui/imgui_widgets.cpp"
-)
-
-
-set(CLIENT_SOURCES
-  # "src/Main.cpp"
-  "src/ClientMain.cpp"
-  # "src/ServerMain.cpp"
-  "src/Utils.cpp"
-  "src/Renderer.cpp"
-  "src/IndexBuffer.cpp"
-  "src/VertexBuffer.cpp"
-  "src/VertexArray.cpp"
-  "src/Camera.cpp"
-  "src/CameraController.cpp"
-  "src/Texture.cpp"
-  "src/TextureCubeMap.cpp"
-  "src/Block.cpp"
-  "src/Chunk.cpp"
-  "src/Biome.cpp"
-  "src/Window.cpp"
-  "src/WindowsInput.cpp"
-  "src/Material.cpp"
-  "src/Ray.cpp"
-  "src/World.cpp"
-  "src/Player.cpp"
-  "src/AssetManager.cpp"
-  "src/Mesh.cpp"
-  "src/Inventory.cpp"
-  "src/Quad.cpp"
-  "src/UIComponent.cpp"
-  "src/UI.cpp"
-  "src/ParticleSystem.cpp"
-  "src/Effect.cpp"
-  "src/SmokeEffect.cpp"
-  "src/SnowEffect.cpp"
-  "src/RainEffect.cpp"
-  "src/WaterEffect.cpp"
-  "src/Client.cpp"
-  # "src/Server.cpp"
-
-  "depends/libnoise/noiseutils.cpp"
-  "depends/imgui/imgui_impl_glfw.cpp"
-  "depends/imgui/imgui_impl_opengl3.cpp"
-  "depends/imgui/imgui.cpp"
-  "depends/imgui/imgui_demo.cpp"
-  "depends/imgui/imgui_draw.cpp"
-  "depends/imgui/imgui_widgets.cpp"
-)
-
-set(SERVER_SOURCES
-  # "src/Main.cpp"
-  # "src/ClientMain.cpp"
-  "src/ServerMain.cpp"
-  "src/Utils.cpp"
-  "src/Renderer.cpp"
-  "src/IndexBuffer.cpp"
-  "src/VertexBuffer.cpp"
-  "src/VertexArray.cpp"
-  "src/Camera.cpp"
-  "src/CameraController.cpp"
-  "src/Block.cpp"
-  "src/Chunk.cpp"
-  "src/Biome.cpp"
-  "src/Window.cpp"
-  "src/WindowsInput.cpp"
-  "src/Ray.cpp"
-  "src/World.cpp"
-  "src/Player.cpp"
-  "src/AssetManager.cpp"
-  "src/Mesh.cpp"
-  "src/Inventory.cpp"
   "src/Client.cpp"
   "src/Server.cpp"
 
@@ -159,7 +77,7 @@ option(BUILD_SERVER "Build server" ON)
 option(BUILD_LOCAL  "Build local single binary" OFF)
 
 if (BUILD_CLIENT)
-  add_executable(GlCraftClient ${CLIENT_SOURCES})
+  add_executable(GlCraftClient ${SOURCES})
  
 if(WIN32)
   add_custom_command(TARGET GlCraftClient POST_BUILD
@@ -192,7 +110,7 @@ endif()
 endif()
 
 if (BUILD_SERVER)
-    add_executable(GlCraftServer ${SERVER_SOURCES})
+    add_executable(GlCraftServer ${SOURCES})
 
 if(WIN32)
     add_custom_command(TARGET GlCraftServer POST_BUILD
