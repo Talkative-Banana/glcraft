@@ -57,9 +57,14 @@ void Biome::setup_chunks(bool firstRun) {
                          chunks[i - 1][j], chunks[i][j - 1]);
         }
       }
-      glm::ivec3 tmp = _chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE);
-      if (auto biome = world->get_biome_by_center(tmp).lock()) {
-        biome->chunks_ready.fetch_add(1, std::memory_order_release);
+      if (m_RenderIter.load() == BIOMESTATUS::SETUP) {
+        m_chunksSetup.fetch_add(1, std::memory_order_release);
+      } else if (m_RenderIter.load() == BIOMESTATUS::REFRESH) {
+        m_chunksRerendered.fetch_add(1, std::memory_order_release);
+      } else if (m_RenderIter.load() == BIOMESTATUS::FINAL) {
+        m_chunksFinished.fetch_add(1, std::memory_order_release);
+      } else {
+        assert(false);
       }
     }
   }
@@ -103,6 +108,7 @@ void Biome::SetupBiome(bool firstRun) {
   if (firstRun) {
     if (worker1.joinable())
       worker1.join();
+    m_RenderIter.store(BIOMESTATUS::SETUP);
     worker1 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   } else {
     if (worker2.joinable())
@@ -112,7 +118,7 @@ void Biome::SetupBiome(bool firstRun) {
 
   auto pos = Biomepos + glm::ivec3(HALF_BLOCK_SIZE);
   auto biome = world->get_biome_by_center(pos);
-  world->bind_queue.push(biome);
+  world->m_bindQueue.push(biome);
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
