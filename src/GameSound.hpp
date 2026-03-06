@@ -1,16 +1,20 @@
 #pragma once
+#include "Constants.hpp"
 #include <SFML/Audio.hpp>
 #include <SFML/Config.hpp>
 #include <iostream>
 #include <string.h>
-#include "Constants.hpp"
 
 class GameSound {
 public:
   explicit GameSound(const std::string &path) {
+#ifdef BUILD_SERVER
+    return;
+#endif
     auto res = sound_buffer.loadFromFile(path);
     if (!res) {
       std::cerr << "Audio file at " << path << " not found\n";
+      return;
     }
     sound = sf::Sound(sound_buffer);
     sound.setPosition({0.0, 0.0, 0.0});
@@ -24,28 +28,33 @@ public:
     sound.setLoop(true);
 #endif
     sound.setRelativeToListener(true);
-    sound.play();
   }
 
   // Use it to get and set property of sound
   sf::Sound &get_sound() { return sound; }
 
   // Helper function to get status of sound across versions
-  SOUNDSTATUS getSoundStatus(){
+  SOUNDSTATUS getSoundStatus() {
 #if SFML_VERSION_MAJOR >= 3
-      switch (sound.getStatus()) {
-        case sf::SoundSource::Status::Stopped: return SOUNDSTATUS::STOPPED;
-        case sf::SoundSource::Status::Paused:  return SOUNDSTATUS::PAUSED;
-        case sf::SoundSource::Status::Playing: return SOUNDSTATUS::PLAYING;
-      }
+    switch (sound.getStatus()) {
+    case sf::SoundSource::Status::Stopped:
+      return SOUNDSTATUS::STOPPED;
+    case sf::SoundSource::Status::Paused:
+      return SOUNDSTATUS::PAUSED;
+    case sf::SoundSource::Status::Playing:
+      return SOUNDSTATUS::PLAYING;
+    }
 #else
-      switch (sound.getStatus()) {
-        case sf::SoundSource::Stopped: return SOUNDSTATUS::STOPPED;
-        case sf::SoundSource::Paused:  return SOUNDSTATUS::PAUSED;
-        case sf::SoundSource::Playing: return SOUNDSTATUS::PLAYING;
-      }
+    switch (sound.getStatus()) {
+    case sf::SoundSource::Stopped:
+      return SOUNDSTATUS::STOPPED;
+    case sf::SoundSource::Paused:
+      return SOUNDSTATUS::PAUSED;
+    case sf::SoundSource::Playing:
+      return SOUNDSTATUS::PLAYING;
+    }
 #endif
-      return SOUNDSTATUS::UNKNOWN;
+    return SOUNDSTATUS::UNKNOWN;
   }
 
 private:

@@ -2,10 +2,11 @@
 
 // Constructor with networking client
 Player::Player(const uint64_t id, const uint64_t shaderProgram,
-               const std::string &host, const std::string &port,
-               boost::asio::io_context &io_context,
+               const uint64_t shaderProgram2, const std::string &host,
+               const std::string &port, boost::asio::io_context &io_context,
                std::function<void(const std::string &)> func)
-    : m_id(id) {
+    : m_id(id), m_shaderProgram(shaderProgram),
+      m_shaderProgram2(shaderProgram2) {
   m_client = std::make_unique<Client>(io_context, host, port, func);
 
   m_client->run();
@@ -14,7 +15,7 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
   m_meshhandle = asset_manager->loadMeshObject(
-      "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
+      "assets/sphere.obj", shaderProgram2, 0.125, 0.0, m_position, m_forward);
 
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->setup();
@@ -23,14 +24,15 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
 }
 
 Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
-               const uint64_t shaderProgram)
-    : m_position(pos), m_forward(dir), m_id(id) {
+               const uint64_t shaderProgram, const uint64_t shaderProgram2)
+    : m_position(pos), m_forward(dir), m_id(id), m_shaderProgram(shaderProgram),
+      m_shaderProgram2(shaderProgram2) {
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
   m_meshhandle = asset_manager->loadMeshObject(
-      "assets/sphere.obj", shaderProgram, 0.125, 0.0, m_position, m_forward);
+      "assets/sphere.obj", shaderProgram2, 0.125, 0.0, m_position, m_forward);
 
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->setup();
@@ -38,14 +40,17 @@ Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
   }
 }
 
-Player::Player(const uint64_t id, const uint64_t shaderProgram) : m_id(id) {
+Player::Player(const uint64_t id, const uint64_t shaderProgram,
+               const uint64_t shaderProgram2)
+    : m_id(id), m_shaderProgram(shaderProgram),
+      m_shaderProgram2(shaderProgram2) {
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   window = _window->GetWindow();
 
   m_meshhandle = asset_manager->loadMeshObject(
-      "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
+      "assets/sphere.obj", shaderProgram2, 0.5, 0.0, m_position, m_forward);
 
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->setup();
@@ -53,13 +58,14 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram) : m_id(id) {
   }
 }
 
-Player::Player(const uint64_t id) : m_id(id) {
+Player::Player(const uint64_t id, const uint64_t shaderProgram2)
+    : m_id(id), m_shaderProgram2(shaderProgram2) {
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
 
   m_meshhandle = asset_manager->loadMeshObject(
-      "assets/sphere.obj", shaderProgram, 0.5, 0.0, m_position, m_forward);
+      "assets/sphere.obj", shaderProgram2, 0.5, 0.0, m_position, m_forward);
 
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     meshes.push_back(l_mesh);
@@ -614,7 +620,6 @@ void Player::handle_transformations() {
   m_cameracontroller->SetAspectRatio((float)display_w / (float)display_h);
   glViewport(0, 0, display_w, display_h);
 
-  glUseProgram(shaderProgram);
   // Setup MVP matrix
   glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
   glEnable(GL_DEPTH_TEST); // restore
@@ -630,9 +635,9 @@ void Player::handle_transformations() {
     mesh->render(m_cameracontroller, m_position);
   }
 
-  setupModelTransformationCube(shaderProgram);
-  setupViewTransformation(shaderProgram, m_cameracontroller);
-  setupProjectionTransformation(shaderProgram, m_cameracontroller);
+  setupModelTransformationCube(m_shaderProgram);
+  setupViewTransformation(m_shaderProgram, m_cameracontroller);
+  setupProjectionTransformation(m_shaderProgram, m_cameracontroller);
 }
 
 void Player::update(float dt) {
