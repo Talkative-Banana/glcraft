@@ -88,6 +88,14 @@ enum class SOUNDSTATUS {
   UNKNOWN,
 };
 
+enum class BIOMESTATUS {
+  IDLE,
+  SETUP,
+  REFRESH,
+  WAITING,
+  FINAL,
+};
+
 enum class OBJ_TYPE {
   OPAQUE_,
   TRANSPARENT_,

@@ -444,6 +444,9 @@ void Game::run() {
     // Do Binding for second pass
     world->MarkBiomesReadyForPass2();
 
+    // Mark all the waiting biomes ready
+    world->MarkBiomesReadyForBoundaryRemoval();
+
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
 

@@ -194,7 +194,7 @@ void World::workerLoop() {
       biomes.set(i, k, j, biome);
       {
         std::lock_guard<std::mutex> g(setup_mutex);
-        setup_queue.push(biome);
+        m_setupQueue.push(biome);
       }
     }
   }
@@ -226,8 +226,10 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
 
         glm::ivec3 biome_pos =
             glm::ivec3(BIOME_LENGTH * i, BIOME_HEIGHT * k, BIOME_LENGTH * j);
-        bool insideX = abs(biome_pos.x - playerpos.x) <= RENDER_DISTANCE,
-             insideZ = abs(biome_pos.z - playerpos.z) <= RENDER_DISTANCE,
+        bool insideX = abs(biome_pos.x + BIOME_LENGTH - playerpos.x) <=
+                       RENDER_DISTANCE,
+             insideZ = abs(biome_pos.z + BIOME_LENGTH - playerpos.z) <=
+                       RENDER_DISTANCE,
              insideY = abs(biome_pos.y - playerpos.y) <= CHUNK_HEIGHT * 2;
         if (insideX && insideZ && insideY) {
           bool shouldSchedule = false;
@@ -256,15 +258,14 @@ void World::SetupBiomesPass1() {
 
     {
       std::lock_guard<std::mutex> lock(setup_mutex);
-      if (setup_queue.empty())
+      if (m_setupQueue.empty())
         break;
 
-      b_weak = setup_queue.front();
-      setup_queue.pop();
+      b_weak = m_setupQueue.front();
+      m_setupQueue.pop();
     }
 
     if (auto b = b_weak.lock()) {
-      b->isrerenderiter = false;
       b->SetupBiome(true);
       render_queue[b->m_id] = b_weak;
     }
@@ -273,13 +274,11 @@ void World::SetupBiomesPass1() {
 
 // Responsible for removing hidden block faces
 void World::SetupBiomesPass2() {
-  while (!rerender_queue.empty()) {
-    auto b_weak = rerender_queue.front();
-    rerender_queue.pop();
+  while (!m_rerenderQueue.empty()) {
+    auto b_weak = m_rerenderQueue.front();
+    m_rerenderQueue.pop();
     if (auto b = b_weak.lock()) {
-      b->isrerenderiter = true;
       b->SetupBiome(false); // ReRun
-      render_queue[b->m_id] = b_weak;
     }
   }
 }
@@ -290,7 +289,7 @@ void World::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   for (auto [_, b_weak] : render_queue) {
     if (auto biome = b_weak.lock()) {
       constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
-      if (biome->chunks_ready.load(std::memory_order_acquire) >= count) {
+      if (biome->m_chunksSetup.load(std::memory_order_acquire) == count) {
         biome->Draw(type, cameraPos);
       }
     }
@@ -302,7 +301,7 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   for (auto [_, b_weak] : render_queue) {
     if (auto biome = b_weak.lock()) {
       constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
-      if (biome->chunks_ready.load(std::memory_order_acquire) >= count) {
+      if (biome->m_chunksSetup.load(std::memory_order_acquire) == count) {
         biome->Update_queue(playerpos, VP);
       }
     }
@@ -312,7 +311,7 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   for (auto it = render_queue.begin(); it != render_queue.end();) {
     if (it->second.expired()) {
       it = render_queue.erase(it);
-      isRemoved |= true;
+      isRemoved = true;
     } else {
       ++it;
     }
@@ -329,7 +328,6 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
 }
 
 void World::MarkBiomesReadyForPass1() {
-
   auto neighborBiomes =
       [this](glm::ivec3 vec) -> std::vector<std::weak_ptr<Biome>> {
     std::weak_ptr<Biome> left, front, right, back;
@@ -341,27 +339,33 @@ void World::MarkBiomesReadyForPass1() {
     return {left, front, right, back};
   };
 
-  if (!bind_queue.empty()) {
-    auto biome = bind_queue.front().lock();
+  while (!m_bindQueue.empty()) {
+    auto biome = m_bindQueue.front().lock();
     // If biome is null return early
     if (!biome) {
-      bind_queue.pop();
+      m_bindQueue.pop();
+      continue;
+    }
+
+    if (biome->m_RenderIter >= BIOMESTATUS::REFRESH) {
+      // Biome already done with Pass 1
       return;
     }
 
     constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
-    bool isReady = biome->chunks_ready.load(std::memory_order_acquire) == count;
+    bool isReady =
+        biome->m_chunksSetup.load(std::memory_order_acquire) == count;
     // All the chunks belonging to biome are done with setup
     if (isReady) {
-      bind_queue.pop();
+      m_bindQueue.pop();
       // Mark these chunks ready for rendering
-      if (!biome->m_isWaiting) {
-        for (int i = 0; i < CHUNK_COUNTX; i++) {
-          for (int j = 0; j < CHUNK_COUNTZ; j++) {
-            auto chunk = biome->chunks[i][j];
-            chunk->SetupVertexObjects();
-            biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
-          }
+      for (int i = 0; i < CHUNK_COUNTX; i++) {
+        for (int j = 0; j < CHUNK_COUNTZ; j++) {
+          auto chunk = biome->chunks[i][j];
+          // Setup and update vaos for pass 1
+          chunk->SetupVertexObjects();
+          chunk->UpdateVertexObjects();
+          biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
         }
       }
       auto neighbors = neighborBiomes(biome->Biomepos);
@@ -370,18 +374,20 @@ void World::MarkBiomesReadyForPass1() {
           return false;
         }
         auto sbptr = bptr.lock();
-        return sbptr->chunks_ready.load(std::memory_order_acquire) >= count;
+        return sbptr->m_chunksSetup.load(std::memory_order_acquire) == count;
       };
 
-      bool all_available =
+      bool allAvailable =
           std::all_of(neighbors.begin(), neighbors.end(), check);
-      // TODO: Check if neighor biome chunks are done with setup
-      if (all_available) {
-        // All available continue hidden block removal phase
-        rerender_queue.push(biome);
+      // Pass Biome for interchunk walls removal
+      m_rerenderQueue.push(biome);
+      biome->m_RenderIter = BIOMESTATUS::REFRESH;
+
+      // Neighbor biomes availablen no need to rerender again
+      if (allAvailable) {
+        biome->m_RenderIter = BIOMESTATUS::FINAL;
       } else {
-        biome->m_isWaiting = true;
-        bind_queue.push(biome);
+        m_waitingQueue.push(biome);
       }
     } else {
       return;
@@ -390,35 +396,80 @@ void World::MarkBiomesReadyForPass1() {
 }
 
 void World::MarkBiomesReadyForPass2() {
-  while (!bind_queue.empty()) {
-    auto biome = bind_queue.front().lock();
+  while (!m_bindQueue.empty()) {
+    auto biome = m_bindQueue.front().lock();
     // If biome is null return early
     if (!biome) {
-      bind_queue.pop();
+      m_bindQueue.pop();
       continue;
     }
 
-    if (!biome->isrerenderiter) {
+    if (biome->m_RenderIter <= BIOMESTATUS::SETUP) {
       // Biome not done with Pass 1
       return;
     }
 
-    bool isReady = false;
-    constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX * 2;
-    if (biome->chunks_ready.load(std::memory_order_acquire) == count) {
-      isReady = true;
-    }
+    constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
+    auto ready1 = biome->m_chunksRerendered.load(std::memory_order_acquire);
+    auto ready2 = biome->m_chunksFinished.load(std::memory_order_acquire);
+    bool isReady = ready1 == count || ready2 == count;
 
+    m_bindQueue.pop();
     if (isReady) {
-      bind_queue.pop();
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
           auto chunk = biome->chunks[i][j];
           chunk->UpdateVertexObjects();
-          biome->render_queue[chunk->id] = std::weak_ptr<Chunk>(chunk);
         }
       }
     } else {
+      m_bindQueue.push(biome);
+      return;
+    }
+  }
+}
+
+void World::MarkBiomesReadyForBoundaryRemoval() {
+  auto neighborBiomes =
+      [this](glm::ivec3 vec) -> std::vector<std::weak_ptr<Biome>> {
+    std::weak_ptr<Biome> left, front, right, back;
+    vec += glm::ivec3(HALF_BLOCK_SIZE);
+    left = get_biome_by_center(vec + glm::ivec3(BIOME_LENGTH, 0, 0));
+    front = get_biome_by_center(vec + glm::ivec3(0, 0, BIOME_LENGTH));
+    right = get_biome_by_center(vec - glm::ivec3(BIOME_LENGTH, 0, 0));
+    back = get_biome_by_center(vec - glm::ivec3(0, 0, BIOME_LENGTH));
+    return {left, front, right, back};
+  };
+
+  while (!m_waitingQueue.empty()) {
+    auto biome = m_waitingQueue.front().lock();
+    // If biome is null return early
+    if (!biome) {
+      m_waitingQueue.pop();
+      continue;
+    }
+
+    constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
+    auto neighbors = neighborBiomes(biome->Biomepos);
+    auto check = [](std::weak_ptr<Biome> bptr) {
+      if (bptr.lock() == nullptr) {
+        return false;
+      }
+      auto sbptr = bptr.lock();
+      return sbptr->m_chunksSetup.load(std::memory_order_acquire) == count;
+    };
+
+    bool all_available = std::all_of(neighbors.begin(), neighbors.end(), check);
+    m_waitingQueue.pop();
+    bool donewithPass2 =
+        biome->m_chunksRerendered.load(std::memory_order_acquire) == count;
+    if (all_available && donewithPass2) {
+      // All biomes available reschedule removal
+      m_rerenderQueue.push(biome);
+      biome->m_RenderIter = BIOMESTATUS::FINAL;
+    } else {
+      m_waitingQueue.push(biome);
+      biome->m_RenderIter = BIOMESTATUS::WAITING;
       return;
     }
   }

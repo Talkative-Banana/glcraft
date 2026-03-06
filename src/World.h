@@ -86,8 +86,9 @@ private:
   glm::ivec3 m_worldpos;
   WEATHER m_weather{WEATHER::CLOUDY};
   std::unordered_map<uint64_t, std::weak_ptr<Biome>> render_queue;
-  std::queue<std::weak_ptr<Biome>> setup_queue;
-  std::queue<std::weak_ptr<Biome>> rerender_queue;
+  std::queue<std::weak_ptr<Biome>> m_setupQueue;
+  std::queue<std::weak_ptr<Biome>> m_rerenderQueue;
+  std::queue<std::weak_ptr<Biome>> m_waitingQueue;
   std::set<uint64_t> job_scheduled;
   void workerLoop();
   std::thread worker;
@@ -103,7 +104,7 @@ public:
   BiomeArray biomes;
   std::unordered_map<uint, Chunk> load_map;
   std::unordered_map<uint, std::weak_ptr<Chunk>> save_map;
-  std::queue<std::weak_ptr<Biome>> bind_queue;
+  std::queue<std::weak_ptr<Biome>> m_bindQueue;
   World(int, const glm::ivec3 &);
   ~World();
   void EnqueueVisibleBiomes(glm::dvec3);
@@ -125,6 +126,7 @@ public:
   void setWeather(WEATHER weather);
   void MarkBiomesReadyForPass1();
   void MarkBiomesReadyForPass2();
+  void MarkBiomesReadyForBoundaryRemoval();
 
   void RefreshChunks(glm::ivec3, bool left = false, bool back = false,
                      bool right = false, bool front = false);

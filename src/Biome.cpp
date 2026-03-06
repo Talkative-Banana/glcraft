@@ -57,9 +57,12 @@ void Biome::setup_chunks(bool firstRun) {
                          chunks[i - 1][j], chunks[i][j - 1]);
         }
       }
-      glm::ivec3 tmp = _chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE);
-      if (auto biome = world->get_biome_by_center(tmp).lock()) {
-        biome->chunks_ready.fetch_add(1, std::memory_order_release);
+      if (m_RenderIter == BIOMESTATUS::SETUP) {
+        m_chunksSetup.fetch_add(1, std::memory_order_release);
+      } else if (m_RenderIter == BIOMESTATUS::REFRESH) {
+        m_chunksRerendered.fetch_add(1, std::memory_order_release);
+      } else if (m_RenderIter == BIOMESTATUS::FINAL) {
+        m_chunksFinished.fetch_add(1, std::memory_order_release);
       }
     }
   }
@@ -83,6 +86,7 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
       dirtybit |= chunks[i][j]->dirtybit;
     }
   }
+  m_RenderIter = BIOMESTATUS::SETUP;
 }
 
 Biome::~Biome() {
@@ -112,7 +116,7 @@ void Biome::SetupBiome(bool firstRun) {
 
   auto pos = Biomepos + glm::ivec3(HALF_BLOCK_SIZE);
   auto biome = world->get_biome_by_center(pos);
-  world->bind_queue.push(biome);
+  world->m_bindQueue.push(biome);
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
