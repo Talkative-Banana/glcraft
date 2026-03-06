@@ -378,6 +378,7 @@ void World::MarkBiomesReadyForPass1() {
       }
       auto neighbors = neighborBiomes(biome->Biomepos);
       auto check = [](std::weak_ptr<Biome> bptr) {
+        constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
         auto sbptr = bptr.lock();
         if (!sbptr)
           return false;
@@ -470,6 +471,7 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
     constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
     auto neighbors = neighborBiomes(biome->Biomepos);
     auto check = [](std::weak_ptr<Biome> bptr) {
+      constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
       auto sbptr = bptr.lock();
       if (!sbptr)
         return false;
