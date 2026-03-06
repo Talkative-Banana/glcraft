@@ -29,7 +29,7 @@ Effect *ParticleSystem::get_effect(const uint32_t handle) {
   return it->second.get();
 }
 
-void ParticleSystem::Render() {
+void ParticleSystem::Setup() {
   // Clear existing state
   m_cnt = 0;
   m_quad_indices.clear();

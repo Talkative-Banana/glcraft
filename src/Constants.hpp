@@ -136,3 +136,29 @@ struct State {
   bool enforce{false};
   float ts;
 };
+
+const std::string ThunderPath = "./assets/audio/calm-thunderstorm-mono.wav";
+const std::string BlizzardPath = "./assets/audio/blizzard.ogg";
+
+const std::string ShaderProgramVS = "./shaders/vshaderWorld.vs";
+const std::string ShaderProgramFS = "./shaders/fshaderWorld.fs";
+
+const std::string ShaderProgram2VS = "./shaders/vshaderAsset.vs";
+const std::string ShaderProgram2FS = "./shaders/fshaderAsset.fs";
+
+const std::string ShaderProgramUIVS = "./shaders/vshaderUI.vs";
+const std::string ShaderProgramUIFS = "./shaders/fshaderUI.fs";
+
+const std::string ShaderProgramPSVS = "./shaders/vshaderPS.vs";
+const std::string ShaderProgramPSFS = "./shaders/fshaderPS.fs";
+
+const std::string WaterTexture = "./textures/water.png";
+const std::string SmokeTexture = "./textures/smoke.png";
+const std::string SnowTexture = "./textures/snow.png";
+const std::string RainTexture = "./textures/rain.png";
+
+const std::string GaugeTexture = "./textures/gauge.png";
+const std::string DefaultTexture = "./textures/default_texture.png";
+
+const std::string BunnyModel = "./assets/bunny.obj";
+const std::string BuddhaModel = "./assets/buddha.obj";
