@@ -1,4 +1,5 @@
 #pragma once
+#include <assert.h>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -26,7 +27,7 @@ public:
   std::thread worker1, worker2;
   GLboolean dirtybit;
   std::atomic<int> m_chunksSetup{0}, m_chunksRerendered{0}, m_chunksFinished{0};
-  BIOMESTATUS m_RenderIter{BIOMESTATUS::IDLE};
+  std::atomic<BIOMESTATUS> m_RenderIter{BIOMESTATUS::IDLE};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
       chunks;
   std::unordered_map<uint64_t, std::weak_ptr<Chunk>> render_queue;

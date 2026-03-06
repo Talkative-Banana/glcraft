@@ -162,10 +162,14 @@ void World::workerLoop() {
 
       if (isremove) {
         // Remove all of the unwanted biomes
-        uint64_t id = biomes.cleartoRemove();
-        if (id) {
-          std::lock_guard<std::mutex> lck(setup_mutex);
-          job_scheduled.erase(id);
+        while (true) {
+          uint64_t id = biomes.cleartoRemove();
+          if (id) {
+            std::lock_guard<std::mutex> lck(setup_mutex);
+            job_scheduled.erase(id);
+          } else {
+            break;
+          }
         }
         continue; // Was a deletion request
       }
@@ -309,7 +313,11 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // remove all expired
   bool isRemoved = false;
   for (auto it = render_queue.begin(); it != render_queue.end();) {
-    if (it->second.expired()) {
+    auto sbptr = it->second.lock();
+    auto pos = sbptr->Biomepos;
+    auto isPresent = biomes.get(pos.x / BIOME_LENGTH, pos.y / BIOME_HEIGHT,
+                                pos.z / BIOME_LENGTH);
+    if (isPresent == nullptr) {
       it = render_queue.erase(it);
       isRemoved = true;
     } else {
@@ -347,7 +355,7 @@ void World::MarkBiomesReadyForPass1() {
       continue;
     }
 
-    if (biome->m_RenderIter >= BIOMESTATUS::REFRESH) {
+    if (biome->m_RenderIter.load() >= BIOMESTATUS::REFRESH) {
       // Biome already done with Pass 1
       return;
     }
@@ -370,10 +378,9 @@ void World::MarkBiomesReadyForPass1() {
       }
       auto neighbors = neighborBiomes(biome->Biomepos);
       auto check = [](std::weak_ptr<Biome> bptr) {
-        if (bptr.lock() == nullptr) {
-          return false;
-        }
         auto sbptr = bptr.lock();
+        if (!sbptr)
+          return false;
         return sbptr->m_chunksSetup.load(std::memory_order_acquire) == count;
       };
 
@@ -381,13 +388,13 @@ void World::MarkBiomesReadyForPass1() {
           std::all_of(neighbors.begin(), neighbors.end(), check);
       // Pass Biome for interchunk walls removal
       m_rerenderQueue.push(biome);
-      biome->m_RenderIter = BIOMESTATUS::REFRESH;
-
-      // Neighbor biomes availablen no need to rerender again
+      // Neighbor biomes available no need to rerender again
+      assert(biome->m_RenderIter.load() == BIOMESTATUS::SETUP);
       if (allAvailable) {
-        biome->m_RenderIter = BIOMESTATUS::FINAL;
+        biome->m_RenderIter.store(BIOMESTATUS::FINAL);
       } else {
         m_waitingQueue.push(biome);
+        biome->m_RenderIter.store(BIOMESTATUS::REFRESH);
       }
     } else {
       return;
@@ -404,15 +411,26 @@ void World::MarkBiomesReadyForPass2() {
       continue;
     }
 
-    if (biome->m_RenderIter <= BIOMESTATUS::SETUP) {
+    if (biome->m_RenderIter.load() <= BIOMESTATUS::SETUP) {
       // Biome not done with Pass 1
       return;
     }
 
+    if (biome->m_RenderIter.load() == BIOMESTATUS::WAITING) {
+      // Biome still in waiting state once done will be availble here again
+      m_bindQueue.pop();
+      return;
+    }
+    assert(biome->m_RenderIter.load() == BIOMESTATUS::FINAL ||
+           biome->m_RenderIter.load() == BIOMESTATUS::REFRESH);
+
     constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
     auto ready1 = biome->m_chunksRerendered.load(std::memory_order_acquire);
     auto ready2 = biome->m_chunksFinished.load(std::memory_order_acquire);
-    bool isReady = ready1 == count || ready2 == count;
+    bool isRefresh = biome->m_RenderIter.load() == BIOMESTATUS::REFRESH;
+    bool isFinal = biome->m_RenderIter.load() == BIOMESTATUS::FINAL;
+    bool isReady =
+        ((ready1 == count) && isRefresh) || ((ready2 == count) && isFinal);
 
     m_bindQueue.pop();
     if (isReady) {
@@ -452,10 +470,9 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
     constexpr auto count = CHUNK_COUNTZ * CHUNK_COUNTX;
     auto neighbors = neighborBiomes(biome->Biomepos);
     auto check = [](std::weak_ptr<Biome> bptr) {
-      if (bptr.lock() == nullptr) {
-        return false;
-      }
       auto sbptr = bptr.lock();
+      if (!sbptr)
+        return false;
       return sbptr->m_chunksSetup.load(std::memory_order_acquire) == count;
     };
 
@@ -463,13 +480,18 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
     m_waitingQueue.pop();
     bool donewithPass2 =
         biome->m_chunksRerendered.load(std::memory_order_acquire) == count;
+
+    assert(biome->m_RenderIter.load() == BIOMESTATUS::WAITING ||
+           biome->m_RenderIter.load() == BIOMESTATUS::REFRESH);
     if (all_available && donewithPass2) {
       // All biomes available reschedule removal
       m_rerenderQueue.push(biome);
-      biome->m_RenderIter = BIOMESTATUS::FINAL;
+      biome->m_RenderIter.store(BIOMESTATUS::FINAL);
     } else {
       m_waitingQueue.push(biome);
-      biome->m_RenderIter = BIOMESTATUS::WAITING;
+      if (donewithPass2) {
+        biome->m_RenderIter.store(BIOMESTATUS::WAITING);
+      }
       return;
     }
   }
