@@ -10,6 +10,11 @@ void RainEffect::setup() {
     glm::vec2 tmp_pos = {dist(rng) * m_pos.x, m_pos.y};
     m_particles.push_back({tmp_pos, vel, m_initialsize, dist(rng) >= 0.5f});
   }
+
+  // simulate ~3 seconds
+  for (int i = 0; i < 200; i++) {
+    run(0.016f);
+  }
 }
 
 void RainEffect::run(float dt) {
