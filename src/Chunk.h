@@ -15,41 +15,41 @@ extern GLuint wireframemode;
 
 class Chunk {
 public:
-  GLboolean displaychunk, dirtybit;
-  GLuint id, count, cntblocks, save_id, type;
-  GLuint counttrans, cntblockstrans;
-  glm::ivec3 biomepos, chunkpos;
+  GLboolean m_displayChunk, m_dirtyBit;
+  GLuint m_id, m_count, m_cntBlocks, m_saveId, m_type;
+  GLuint m_countTrans, m_cntBlocksTrans;
+  glm::ivec3 m_biomePos, m_chunkPos;
 
   std::array<
       std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>,
       CHUNK_BLOCK_COUNT>
-      blocks;
-  std::vector<GLuint> cube_vertices, cube_verticestrans;
-  std::vector<GLuint> cube_indices, cube_indicestrans;
+      m_blocks;
+  std::vector<GLuint> m_cubeVertices, m_cubeVerticesTrans;
+  std::vector<GLuint> m_cubeIndices, m_cubeIndicesTrans;
 
-  std::unique_ptr<VertexArray> chunkva, chunkvatrans;
-  std::unique_ptr<VertexBuffer> chunkvb, chunkvbtrans;
-  std::unique_ptr<IndexBuffer> chunkib, chunkibtrans;
+  std::unique_ptr<VertexArray> m_chunkVa, m_chunkVaTrans;
+  std::unique_ptr<VertexBuffer> m_chunkVb, m_chunkVbTrans;
+  std::unique_ptr<IndexBuffer> m_chunkIb, m_chunkIbTrans;
 
   Chunk();
-  Chunk(uint _id, glm::ivec3 biomepos, glm::ivec3 position, GLboolean display,
-        int type);
+  Chunk(uint, glm::ivec3, glm::ivec3, GLboolean, int);
 
-  void Render(int setup, bool firstRun,
+  void Render(int, bool,
               std::shared_ptr<Chunk>,  // left
               std::shared_ptr<Chunk>,  // forward
               std::shared_ptr<Chunk>,  // right
               std::shared_ptr<Chunk>); // back
-  void Setup_Landscape(GLint X, GLint Y);
+  void Setup_Landscape(GLint, GLint);
   GLuint RenderFace(int, int, int);
   inline GLboolean isSolid(int, int, int);
   inline GLboolean isTransparent(int, int, int);
   inline GLboolean isSameKind(int, int, int, int, int, int);
-  void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
-  void Serialize(std::ostream &os) const;
-  bool Deserialize(std::istream &is);
+  void Draw(OBJ_TYPE, glm::dvec3);
+  void Serialize(std::ostream &) const;
+  bool Deserialize(std::istream &);
   void SetupVertexObjects();
   void UpdateVertexObjects();
+  void RecycleChunk(uint, glm::ivec3, glm::ivec3, GLboolean, int);
   static void SetupNoise(uint64_t seed) {
     // Set random seed for mountains
     s_mountainTerrain.SetSeed(seed);

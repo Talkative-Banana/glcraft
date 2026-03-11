@@ -200,7 +200,7 @@ void Game::updatePlayer(const std::string &msg) {
       return; // do not update my world state alreay did
     }
     if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
-      if (chunk && chunk->chunkva) {
+      if (chunk && chunk->m_chunkVa) {
         // check if block within render distance
         world->handleNetworkRequest(wst);
       } else {

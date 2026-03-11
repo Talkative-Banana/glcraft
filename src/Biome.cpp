@@ -7,14 +7,19 @@
 
 extern std::unique_ptr<World> world;
 
-void Biome::allocate_chunks() {
+void Biome::allocate_chunks(bool isNew) {
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
       int idx = CHUNK_COUNTX * i + j;
       glm::ivec3 t_chunkpos = glm::ivec3(i, 0, j);
-      bool t_db = displaybiome;
-      glm::ivec3 t_bp = Biomepos;
-      chunks[i][j] = std::make_shared<Chunk>(idx, t_bp, t_chunkpos, t_db, type);
+      bool t_db = m_displayBiome;
+      glm::ivec3 t_bp = m_biomePos;
+      if (isNew) {
+        m_chunks[i][j] =
+            std::make_shared<Chunk>(idx, t_bp, t_chunkpos, t_db, m_type);
+      } else {
+        m_chunks[i][j]->RecycleChunk(idx, t_bp, t_chunkpos, t_db, m_type);
+      }
     }
   }
 }
@@ -25,7 +30,7 @@ void Biome::setup_chunks(bool firstRun) {
       if (!m_running) {
         return;
       }
-      auto _chunk = chunks[i][j];
+      auto _chunk = m_chunks[i][j];
       if (firstRun) {
         _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr);
       } else {
@@ -33,7 +38,7 @@ void Biome::setup_chunks(bool firstRun) {
             j == CHUNK_COUNTZ - 1) {
           // Have to check neigbouring biome
           // get the center of chunks 1st block
-          glm::ivec3 p = _chunk->chunkpos + glm::ivec3(HALF_BLOCK_SIZE);
+          glm::ivec3 p = _chunk->m_chunkPos + glm::ivec3(HALF_BLOCK_SIZE);
           auto get_neighbors =
               [](glm::ivec3 vec) -> std::vector<std::weak_ptr<Chunk>> {
             std::weak_ptr<Chunk> left, front, right, back;
@@ -53,8 +58,8 @@ void Biome::setup_chunks(bool firstRun) {
                          __chunks[2].lock(), __chunks[3].lock());
         } else {
           // Within current chunk
-          _chunk->Render(1, firstRun, chunks[i + 1][j], chunks[i][j + 1],
-                         chunks[i - 1][j], chunks[i][j - 1]);
+          _chunk->Render(1, firstRun, m_chunks[i + 1][j], m_chunks[i][j + 1],
+                         m_chunks[i - 1][j], m_chunks[i][j - 1]);
         }
       }
       if (m_RenderIter.load() == BIOMESTATUS::SETUP) {
@@ -71,21 +76,47 @@ void Biome::setup_chunks(bool firstRun) {
 }
 
 Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
-  type = t;
-  Biomepos = pos;
-  displaybiome = display;
-  uint64_t x = Biomepos.x / BIOME_LENGTH;
-  uint64_t y = Biomepos.y / BIOME_HEIGHT;
-  uint64_t z = Biomepos.z / BIOME_LENGTH;
+  m_type = t;
+  m_biomePos = pos;
+  m_displayBiome = display;
+  uint64_t x = pos.x / BIOME_LENGTH;
+  uint64_t y = pos.y / BIOME_HEIGHT;
+  uint64_t z = pos.z / BIOME_LENGTH;
   m_id = static_cast<uint64_t>(BIOME_COUNTX * BIOME_COUNTZ) * y +
          static_cast<uint64_t>(BIOME_COUNTX) * x + z;
 
-  dirtybit = false;
-  allocate_chunks();
+  m_dirtyBit = false;
+  allocate_chunks(true);
 
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      dirtybit |= chunks[i][j]->dirtybit;
+      m_dirtyBit |= m_chunks[i][j]->m_dirtyBit;
+    }
+  }
+}
+
+void Biome::RecycleBiome(int t, glm::ivec3 pos, GLboolean display) {
+  m_type = t;
+  m_biomePos = pos;
+  m_displayBiome = display;
+  uint64_t x = pos.x / BIOME_LENGTH;
+  uint64_t y = pos.y / BIOME_HEIGHT;
+  uint64_t z = pos.z / BIOME_LENGTH;
+  m_id = static_cast<uint64_t>(BIOME_COUNTX * BIOME_COUNTZ) * y +
+         static_cast<uint64_t>(BIOME_COUNTX) * x + z;
+
+  m_dirtyBit = false;
+  m_chunksSetup = 0;
+  m_chunksFinished = 0;
+  m_chunksRerendered = 0;
+  m_RenderIter = BIOMESTATUS::IDLE;
+
+  m_renderQueue.clear();
+  allocate_chunks(false);
+
+  for (int i = 0; i < CHUNK_COUNTX; i++) {
+    for (int j = 0; j < CHUNK_COUNTZ; j++) {
+      m_dirtyBit |= m_chunks[i][j]->m_dirtyBit;
     }
   }
 }
@@ -94,35 +125,35 @@ Biome::~Biome() {
   // terminate worker threads
   m_running = false;
 
-  if (worker1.joinable())
-    worker1.join();
+  if (m_worker1.joinable())
+    m_worker1.join();
 
-  if (worker2.joinable())
-    worker2.join();
+  if (m_worker2.joinable())
+    m_worker2.join();
 }
 
 void Biome::SetupBiome(bool firstRun) {
-  if (!displaybiome)
+  if (!m_displayBiome)
     return;
 
   if (firstRun) {
-    if (worker1.joinable())
-      worker1.join();
+    if (m_worker1.joinable())
+      m_worker1.join();
     m_RenderIter.store(BIOMESTATUS::SETUP);
-    worker1 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
+    m_worker1 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   } else {
-    if (worker2.joinable())
-      worker2.join();
-    worker2 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
+    if (m_worker2.joinable())
+      m_worker2.join();
+    m_worker2 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
   }
 
-  auto pos = Biomepos + glm::ivec3(HALF_BLOCK_SIZE);
+  auto pos = m_biomePos + glm::ivec3(HALF_BLOCK_SIZE);
   auto biome = world->get_biome_by_center(pos);
   world->m_bindQueue.push(biome);
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
-  for (auto [_, weak_chunk] : render_queue) {
+  for (auto [_, weak_chunk] : m_renderQueue) {
     if (auto chunk = weak_chunk.lock()) {
       chunk->Draw(type, cameraPos);
     } else {
@@ -191,10 +222,10 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   auto planes = ExtractFrustumPlanes(VP);
   for (int i = 0; i < CHUNK_COUNTX; i++) {
     for (int j = 0; j < CHUNK_COUNTZ; j++) {
-      auto chunk = chunks[i][j];
+      auto chunk = m_chunks[i][j];
       if (!chunk)
         continue;
-      glm::ivec3 cpos = chunk->chunkpos;
+      glm::ivec3 cpos = chunk->m_chunkPos;
 
       // Chunk center
       glm::ivec3 center =
@@ -210,7 +241,7 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
           (playerpos.x >= cpos.x && playerpos.x < cpos.x + CHUNK_LENGTH) &&
           (playerpos.z >= cpos.z && playerpos.z < cpos.z + CHUNK_LENGTH);
 
-      glm::ivec3 min = chunk->chunkpos;
+      glm::ivec3 min = chunk->m_chunkPos;
       glm::ivec3 max =
           min + glm::ivec3(CHUNK_LENGTH, CHUNK_HEIGHT, CHUNK_LENGTH);
 
@@ -221,9 +252,9 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
       // Final decision
       bool inView = AABBInFrustum(planes, min, max);
       if (inView || insideChunk) {
-        chunk->displaychunk = 1;
+        chunk->m_displayChunk = 1;
       } else {
-        chunk->displaychunk = 0;
+        chunk->m_displayChunk = 0;
       }
     }
   }
@@ -231,16 +262,19 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // If none of the chunks are visible for a biome remove it
   if (!chunk_visible) {
     glm::ivec3 bps = {
-        Biomepos.x / BIOME_LENGTH,
-        Biomepos.y / BIOME_HEIGHT,
-        Biomepos.z / BIOME_LENGTH,
+        m_biomePos.x / BIOME_LENGTH,
+        m_biomePos.y / BIOME_HEIGHT,
+        m_biomePos.z / BIOME_LENGTH,
     };
 
     // Only mark for removal after both the threads are done setting up
-    bool setupComplete = worker1.joinable() && worker2.joinable();
-    if (world->biomes.isPresent(m_id) && setupComplete) {
+    constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
+    bool t_setupCompleted = m_chunksFinished == count;
+    // check if can be removed
+    if (world->m_biomes.isPresent(m_id)) {
       // Removing chunk
-      world->biomes.set(bps.x, bps.y, bps.z, nullptr);
+      m_Run = t_setupCompleted;
+      world->m_biomes.set(bps.x, bps.y, bps.z, false);
     }
   }
 }
@@ -251,16 +285,16 @@ void Biome::save(std::string _save_file) {
   // Save All the dirty chunks
   for (int k = 0; k < CHUNK_COUNTZ; k++) {
     for (int l = 0; l < CHUNK_COUNTX; l++) {
-      auto chunk = chunks[k][l];
-      if (!chunk || !chunk->dirtybit)
+      auto chunk = m_chunks[k][l];
+      if (!chunk || !chunk->m_dirtyBit)
         continue;
-      world->save_map.emplace(chunk->save_id, chunk);
+      world->m_saveMap.emplace(chunk->m_saveId, chunk);
     }
   }
 
-  int count = world->save_map.size();
+  int count = world->m_saveMap.size();
   save_file.write(reinterpret_cast<char *>(&count), sizeof(count));
-  for (auto [id, chunk_weak] : world->save_map) {
+  for (auto [id, chunk_weak] : world->m_saveMap) {
     if (auto chunk = chunk_weak.lock()) {
       chunk->Serialize(save_file);
     }

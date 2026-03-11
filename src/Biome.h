@@ -14,28 +14,30 @@
 
 class Biome {
 private:
-  int type;
-  GLboolean displaybiome;
+  int m_type;
+  GLboolean m_displayBiome;
 
-  void allocate_chunks();
-  void setup_chunks(bool firstRun);
+  void allocate_chunks(bool);
+  void setup_chunks(bool);
 
 public:
   uint64_t m_id;
-  glm::ivec3 Biomepos;
+  glm::ivec3 m_biomePos;
   std::atomic_bool m_running{true};
-  std::thread worker1, worker2;
-  GLboolean dirtybit;
+  std::thread m_worker1, m_worker2;
+  GLboolean m_dirtyBit{false};
+  std::atomic<int> m_Run{0};
   std::atomic<int> m_chunksSetup{0}, m_chunksRerendered{0}, m_chunksFinished{0};
   std::atomic<BIOMESTATUS> m_RenderIter{BIOMESTATUS::IDLE};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
-      chunks;
-  std::unordered_map<uint64_t, std::weak_ptr<Chunk>> render_queue;
-  Biome(int t, glm::ivec3 pos, GLboolean display);
+      m_chunks;
+  std::unordered_map<uint64_t, std::weak_ptr<Chunk>> m_renderQueue;
+  Biome(int, glm::ivec3, GLboolean);
   ~Biome();
-  void SetupBiome(bool firstRun);
-  void Draw(OBJ_TYPE type, glm::dvec3 cameraPos);
-  void Update_queue(glm::dvec3 playerpos, glm::dmat4 VP);
+  void SetupBiome(bool);
+  void Draw(OBJ_TYPE, glm::dvec3);
+  void Update_queue(glm::dvec3, glm::dmat4);
+  void RecycleBiome(int, glm::ivec3, GLboolean);
   void save(std::string);
 };
 

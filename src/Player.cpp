@@ -13,7 +13,7 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-  window = _window->GetWindow();
+  m_window = _window->GetWindow();
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram2, 0.125, 0.0, m_position, m_forward);
 
@@ -30,7 +30,7 @@ Player::Player(const uint64_t id, const glm::vec3 &pos, const glm::vec3 &dir,
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-  window = _window->GetWindow();
+  m_window = _window->GetWindow();
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram2, 0.125, 0.0, m_position, m_forward);
 
@@ -47,7 +47,7 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
   m_cameracontroller =
       std::make_unique<CameraController>(SCREEN_HEIGHT / SCREEN_WIDTH);
   m_cameracontroller->UpdateCamera(m_position, m_forward);
-  window = _window->GetWindow();
+  m_window = _window->GetWindow();
 
   m_meshhandle = asset_manager->loadMeshObject(
       "assets/sphere.obj", shaderProgram2, 0.5, 0.0, m_position, m_forward);
@@ -95,7 +95,7 @@ void Player::handle_input(float dt) {
   // Gravity
   glm::dvec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
                  glm::dvec3(HALF_BLOCK_SIZE);
-  if (enable_gravity) {
+  if (m_enableGravity) {
     bool adjusted = false;
     if (world && (!(world->isStandable(v - glm::dvec3(0, PLAYER_HEIGHT, 0)))) &&
         (v.y > 1.0f)) {
@@ -113,7 +113,7 @@ void Player::handle_input(float dt) {
           world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0) +
                                      glm::dvec3(0, 2 * BLOCK_SIZE, 0));
       if (blk)
-        inside_block = blk->get_type();
+        m_insideBlock = blk->get_type();
 
       auto legblk =
           world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0));
@@ -147,7 +147,7 @@ void Player::handle_input(float dt) {
     glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
-        !enable_gravity) {
+        !m_enableGravity) {
       m_position = nextPos;
       position_updated = true;
     }
@@ -157,7 +157,7 @@ void Player::handle_input(float dt) {
     glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
-        !enable_gravity) {
+        !m_enableGravity) {
       m_position = nextPos;
       position_updated = true;
     }
@@ -171,7 +171,7 @@ void Player::handle_input(float dt) {
     glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
-        !enable_gravity) {
+        !m_enableGravity) {
       m_position = nextPos;
       position_updated = true;
     }
@@ -183,14 +183,14 @@ void Player::handle_input(float dt) {
     glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
     if (!world->isStandable(blockCenter_h2) &&
             !world->isStandable(blockCenter_h3) ||
-        !enable_gravity) {
+        !m_enableGravity) {
       m_position = nextPos;
       position_updated = true;
     }
   }
 
   // Floating only possible in case gravity is not available
-  if (!enable_gravity) {
+  if (!m_enableGravity) {
     if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
       m_position = m_position + m_up * m_speed * double(dt);
       position_updated = true;
@@ -207,9 +207,9 @@ void Player::handle_input(float dt) {
   }
 
   auto [x, y] = Input::GetMousePosition();
-  double rotx = m_sensitivity * (double)(y - MousePos.y);
-  double roty = m_sensitivity * (double)(x - MousePos.x);
-  MousePos = glm::vec2(x, y);
+  double rotx = m_sensitivity * (double)(y - m_mousePos.y);
+  double roty = m_sensitivity * (double)(x - m_mousePos.x);
+  m_mousePos = glm::vec2(x, y);
 
   ImGuiIO &io = ImGui::GetIO();
   if (!io.WantCaptureMouse) {
@@ -247,10 +247,10 @@ void Player::handle_input(float dt) {
     strcpy(textKeyDescription, "Casting ray");
 
     double mouseX, mouseY;
-    glfwGetCursorPos(window, &mouseX, &mouseY);
+    glfwGetCursorPos(m_window, &mouseX, &mouseY);
 
     Ray ray =
-        screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
+        screenPosToWorldRay(m_window, mouseX, mouseY, viewRotateT, projectionT);
 
     if (ray.did_hit(world)) { // Remove a block
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
@@ -261,11 +261,11 @@ void Player::handle_input(float dt) {
 
       if (auto _chunk = world->get_chunk_by_center(ray.m_hitcords).lock()) {
         // Set the dirty bit
-        _chunk->dirtybit = true;
+        _chunk->m_dirtyBit = true;
       }
       if (auto _biome = world->get_biome_by_center(ray.m_hitcords).lock()) {
         // Set the dirty bit
-        _biome->dirtybit = true;
+        _biome->m_dirtyBit = true;
       }
 
       // Update ws to send to server
@@ -285,10 +285,10 @@ void Player::handle_input(float dt) {
     strcpy(textKeyDescription, "Casting ray");
 
     double mouseX, mouseY;
-    glfwGetCursorPos(window, &mouseX, &mouseY);
+    glfwGetCursorPos(m_window, &mouseX, &mouseY);
 
     Ray ray =
-        screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
+        screenPosToWorldRay(m_window, mouseX, mouseY, viewRotateT, projectionT);
 
     if (ray.did_hit(world)) {
       std::cout << "Ray hit a block with center: " << ray.m_hitcords.x << " "
@@ -298,10 +298,10 @@ void Player::handle_input(float dt) {
       auto hitblk = world->get_block_by_center(hit_blk);
       auto block = world->get_block_by_center(prev_blk);
       if (hitblk && hitblk->get_type() == BLOCK_TYPE::WATER_BLOCK) {
-        hitblk->add(static_cast<BLOCK_TYPE>(bltype));
+        hitblk->add(static_cast<BLOCK_TYPE>(m_blType));
       } else {
         if (block) {
-          block->add(static_cast<BLOCK_TYPE>(bltype));
+          block->add(static_cast<BLOCK_TYPE>(m_blType));
         } else {
           return;
         }
@@ -309,11 +309,11 @@ void Player::handle_input(float dt) {
 
       if (auto _chunk = world->get_chunk_by_center(ray.m_hitcords).lock()) {
         // Update dirty bit
-        _chunk->dirtybit = true;
+        _chunk->m_dirtyBit = true;
       }
       if (auto _biome = world->get_biome_by_center(ray.m_hitcords).lock()) {
         // Update dirty bit
-        _biome->dirtybit = true;
+        _biome->m_dirtyBit = true;
       }
 
       // Update ws to send to server
@@ -329,23 +329,23 @@ void Player::handle_input(float dt) {
   if (Input::IsKeyPressed(GLFW_KEY_LEFT_CONTROL)) {
     if (Input::WasMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE)) {
       double mouseX, mouseY;
-      glfwGetCursorPos(window, &mouseX, &mouseY);
+      glfwGetCursorPos(m_window, &mouseX, &mouseY);
 
-      Ray ray =
-          screenPosToWorldRay(window, mouseX, mouseY, viewRotateT, projectionT);
+      Ray ray = screenPosToWorldRay(m_window, mouseX, mouseY, viewRotateT,
+                                    projectionT);
 
       if (ray.did_hit(world)) {
         std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x
                   << " " << ray.m_hitcords.y << " " << ray.m_hitcords.z << '\n';
         auto chunk = world->get_chunk_by_center(ray.m_hitcords);
 
-        if (mdtype != 0) {
+        if (m_mdType != 0) {
           auto vec = ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0);
-          world->load_model(vec, "models/" + MODEL_ARRAY[mdtype] + ".bin");
+          world->load_model(vec, "models/" + MODEL_ARRAY[m_mdType] + ".bin");
           // instead of sending all of the blocks send block to render model
           // there damn i'm so smart!!!
           ws.blockpos = vec;
-          ws.model_idx = mdtype;
+          ws.model_idx = m_mdType;
           world_updated = true;
           world->RefreshChunks(ray.m_hitcords + glm::ivec3(0, BLOCK_SIZE, 0));
         }
@@ -353,7 +353,7 @@ void Player::handle_input(float dt) {
     }
   }
 
-  if (Nokeypressed) {
+  if (m_noKeyPressed) {
     strcpy(textKeyStatus, "Listening for key events...");
     strcpy(textKeyDescription, "Listening for key events...");
   }
@@ -376,7 +376,7 @@ bool Player::Valid(PlayerState &ps) {
   return true;
 }
 
-BLOCK_TYPE Player::InsideBlock() { return inside_block; }
+BLOCK_TYPE Player::InsideBlock() { return m_insideBlock; }
 
 // handle input [for server]
 std::shared_ptr<std::string>
@@ -426,7 +426,7 @@ void Player::handle_stats() {
     ImGui::Text("Key Status: %s", textKeyStatus);
     ImGui::Text("Key Description: %s", textKeyDescription);
     ImGui::Text("Active Player: %d", activePlayer);
-    ImGui::Text("Block Selected: %s", BLOCK_ARRAY[bltype].c_str());
+    ImGui::Text("Block Selected: %s", BLOCK_ARRAY[m_blType].c_str());
     glm::vec3 playerPos = m_cameracontroller->GetCamera()->GetPosition();
     glm::vec3 playerOri = m_cameracontroller->GetCamera()->GetOrientation();
     playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
@@ -439,7 +439,7 @@ void Player::handle_stats() {
   // Enable Physics
   ImGui::BeginChild("Child##Physics", ImVec2(400, 60), true);
   ImGui::Text("Physics");
-  ImGui::Checkbox("Enable physics", &enable_gravity);
+  ImGui::Checkbox("Enable physics", &m_enableGravity);
   ImGui::EndChild();
 
   // Display Mode
@@ -469,7 +469,7 @@ void Player::handle_stats() {
 
   ImGui::Text("Selected Block");
   for (int i = 0; i < static_cast<int>(BLOCK_TYPE::NUM_BLOCK); i++) {
-    if (ImGui::RadioButton(BLOCK_ARRAY[i].c_str(), (int *)&bltype, i)) {
+    if (ImGui::RadioButton(BLOCK_ARRAY[i].c_str(), (int *)&m_blType, i)) {
     }
   }
 
@@ -482,7 +482,7 @@ void Player::handle_stats() {
 
   ImGui::Text("Selected Model");
   for (int i = 0; i < MODEL_TYPES; i++) {
-    if (ImGui::RadioButton(MODEL_ARRAY[i].c_str(), (int *)&mdtype, i)) {
+    if (ImGui::RadioButton(MODEL_ARRAY[i].c_str(), (int *)&m_mdType, i)) {
     }
   }
 
@@ -538,9 +538,9 @@ void Player::handle_stats() {
 
   // Rendering
   ImGui::Render();
-  glfwGetFramebufferSize(window, &display_w, &display_h);
-  _window->SetHeight(display_h);
-  _window->SetWidth(display_w);
+  glfwGetFramebufferSize(m_window, &m_displayW, &m_displayH);
+  _window->SetHeight(m_displayH);
+  _window->SetWidth(m_displayW);
 }
 
 void Player::setupModelTransformationCube(unsigned int &program) {
@@ -617,8 +617,8 @@ void Player::setupProjectionTransformation(
 }
 
 void Player::handle_transformations() {
-  m_cameracontroller->SetAspectRatio((float)display_w / (float)display_h);
-  glViewport(0, 0, display_w, display_h);
+  m_cameracontroller->SetAspectRatio((float)m_displayW / (float)m_displayH);
+  glViewport(0, 0, m_displayW, m_displayH);
 
   // Setup MVP matrix
   glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
