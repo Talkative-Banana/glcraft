@@ -45,8 +45,8 @@ constexpr static int FACE_MASK_BITS = 6;
 constexpr static int TYPE_MASK_BITS = 5;
 constexpr static int FACE_MASK = ((1 << FACE_MASK_BITS) - 1) << 17;
 constexpr static int TYPE_MASK = ((1 << TYPE_MASK_BITS) - 1) << 23;
-constexpr static int WALKING_SPEED = 200.0f;
-constexpr static int RUNNING_SPEED = 300.0f;
+constexpr static int WALKING_SPEED = 20.0f;
+constexpr static int RUNNING_SPEED = 30.0f;
 constexpr static int SMUGED_SPEED = 10.0f;
 
 constexpr static int IMGUI_TEXT_CAPACITY = 256;
