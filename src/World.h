@@ -94,9 +94,7 @@ struct BiomeArray {
       if (!toRemove.empty()) {
         temp = toRemove.back();
         toRemove.pop_back();
-        if (temp->m_Run) {
-          toRecycle.push_back(temp);
-        }
+        toRecycle.push_back(temp);
       }
     }
     // if dirty dump and store to disk
@@ -125,11 +123,13 @@ private:
   glm::ivec3 m_worldpos;
   WEATHER m_weather{WEATHER::CLOUDY};
   std::unordered_map<uint64_t, std::weak_ptr<Biome>> m_renderQueue;
-  std::queue<std::weak_ptr<Biome>> m_setupQueue;
-  std::queue<std::weak_ptr<Biome>> m_rerenderQueue;
-  std::queue<std::weak_ptr<Biome>> m_waitingQueue;
+  std::queue<std::pair<uint32_t, std::weak_ptr<Biome>>> m_bindQueue;
+  std::queue<std::pair<uint32_t, std::weak_ptr<Biome>>> m_setupQueue;
+  std::queue<std::tuple<int, int, int, glm::ivec3, bool>> m_jobQueue;
+  std::queue<std::pair<uint32_t, std::weak_ptr<Biome>>> m_rerenderQueue;
+  std::queue<std::pair<uint32_t, std::weak_ptr<Biome>>> m_waitingQueue;
+
   std::set<uint64_t> m_jobScheduled;
-  void workerLoop();
   std::thread m_worker;
   std::atomic<bool> m_running{true};
   std::atomic<bool> m_runRerenderTask{false};
@@ -137,19 +137,17 @@ private:
   std::mutex m_setupMutex;
   std::condition_variable m_setupCv;
 
-  std::queue<std::tuple<int, int, int, glm::ivec3, bool>> m_jobQueue;
-
 public:
   BiomeArray m_biomes;
   std::unordered_map<uint, Chunk> m_loadMap;
   std::unordered_map<uint, std::weak_ptr<Chunk>> m_saveMap;
-  std::queue<std::weak_ptr<Biome>> m_bindQueue;
   World(int, const glm::ivec3 &);
   ~World();
   void EnqueueVisibleBiomes(glm::dvec3);
   bool isSolid(const glm::ivec3 &);
   bool isStandable(const glm::ivec3 &);
   bool isVisible(const glm::ivec3 &);
+  void workerLoop();
   Block *get_block_by_center(const glm::ivec3 &);
   std::weak_ptr<Chunk> get_chunk_by_center(const glm::ivec3 &);
   std::weak_ptr<Biome> get_biome_by_center(const glm::ivec3 &);

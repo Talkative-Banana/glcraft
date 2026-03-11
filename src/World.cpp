@@ -198,7 +198,7 @@ void World::workerLoop() {
       auto biome = m_biomes.set(i, k, j, true, 0, pos, true);
       {
         std::lock_guard<std::mutex> g(m_setupMutex);
-        m_setupQueue.push(biome);
+        m_setupQueue.push({biome->m_Run, biome});
       }
     }
   }
@@ -259,18 +259,20 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
 void World::SetupBiomesPass1() {
   while (true) {
     std::weak_ptr<Biome> b_weak;
-
+    uint32_t t_run = 0;
     {
       std::lock_guard<std::mutex> lock(m_setupMutex);
       if (m_setupQueue.empty())
         break;
 
-      b_weak = m_setupQueue.front();
+      auto &[run, weak] = m_setupQueue.front();
+      t_run = run, b_weak = weak;
       m_setupQueue.pop();
     }
-
-    if (auto b = b_weak.lock()) {
+    auto b = b_weak.lock();
+    if (b && b->m_Run == t_run) {
       b->SetupBiome(true);
+      m_bindQueue.push({t_run, b});
       m_renderQueue[b->m_id] = b_weak;
     }
   }
@@ -279,10 +281,13 @@ void World::SetupBiomesPass1() {
 // Responsible for removing hidden block faces
 void World::SetupBiomesPass2() {
   while (!m_rerenderQueue.empty()) {
-    auto b_weak = m_rerenderQueue.front();
+    auto &[run, b_weak] = m_rerenderQueue.front();
     m_rerenderQueue.pop();
-    if (auto b = b_weak.lock()) {
+
+    auto b = b_weak.lock();
+    if (b && b->m_Run == run) {
       b->SetupBiome(false); // ReRun
+      m_bindQueue.push({run, b});
     }
   }
 }
@@ -349,8 +354,10 @@ void World::MarkBiomesReadyForPass1() {
   // Go through each biome once
   uint32_t m_bindQueueSize = m_bindQueue.size();
   while (m_bindQueueSize--) {
-    auto biome = m_bindQueue.front().lock();
+    auto &[run, w_biome] = m_bindQueue.front();
     // If biome is null return early
+    auto biome = w_biome.lock();
+
     if (!biome) {
       m_bindQueue.pop();
       continue;
@@ -391,17 +398,17 @@ void World::MarkBiomesReadyForPass1() {
       bool allAvailable =
           std::all_of(neighbors.begin(), neighbors.end(), check);
       // Pass Biome for interchunk walls removal
-      m_rerenderQueue.push(biome);
+      m_rerenderQueue.push({run, biome});
       // Neighbor biomes available no need to rerender again
       assert(biome->m_RenderIter.load() == BIOMESTATUS::SETUP);
       if (allAvailable) {
         biome->m_RenderIter.store(BIOMESTATUS::FINAL);
       } else {
-        m_waitingQueue.push(biome);
+        m_waitingQueue.push({run, biome});
         biome->m_RenderIter.store(BIOMESTATUS::REFRESH);
       }
     } else {
-      m_bindQueue.push(biome);
+      m_bindQueue.push({run, biome});
       continue;
     }
   }
@@ -411,7 +418,9 @@ void World::MarkBiomesReadyForPass2() {
   // Go through each biome
   uint32_t t_bindQueueSize = m_bindQueue.size();
   while (t_bindQueueSize--) {
-    auto biome = m_bindQueue.front().lock();
+    auto [run, w_biome] = m_bindQueue.front();
+
+    auto biome = w_biome.lock();
     // If biome is null return early
     if (!biome) {
       m_bindQueue.pop();
@@ -448,7 +457,7 @@ void World::MarkBiomesReadyForPass2() {
         }
       }
     } else {
-      m_bindQueue.push(biome);
+      m_bindQueue.push({run, biome});
       continue;
     }
   }
@@ -468,7 +477,9 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
 
   uint32_t t_waitingQueueSize = m_waitingQueue.size();
   while (t_waitingQueueSize--) {
-    auto biome = m_waitingQueue.front().lock();
+    auto &[run, w_biome] = m_waitingQueue.front();
+
+    auto biome = w_biome.lock();
     // If biome is null return early
     if (!biome) {
       m_waitingQueue.pop();
@@ -494,10 +505,10 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
            biome->m_RenderIter.load() == BIOMESTATUS::REFRESH);
     if (all_available && donewithPass2) {
       // All biomes available reschedule removal
-      m_rerenderQueue.push(biome);
+      m_rerenderQueue.push({run, biome});
       biome->m_RenderIter.store(BIOMESTATUS::FINAL);
     } else {
-      m_waitingQueue.push(biome);
+      m_waitingQueue.push({run, biome});
       if (donewithPass2) {
         biome->m_RenderIter.store(BIOMESTATUS::WAITING);
       }

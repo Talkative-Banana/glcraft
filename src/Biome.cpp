@@ -40,7 +40,7 @@ void Biome::setup_chunks(bool firstRun) {
           // get the center of chunks 1st block
           glm::ivec3 p = _chunk->m_chunkPos + glm::ivec3(HALF_BLOCK_SIZE);
           auto get_neighbors =
-              [](glm::ivec3 vec) -> std::vector<std::weak_ptr<Chunk>> {
+              [](glm::ivec3 vec) -> std::array<std::weak_ptr<Chunk>, 4> {
             std::weak_ptr<Chunk> left, front, right, back;
             left = world->get_chunk_by_center(
                 vec + glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
@@ -133,23 +133,16 @@ Biome::~Biome() {
 }
 
 void Biome::SetupBiome(bool firstRun) {
-  if (!m_displayBiome)
-    return;
-
   if (firstRun) {
     if (m_worker1.joinable())
       m_worker1.join();
     m_RenderIter.store(BIOMESTATUS::SETUP);
-    m_worker1 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
+    m_worker1 = std::thread([this]() { setup_chunks(true); });
   } else {
     if (m_worker2.joinable())
       m_worker2.join();
-    m_worker2 = std::thread([this, firstRun]() { setup_chunks(firstRun); });
+    m_worker2 = std::thread([this]() { setup_chunks(false); });
   }
-
-  auto pos = m_biomePos + glm::ivec3(HALF_BLOCK_SIZE);
-  auto biome = world->get_biome_by_center(pos);
-  world->m_bindQueue.push(biome);
 }
 
 void Biome::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
@@ -273,7 +266,7 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
     // check if can be removed
     if (world->m_biomes.isPresent(m_id)) {
       // Removing chunk
-      m_Run = t_setupCompleted;
+      m_Run++;
       world->m_biomes.set(bps.x, bps.y, bps.z, false);
     }
   }

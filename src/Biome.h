@@ -31,6 +31,7 @@ public:
   std::atomic<BIOMESTATUS> m_RenderIter{BIOMESTATUS::IDLE};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
       m_chunks;
+  int m_hello = 0;
   std::unordered_map<uint64_t, std::weak_ptr<Chunk>> m_renderQueue;
   Biome(int, glm::ivec3, GLboolean);
   ~Biome();
