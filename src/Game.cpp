@@ -418,7 +418,7 @@ void Game::run() {
       auto chunk = world->get_chunk_by_center(wst.blockpos);
 
       if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
-        if (chunk && chunk->chunkva) {
+        if (chunk && chunk->m_chunkVa) {
           world->handleNetworkRequest(wst);
 
           std::swap(client_operations[i], client_operations.back());
