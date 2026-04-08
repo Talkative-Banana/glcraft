@@ -2,8 +2,6 @@
 #include "Utils.h"
 #include <../stb/stb_image.h>
 #include <../stb/stb_image_write.h>
-#include <memory>
-
 #include <chrono>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -17,6 +15,7 @@
 #include "GameSound.hpp"
 #include "Input.h"
 #include "Main.h"
+#include "Npc.hpp"
 #include "ParticleSystem.h"
 #include "Player.h"
 #include "RainEffect.h"

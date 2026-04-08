@@ -5,6 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "Game.hpp"
+#include "NpcManager.hpp"
 #include "Window.h"
 // Globals
 glm::ivec3 _wps = {0, 0, 0};
@@ -18,6 +19,7 @@ glm::dmat4 modelT, viewT, viewRotateT, projectionT;
 std::vector<std::shared_ptr<Mesh>> meshes;
 std::array<std::unique_ptr<Player>, PLAYER_COUNT> players;
 std::unique_ptr<AssetManager> asset_manager;
+std::unique_ptr<NpcManager> npcManager;
 extern std::mutex m;
 extern std::queue<glm::ivec3> refreshq;
 std::vector<WorldState> client_operations;
@@ -364,6 +366,13 @@ Game::Game(std::string savePath)
   //   s_mesh2->setup();
   //   meshes.push_back(s_mesh2);
   // }
+
+  // setup NpcManager
+  npcManager = std::make_unique<NpcManager>();
+
+  // add a npc
+  npcManager->Add(0);
+  // npcManager->Add(1);
 }
 
 void Game::run() {

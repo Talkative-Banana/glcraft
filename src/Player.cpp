@@ -536,6 +536,57 @@ void Player::handle_stats() {
   ImGui::EndChild();
   ImGui::End();
 
+  // NPC Section
+  ImGui::BeginChild("NPC Section", ImVec2(400, 300), true,
+                    ImGuiWindowFlags_HorizontalScrollbar);
+
+  // --- Input buffers ---
+  static char npc_commPrompt[1024] = "";
+  static int npc_id = 0;
+
+  // --- Title ---
+  ImGui::Text("Talk to NPC");
+
+  // --- NPC ID input ---
+  ImGui::InputInt("NPC ID", &npc_id);
+
+  // --- Prompt input ---
+  ImGui::InputText("Message", npc_commPrompt, IM_ARRAYSIZE(npc_commPrompt));
+
+  // --- Send button ---
+  if (ImGui::Button("Send")) {
+    std::string msg = npc_commPrompt;
+
+    if (!msg.empty()) {
+      npcManager->Send(npc_id, msg);
+
+      npc_commPrompt[0] = '\0'; // clear input
+    }
+  }
+
+  // --- Separator ---
+  ImGui::Separator();
+
+  // --- Chat output box ---
+  ImGui::Text("Dialogue:");
+  ImGui::BeginChild("ChatBox", ImVec2(0, 150), true);
+
+  std::vector<std::vector<std::string>> resp = npcManager->getResponses();
+  if (npc_id < resp.size() && !resp[npc_id].empty()) {
+    ImGui::TextWrapped("%s", resp[npc_id].back().c_str());
+  }
+
+  // Auto-scroll to bottom
+  if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+    ImGui::SetScrollHereY(1.0f);
+  }
+
+  ImGui::EndChild();
+
+  ImGui::EndChild();
+  ImGui::EndChild();
+  ImGui::End();
+
   // Rendering
   ImGui::Render();
   glfwGetFramebufferSize(m_window, &m_displayW, &m_displayH);

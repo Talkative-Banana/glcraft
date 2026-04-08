@@ -7,6 +7,7 @@
 #include "Client.h"
 #include "Inventory.h"
 #include "Mesh.h"
+#include "NpcManager.hpp"
 #include "Ray.h"
 #include "Utils.h"
 #include "World.h"
@@ -24,6 +25,7 @@ extern glm::dmat4 modelT, viewT, viewRotateT,
 extern ImVec4 clearColor;
 extern std::vector<std::shared_ptr<Mesh>> meshes;
 extern void add_player(uint32_t);
+extern std::unique_ptr<NpcManager> npcManager;
 
 class Player {
 public:

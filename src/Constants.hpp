@@ -160,6 +160,9 @@ const std::string ShaderProgramUIFS = "./shaders/fshaderUI.fs";
 const std::string ShaderProgramPSVS = "./shaders/vshaderPS.vs";
 const std::string ShaderProgramPSFS = "./shaders/fshaderPS.fs";
 
+const std::string llmModel =
+    "./depends/llama.cpp/models/llama-3.2-3b-instruct-q4_k_m.gguf";
+
 const std::string WaterTexture = "./textures/water.png";
 const std::string SmokeTexture = "./textures/smoke.png";
 const std::string SnowTexture = "./textures/snow.png";

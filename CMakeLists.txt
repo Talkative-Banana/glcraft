@@ -12,6 +12,12 @@ add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 set(LIBNOISE_DIR ${PROJECT_SOURCE_DIR}/depends/noise)
 
+# LLaMA config (before add_subdirectory)
+set(GGML_NATIVE ON)
+set(GGML_OPENMP ON)
+
+add_subdirectory(depends/llama.cpp)
+
 if (WIN32)
     add_definitions(-D_WIN32_WINNT=0x0601)  # Windows 7 or later
     find_package(OpenGL REQUIRED)
@@ -47,6 +53,8 @@ set(SOURCES
   "src/Material.cpp"
   "src/Ray.cpp"
   "src/World.cpp"
+  "src/Npc.cpp"
+  "src/NpcManager.cpp"
   "src/Player.cpp"
   "src/AssetManager.cpp"
   "src/Mesh.cpp"
@@ -100,9 +108,9 @@ endif()
   target_link_directories(GlCraftClient PRIVATE ${LIBNOISE_DIR})
 
 if(WIN32)
-    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio llama)
 elseif(UNIX AND NOT APPLE)
-    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+    target_link_libraries(GlCraftClient ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise llama)
 endif()
 
   target_compile_definitions(GlCraftClient PRIVATE BUILD_CLIENT)
@@ -132,9 +140,9 @@ endif()
     target_link_directories(GlCraftServer PRIVATE ${LIBNOISE_DIR})
 
 if(WIN32)
-        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio llama)
 elseif(UNIX AND NOT APPLE)
-        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+        target_link_libraries(GlCraftServer ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise llama)
 endif()
 
     target_compile_definitions(GlCraftServer PRIVATE BUILD_SERVER)
@@ -163,9 +171,9 @@ endif()
     target_link_directories(GlCraftLocal PRIVATE ${LIBNOISE_DIR})
 
 if(WIN32)
-        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio)
+        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} glfw GLEW::GLEW noise SFML::Audio llama)
 elseif(UNIX AND NOT APPLE)
-        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise)
+        target_link_libraries(GlCraftLocal ${OPENGL_LIBRARIES} sfml-audio glfw GLEW::GLEW noise llama)
 endif()
 
     target_compile_definitions(GlCraftLocal PRIVATE BUILD_LOCAL)
