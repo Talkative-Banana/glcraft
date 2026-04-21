@@ -32,8 +32,6 @@ public:
                 std::vector<GLuint> &indices, std::vector<GLuint> &rendervert);
   void add(BLOCK_TYPE bltype);
   void remove();
-  bool is_solid();
-  bool is_standable();
   bool is_ref();
   bool is_removable();
   bool is_transparent();
@@ -41,4 +39,11 @@ public:
               GLuint blktype, GLuint ac);
   BLOCK_TYPE get_type();
   glm::ivec3 get_pos();
+
+  inline bool is_solid() { return blmask & (1 << 15); }
+  inline bool is_standable() {
+    auto mask = blmask;
+    return (mask & (1 << 15)) &&
+           ((mask >> 23) != static_cast<uint32_t>(BLOCK_TYPE::WATER_BLOCK));
+  }
 };

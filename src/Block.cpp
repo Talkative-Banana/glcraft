@@ -135,7 +135,7 @@ bool Block::is_removable() {
 GLuint Block::Render(GLuint mask, GLuint ambient_occ, GLuint offset,
                      std::vector<GLuint> &indices,
                      std::vector<GLuint> &rendervert) {
-  if (!is_solid())
+  if (!is_solid() || (mask == 0))
     return 0; // not solid
   GenerateVerticies(ambient_occ, rendervert);
 
@@ -164,9 +164,4 @@ void Block::add(BLOCK_TYPE bltype) {
   blmask |= (3 << 15); // add solid and visble bit
   blmask &= ~(TYPE_MASK);
   blmask |= (static_cast<int>(bltype) << 23);
-}
-
-bool Block::is_solid() { return blmask & (1 << 15); }
-bool Block::is_standable() {
-  return is_solid() && get_type() != BLOCK_TYPE::WATER_BLOCK;
 }

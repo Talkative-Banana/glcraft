@@ -238,7 +238,7 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
-        auto biome_bltypes = BIOME_BLOCK_TYPES[m_type];
+        auto &biome_bltypes = BIOME_BLOCK_TYPES[m_type];
         BLOCK_TYPE bltype;
         if (y == height - 1) {
           if (y <= 10) {
@@ -423,9 +423,10 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          m_cntBlocks += m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndices,
-                                                  m_cubeVertices);
-          idx += 24, m_count++;
+          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndices,
+                                              m_cubeVertices);
+          m_cntBlocks += cnt;
+          idx += 24 * (cnt != 0), m_count += (cnt != 0);
         }
       }
     }
@@ -525,9 +526,10 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          m_cntBlocksTrans += m_blocks[i][j][k].Render(
-              mask, ac, idx, m_cubeIndicesTrans, m_cubeVerticesTrans);
-          idx += 24, m_countTrans++;
+          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndicesTrans,
+                                              m_cubeVerticesTrans);
+          m_cntBlocksTrans += cnt;
+          idx += 24 * (cnt != 0), m_countTrans += (cnt != 0);
         }
       }
     }
