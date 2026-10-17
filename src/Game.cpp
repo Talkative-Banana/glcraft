@@ -322,7 +322,6 @@ Game::Game(std::string savePath)
     players[i] = std::make_unique<Player>(i, m_shaderProgram2);
   }
 
-<<<<<<< Updated upstream
   std::make_shared<Server>(m_ioc, m_port)->on_recv([](const std::string &msg) {
     // handle request
     State st;
@@ -340,29 +339,6 @@ Game::Game(std::string savePath)
       return std::make_shared<std::string>("Invalid Message");
     }
   });
-=======
-  std::make_shared<Server>(m_ioc, m_port)
-      ->on_recv([](const std::string &msg, std::uint32_t) {
-        // handle request
-        auto decoded = NetworkProtocol::DecodeState(msg);
-        if (!decoded) {
-          return std::make_shared<std::string>();
-        }
-        State st = std::move(*decoded);
-        if (std::holds_alternative<PlayerState>(st._data)) {
-          PlayerState pst = std::get<PlayerState>(st._data);
-          // set the id of the activePlayer to mimic their movement here
-          // activePlayer = pt.id;
-          return players.at(st.id)->handle_client_input(msg);
-        } else if (std::holds_alternative<WorldState>(st._data)) {
-          WorldState wst = std::get<WorldState>(st._data);
-          return world->handle_client_input(msg);
-        } else {
-          std::cerr << "Invalid Packet Received\n";
-          return std::make_shared<std::string>();
-        }
-      });
->>>>>>> Stashed changes
 
   m_networkingThread = std::thread([this]() {
     std::cout << "Server Listening on port: " << m_port << '\n';
