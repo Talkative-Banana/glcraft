@@ -37,7 +37,7 @@ jobs:
         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: cmake --build build --config ${{env.BUILD_TYPE}}
+      run: cmake --build build --config ${{env.BUILD_TYPE}} -- /clp:ErrorsOnly 
 
     - name: Add vcpkg DLLs to PATH
       run: echo "${{ github.workspace }}\vcpkg\installed\x64-windows\bin" >> $env:GITHUB_PATH
