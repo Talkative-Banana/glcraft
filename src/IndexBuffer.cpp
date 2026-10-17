@@ -25,3 +25,13 @@ void IndexBuffer::UpdateBuffer(const void *data, unsigned int count) {
   GLCall(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
                          count * sizeof(unsigned int), data));
 }
+
+void IndexBuffer::Upload(const void *data, size_t bytes) {
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID);
+  if (bytes > m_capacity) {
+    m_capacity = bytes + bytes / 2;
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_capacity, nullptr, GL_DYNAMIC_DRAW);
+  }
+  if (bytes)
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, bytes, data);
+}

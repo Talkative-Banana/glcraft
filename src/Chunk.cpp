@@ -44,11 +44,11 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   }
 
   // Reserve for vectors
-  m_cubeIndices.resize(50'000);
-  m_cubeIndicesTrans.resize(50'000);
+  m_cubeIndices.reserve(16'000);
+  m_cubeIndicesTrans.reserve(4'000);
 
-  m_cubeVertices.resize(8'00'000);
-  m_cubeVerticesTrans.resize(8'00'000);
+  m_cubeVertices.reserve(8'000);
+  m_cubeVerticesTrans.reserve(2'000);
 }
 
 void Chunk::RecycleChunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
@@ -325,7 +325,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
         glm::ivec3(BLOCK_SIZE * i, BLOCK_SIZE * j, BLOCK_SIZE * k) +
         glm::ivec3(HALF_BLOCK_SIZE, HALF_BLOCK_SIZE, HALF_BLOCK_SIZE) +
         offset * static_cast<int>(BLOCK_SIZE);
-    return world->get_block_by_center(blockpos);
+    return world->get_block_by_center(block_pos);
   };
 
   {
@@ -547,16 +547,19 @@ void Chunk::UpdateVertexObjects() {
 #ifdef BUILD_SERVER
   return;
 #endif
-  m_chunkVb->UpdateBuffer(m_cubeVertices.data(),
-                          m_cubeVertices.size() * sizeof(GLuint));
+  m_chunkVa->Bind(); // the element-buffer binding lives in the VAO
+  m_chunkVb->Upload(m_cubeVertices.data(),
+                    m_cubeVertices.size() * sizeof(GLuint));
+  m_chunkIb->Upload(m_cubeIndices.data(),
+                    m_cubeIndices.size() * sizeof(GLuint));
+  m_chunkVa->Unbind();
 
-  m_chunkVbTrans->UpdateBuffer(m_cubeVerticesTrans.data(),
-                               m_cubeVerticesTrans.size() * sizeof(GLuint));
-
-  m_chunkIb->UpdateBuffer(m_cubeIndices.data(), m_cubeIndices.size());
-
-  m_chunkIbTrans->UpdateBuffer(m_cubeIndicesTrans.data(),
-                               m_cubeIndicesTrans.size());
+  m_chunkVaTrans->Bind();
+  m_chunkVbTrans->Upload(m_cubeVerticesTrans.data(),
+                         m_cubeVerticesTrans.size() * sizeof(GLuint));
+  m_chunkIbTrans->Upload(m_cubeIndicesTrans.data(),
+                         m_cubeIndicesTrans.size() * sizeof(GLuint));
+  m_chunkVaTrans->Unbind();
 }
 
 void Chunk::SetupVertexObjects() {
@@ -570,11 +573,9 @@ void Chunk::SetupVertexObjects() {
   m_chunkVa->Bind();
   VertexBufferLayout layout;
   layout.Push(GL_UNSIGNED_INT, 1);
-  m_chunkVb = std::make_unique<VertexBuffer>(m_cubeVertices.capacity() *
-                                             sizeof(GLuint));
+  m_chunkVb = std::make_unique<VertexBuffer>(0);
   m_chunkVa->AddBuffer(*(m_chunkVb), layout);
-  m_chunkIb = std::make_unique<IndexBuffer>(m_cubeIndices.data(),
-                                            m_cubeIndices.capacity());
+  m_chunkIb = std::make_unique<IndexBuffer>(nullptr, 0);
   m_chunkIb->Bind();
   m_chunkVa->Unbind();
 
@@ -583,11 +584,9 @@ void Chunk::SetupVertexObjects() {
   m_chunkVaTrans->Bind();
   VertexBufferLayout layouttrans;
   layouttrans.Push(GL_UNSIGNED_INT, 1);
-  m_chunkVbTrans = std::make_unique<VertexBuffer>(
-      m_cubeVerticesTrans.capacity() * sizeof(GLuint));
+  m_chunkVbTrans = std::make_unique<VertexBuffer>(0);
   m_chunkVaTrans->AddBuffer(*(m_chunkVbTrans), layouttrans);
-  m_chunkIbTrans = std::make_unique<IndexBuffer>(m_cubeIndicesTrans.data(),
-                                                 m_cubeIndicesTrans.capacity());
+  m_chunkIbTrans = std::make_unique<IndexBuffer>(nullptr, 0);
 
   m_chunkIbTrans->Bind();
   m_chunkVaTrans->Unbind();
@@ -596,7 +595,11 @@ void Chunk::SetupVertexObjects() {
 void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   if (!m_displayChunk)
     return;
+
   if (type == OBJ_TYPE::OPAQUE_) {
+    if (m_cntBlocks == 0) {
+      return;
+    }
     m_chunkVa->Bind();
     glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
                 m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
@@ -612,6 +615,9 @@ void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
     }
     m_chunkVa->Unbind();
   } else if (type == OBJ_TYPE::TRANSPARENT_) {
+    if (m_cntBlocksTrans == 0) {
+      return;
+    }
     m_chunkVaTrans->Bind();
     glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
                 m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);

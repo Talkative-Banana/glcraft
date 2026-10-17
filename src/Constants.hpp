@@ -18,6 +18,8 @@ constexpr static uint64_t BIOME_COUNTY = 8192;
 constexpr static int CHUNK_BLOCK_COUNT = 32;
 constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
 constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
+// Maximum # biomes that can be addressed in a frame to avoid freezing
+constexpr static int MAX_PROCESS_BIOME_IN_FRAME = 1;
 
 constexpr static int BIOME_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 constexpr static int BIOME_LENGTH = CHUNK_COUNTX * BIOME_HEIGHT;
@@ -45,7 +47,7 @@ constexpr static int FACE_MASK_BITS = 6;
 constexpr static int TYPE_MASK_BITS = 5;
 constexpr static int FACE_MASK = ((1 << FACE_MASK_BITS) - 1) << 17;
 constexpr static int TYPE_MASK = ((1 << TYPE_MASK_BITS) - 1) << 23;
-constexpr static int WALKING_SPEED = 20.0f;
+constexpr static int WALKING_SPEED = 2000.0f;
 constexpr static int RUNNING_SPEED = 30.0f;
 constexpr static int SMUGED_SPEED = 10.0f;
 

@@ -322,6 +322,7 @@ Game::Game(std::string savePath)
     players[i] = std::make_unique<Player>(i, m_shaderProgram2);
   }
 
+<<<<<<< Updated upstream
   std::make_shared<Server>(m_ioc, m_port)->on_recv([](const std::string &msg) {
     // handle request
     State st;
@@ -339,6 +340,29 @@ Game::Game(std::string savePath)
       return std::make_shared<std::string>("Invalid Message");
     }
   });
+=======
+  std::make_shared<Server>(m_ioc, m_port)
+      ->on_recv([](const std::string &msg, std::uint32_t) {
+        // handle request
+        auto decoded = NetworkProtocol::DecodeState(msg);
+        if (!decoded) {
+          return std::make_shared<std::string>();
+        }
+        State st = std::move(*decoded);
+        if (std::holds_alternative<PlayerState>(st._data)) {
+          PlayerState pst = std::get<PlayerState>(st._data);
+          // set the id of the activePlayer to mimic their movement here
+          // activePlayer = pt.id;
+          return players.at(st.id)->handle_client_input(msg);
+        } else if (std::holds_alternative<WorldState>(st._data)) {
+          WorldState wst = std::get<WorldState>(st._data);
+          return world->handle_client_input(msg);
+        } else {
+          std::cerr << "Invalid Packet Received\n";
+          return std::make_shared<std::string>();
+        }
+      });
+>>>>>>> Stashed changes
 
   m_networkingThread = std::thread([this]() {
     std::cout << "Server Listening on port: " << m_port << '\n';
@@ -429,24 +453,37 @@ void Game::run() {
       }
     }
 #endif
+    using clk = std::chrono::steady_clock;
+    auto tick = [] { return clk::now(); };
+    auto ms = [](auto a, auto b) {
+      return std::chrono::duration<double, std::milli>(b - a).count();
+    };
+
     // World Calculations
+    auto t0 = tick();
     world->EnqueueVisibleBiomes(playerpos);
 
     // Setup biomes [first pass]
+    auto t1 = tick();
     world->SetupBiomesPass1();
 
     // Do Binding for [first pass]
+    auto t2 = tick();
     world->MarkBiomesReadyForPass1();
 
     // Setup biomes [second pass]
+    auto t3 = tick();
     world->SetupBiomesPass2();
 
     // Do Binding for second pass
+    auto t4 = tick();
     world->MarkBiomesReadyForPass2();
 
     // Mark all the waiting biomes ready
+    auto t5 = tick();
     world->MarkBiomesReadyForBoundaryRemoval();
 
+    auto t6 = tick();
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
 
@@ -490,6 +527,7 @@ void Game::run() {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
+    auto t7 = tick();
     world->Draw(OBJ_TYPE::OPAQUE_, playerpos);
 
     // TRANSPARENT PASS
@@ -497,8 +535,15 @@ void Game::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
+    auto t8 = tick();
     world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
 
+    if (ms(t0, t8) > 20.0) { // only print frames that hitch
+      printf("enq=%.1f p1=%.1f bind1=%.1f p2+bind2=%.1f upd=%.1f "
+             "draw+swap=%.1f draw1=%.1f draw2=%.1f\n",
+             ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5),
+             ms(t5, t6), ms(t6, t7), ms(t7, t8));
+    }
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glDisable(GL_CULL_FACE);

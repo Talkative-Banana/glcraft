@@ -183,7 +183,7 @@ void World::workerLoop() {
         std::ifstream input_bin_file(file_name, std::ios::binary);
         if (!input_bin_file) {
           std::cerr << "Failed to open biome file.\n";
-          return;
+          continue;
         }
         int count = 1;
         input_bin_file.read(reinterpret_cast<char *>(&count), sizeof(count));
@@ -196,7 +196,7 @@ void World::workerLoop() {
         }
       }
       auto biome = m_biomes.set(i, k, j, true, 0, pos, true);
-      {
+      if (biome) {
         std::lock_guard<std::mutex> g(m_setupMutex);
         m_setupQueue.push({biome->m_Run, biome});
       }
@@ -223,6 +223,7 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
   uint64_t maxj =
       player_j >= BIOME_COUNTZ - 2 ? BIOME_COUNTZ - 1 : player_j + 2;
 
+  int iterations = 0;
   for (uint64_t k = maxk + 1; k-- > mink;) {
     for (uint64_t i = mini; i <= maxi; i++) {
       for (uint64_t j = minj; j <= maxj; j++) {
@@ -235,7 +236,8 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
              insideZ = abs(biome_pos.z + BIOME_LENGTH - playerpos.z) <=
                        RENDER_DISTANCE,
              insideY = abs(biome_pos.y - playerpos.y) <= CHUNK_HEIGHT * 2;
-        if (insideX && insideZ && insideY) {
+        if (insideX && insideZ && insideY &&
+            iterations < MAX_PROCESS_BIOME_IN_FRAME) {
           bool shouldSchedule = false;
           {
             std::lock_guard<std::mutex> lock(m_setupMutex);
@@ -245,6 +247,7 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
               m_jobQueue.emplace(i, j, k, m_worldpos + biome_pos, false);
               m_jobScheduled.insert(idx);
               shouldSchedule = true;
+              iterations++;
             }
           }
           if (shouldSchedule) {
@@ -257,7 +260,8 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
 }
 
 void World::SetupBiomesPass1() {
-  while (true) {
+  int iterations = 0;
+  while (iterations < MAX_PROCESS_BIOME_IN_FRAME) {
     std::weak_ptr<Biome> b_weak;
     uint32_t t_run = 0;
     {
@@ -265,12 +269,13 @@ void World::SetupBiomesPass1() {
       if (m_setupQueue.empty())
         break;
 
-      auto &[run, weak] = m_setupQueue.front();
+      auto [run, weak] = m_setupQueue.front();
       t_run = run, b_weak = weak;
       m_setupQueue.pop();
     }
     auto b = b_weak.lock();
     if (b && b->m_Run == t_run) {
+      iterations++;
       b->SetupBiome(true);
       m_bindQueue.push({t_run, b});
       m_renderQueue[b->m_id] = b_weak;
@@ -280,12 +285,14 @@ void World::SetupBiomesPass1() {
 
 // Responsible for removing hidden block faces
 void World::SetupBiomesPass2() {
-  while (!m_rerenderQueue.empty()) {
-    auto &[run, b_weak] = m_rerenderQueue.front();
+  int iterations = 0;
+  while (!m_rerenderQueue.empty() && iterations < MAX_PROCESS_BIOME_IN_FRAME) {
+    auto [run, b_weak] = m_rerenderQueue.front();
     m_rerenderQueue.pop();
 
     auto b = b_weak.lock();
     if (b && b->m_Run == run) {
+      iterations++;
       b->SetupBiome(false); // ReRun
       m_bindQueue.push({run, b});
     }
@@ -352,9 +359,10 @@ void World::MarkBiomesReadyForPass1() {
     return {left, front, right, back};
   };
   // Go through each biome once
+  int iterations = 0;
   uint32_t m_bindQueueSize = m_bindQueue.size();
-  while (m_bindQueueSize--) {
-    auto &[run, w_biome] = m_bindQueue.front();
+  while (m_bindQueueSize-- && (iterations < MAX_PROCESS_BIOME_IN_FRAME)) {
+    auto [run, w_biome] = m_bindQueue.front();
     // If biome is null return early
     auto biome = w_biome.lock();
 
@@ -374,6 +382,7 @@ void World::MarkBiomesReadyForPass1() {
     // All the chunks belonging to biome are done with setup
     m_bindQueue.pop();
     if (isReady) {
+      iterations++;
       // Mark these chunks ready for rendering
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
@@ -416,8 +425,9 @@ void World::MarkBiomesReadyForPass1() {
 
 void World::MarkBiomesReadyForPass2() {
   // Go through each biome
+  int iterations = 0;
   uint32_t t_bindQueueSize = m_bindQueue.size();
-  while (t_bindQueueSize--) {
+  while (t_bindQueueSize-- && (iterations < MAX_PROCESS_BIOME_IN_FRAME)) {
     auto [run, w_biome] = m_bindQueue.front();
 
     auto biome = w_biome.lock();
@@ -450,6 +460,7 @@ void World::MarkBiomesReadyForPass2() {
 
     m_bindQueue.pop();
     if (isReady) {
+      iterations++;
       for (int i = 0; i < CHUNK_COUNTX; i++) {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
           auto chunk = biome->m_chunks[i][j];
@@ -477,7 +488,7 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
 
   uint32_t t_waitingQueueSize = m_waitingQueue.size();
   while (t_waitingQueueSize--) {
-    auto &[run, w_biome] = m_waitingQueue.front();
+    auto [run, w_biome] = m_waitingQueue.front();
 
     auto biome = w_biome.lock();
     // If biome is null return early

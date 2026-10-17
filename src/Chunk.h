@@ -1,3 +1,4 @@
+#pragma once
 #include <memory>
 #include <noise/noise.h>
 #include <noiseutils.h>
@@ -8,17 +9,15 @@
 #include "Utils.h"
 #include "VertexArray.h"
 
-#pragma once
-
 extern GLint chunkpos_uniform;
 extern GLuint wireframemode;
 
 class Chunk {
 public:
-  GLboolean m_displayChunk, m_dirtyBit;
-  GLuint m_id, m_count, m_cntBlocks, m_saveId, m_type;
-  GLuint m_countTrans, m_cntBlocksTrans;
-  glm::ivec3 m_biomePos, m_chunkPos;
+  GLboolean m_displayChunk = false, m_dirtyBit = false;
+  GLuint m_id{}, m_count{}, m_cntBlocks{}, m_saveId{}, m_type{};
+  GLuint m_countTrans{}, m_cntBlocksTrans{};
+  glm::ivec3 m_biomePos{0}, m_chunkPos{0};
 
   std::array<
       std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>,
