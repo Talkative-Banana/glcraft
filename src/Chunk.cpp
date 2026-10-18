@@ -1,22 +1,14 @@
 #include "Chunk.h"
-
-#include <cstdlib>
-#include <random>
-#include <string>
-
-#include "Renderer.h"
 #include "World.h"
 
 extern std::unique_ptr<World> world;
 
 Chunk::Chunk() {}
 
-Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
-             GLboolean display, int _type) {
+Chunk::Chunk(uint32_t _id, glm::ivec3 _biomepos, glm::ivec3 position,
+             bool display, int _type) {
   // Check if the chunk needs to be loaded from disk
   m_id = _id;
-  m_count = 0;
-  m_countTrans = 0;
   m_type = _type;
   m_biomePos = _biomepos;
   m_displayChunk = display;
@@ -44,19 +36,14 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   }
 
   // Reserve for vectors
-  m_cubeIndices.reserve(16'000);
-  m_cubeIndicesTrans.reserve(4'000);
-
   m_cubeVertices.reserve(8'000);
   m_cubeVerticesTrans.reserve(2'000);
 }
 
-void Chunk::RecycleChunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
-                         GLboolean display, int _type) {
+void Chunk::RecycleChunk(uint32_t _id, glm::ivec3 _biomepos,
+                         glm::ivec3 position, bool display, int _type) {
   // Check if the chunk needs to be loaded from disk
   m_id = _id;
-  m_count = 0;
-  m_countTrans = 0;
   m_type = _type;
   m_biomePos = _biomepos;
   m_displayChunk = display;
@@ -84,7 +71,7 @@ void Chunk::RecycleChunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   }
 }
 
-inline GLboolean Chunk::isSolid(int x, int y, int z) {
+inline bool Chunk::isSolid(int x, int y, int z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -94,7 +81,7 @@ inline GLboolean Chunk::isSolid(int x, int y, int z) {
   return false;
 }
 
-inline GLboolean Chunk::isTransparent(int x, int y, int z) {
+inline bool Chunk::isTransparent(int x, int y, int z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -104,7 +91,7 @@ inline GLboolean Chunk::isTransparent(int x, int y, int z) {
   return false;
 }
 
-inline GLboolean Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
+inline bool Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -118,7 +105,7 @@ inline GLboolean Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
 // k blue i red j green
 // ctrl x -> red facing me
 
-GLuint Chunk::RenderFace(int x, int y, int z) {
+uint32_t Chunk::RenderFace(int x, int y, int z) {
   // 1 -> back face
   // 2 -> front face
   // 3 -> left face
@@ -126,7 +113,7 @@ GLuint Chunk::RenderFace(int x, int y, int z) {
   // 5 -> top face
   // 6 -> bottom face
 
-  GLuint mask = 0;
+  uint32_t mask = 0;
 
   // Back face (z - 1)
   // No Need to draw back face if block behind is solid
@@ -167,7 +154,7 @@ GLuint Chunk::RenderFace(int x, int y, int z) {
   return mask;
 }
 
-void Chunk::Setup_Landscape(GLint X, GLint Z) {
+void Chunk::Setup_Landscape(uint32_t X, uint32_t Z) {
   // Early return => chunks/biomes below surface are all solid (for now)
   if (m_chunkPos.y < (((BIOME_COUNTY)*CHUNK_HEIGHT) / 2.0) - CHUNK_HEIGHT) {
     for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
@@ -346,9 +333,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
   {
     m_cubeVertices.clear();
-    m_cubeIndices.clear();
-    m_count = 0, m_cntBlocks = 0;
-    GLuint idx = 0;
+    m_cntBlocks = 0;
 
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
@@ -359,7 +344,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             // break;  // unsolid blocks
             continue;
           }
-          GLuint mask = 0;
+          uint32_t mask = 0;
           if (firstRun) {
             // If its first run just save the mask
             mask = Chunk::RenderFace(i, j, k);
@@ -428,7 +413,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (m_blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          GLuint ac = 0;
+          uint32_t ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
           isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
@@ -462,10 +447,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndices,
-                                              m_cubeVertices);
-          m_cntBlocks += cnt;
-          idx += 24 * (cnt != 0), m_count += (cnt != 0);
+          // if any of the face is visible
+          if (m_blocks[i][j][k].Render(mask, ac)) {
+            m_cntBlocks++;
+            m_cubeVertices.push_back(
+                static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
+            m_cubeVertices.push_back(
+                static_cast<uint32_t>(m_blocks[i][j][k].blmask));
+          }
         }
       }
     }
@@ -474,9 +463,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   // Render transparent blocks
   {
     m_cubeVerticesTrans.clear();
-    m_cubeIndicesTrans.clear();
-    m_countTrans = 0, m_cntBlocksTrans = 0;
-    GLuint idx = 0;
+    m_cntBlocksTrans = 0;
 
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
@@ -487,7 +474,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             // break;  // unsolid blocks
             continue;
           }
-          GLuint mask = 0;
+          uint32_t mask = 0;
           if (firstRun) {
             // If its first run just save the mask
             mask = Chunk::RenderFace(i, j, k);
@@ -550,7 +537,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (m_blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          GLuint ac = 0;
+          uint32_t ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
           isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
@@ -584,10 +571,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndicesTrans,
-                                              m_cubeVerticesTrans);
-          m_cntBlocksTrans += cnt;
-          idx += 24 * (cnt != 0), m_countTrans += (cnt != 0);
+          // if any of the face is visible
+          if (m_blocks[i][j][k].Render(mask, ac)) {
+            m_cntBlocksTrans++;
+            m_cubeVerticesTrans.push_back(
+                static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
+            m_cubeVerticesTrans.push_back(
+                static_cast<uint32_t>(m_blocks[i][j][k].blmask));
+          }
         }
       }
     }
@@ -607,16 +598,12 @@ void Chunk::UpdateVertexObjects() {
 #endif
   m_chunkVa->Bind(); // the element-buffer binding lives in the VAO
   m_chunkVb->Upload(m_cubeVertices.data(),
-                    m_cubeVertices.size() * sizeof(GLuint));
-  m_chunkIb->Upload(m_cubeIndices.data(),
-                    m_cubeIndices.size() * sizeof(GLuint));
+                    m_cubeVertices.size() * sizeof(uint32_t));
   m_chunkVa->Unbind();
 
   m_chunkVaTrans->Bind();
   m_chunkVbTrans->Upload(m_cubeVerticesTrans.data(),
-                         m_cubeVerticesTrans.size() * sizeof(GLuint));
-  m_chunkIbTrans->Upload(m_cubeIndicesTrans.data(),
-                         m_cubeIndicesTrans.size() * sizeof(GLuint));
+                         m_cubeVerticesTrans.size() * sizeof(uint32_t));
   m_chunkVaTrans->Unbind();
 }
 
@@ -630,23 +617,18 @@ void Chunk::SetupVertexObjects() {
   m_chunkVa = std::make_unique<VertexArray>();
   m_chunkVa->Bind();
   VertexBufferLayout layout;
-  layout.Push(GL_UNSIGNED_INT, 1);
+  layout.Push(GL_UNSIGNED_INT, 2);
   m_chunkVb = std::make_unique<VertexBuffer>(0);
   m_chunkVa->AddBuffer(*(m_chunkVb), layout);
-  m_chunkIb = std::make_unique<IndexBuffer>(nullptr, 0);
-  m_chunkIb->Bind();
   m_chunkVa->Unbind();
 
   // TRANSPARENT PASS
   m_chunkVaTrans = std::make_unique<VertexArray>();
   m_chunkVaTrans->Bind();
   VertexBufferLayout layouttrans;
-  layouttrans.Push(GL_UNSIGNED_INT, 1);
+  layouttrans.Push(GL_UNSIGNED_INT, 2);
   m_chunkVbTrans = std::make_unique<VertexBuffer>(0);
   m_chunkVaTrans->AddBuffer(*(m_chunkVbTrans), layouttrans);
-  m_chunkIbTrans = std::make_unique<IndexBuffer>(nullptr, 0);
-
-  m_chunkIbTrans->Bind();
   m_chunkVaTrans->Unbind();
 }
 
@@ -654,44 +636,26 @@ void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   if (!m_displayChunk)
     return;
 
-  if (type == OBJ_TYPE::OPAQUE_) {
-    if (m_cntBlocks == 0) {
-      return;
-    }
-    m_chunkVa->Bind();
-    glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
-                m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
-    if (wireframemode) {
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, m_cntBlocks, GL_UNSIGNED_INT, nullptr);
-    } else {
-      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
-      // 12 * Total Number of attributes
-      glDrawElements(GL_TRIANGLES, m_cntBlocks, GL_UNSIGNED_INT, nullptr);
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-    }
-    m_chunkVa->Unbind();
-  } else if (type == OBJ_TYPE::TRANSPARENT_) {
-    if (m_cntBlocksTrans == 0) {
-      return;
-    }
-    m_chunkVaTrans->Bind();
-    glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
-                m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
+  const bool opaque = (type == OBJ_TYPE::OPAQUE_);
+  // visible blocks = points
+  const uint32_t count = opaque ? m_cntBlocks : m_cntBlocksTrans;
+  if (count == 0)
+    return;
 
-    if (wireframemode) {
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, m_cntBlocksTrans, GL_UNSIGNED_INT, nullptr);
-    } else {
-      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
-      // 12 * Total Number of attributes
-      glDrawElements(GL_TRIANGLES, m_cntBlocksTrans, GL_UNSIGNED_INT, nullptr);
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-    }
-    m_chunkVaTrans->Unbind();
-  }
+  auto &va = opaque ? m_chunkVa : m_chunkVaTrans;
+  va->Bind();
+  glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
+              m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
+
+  if (wireframemode)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+  glDrawArrays(GL_POINTS, 0, count);
+
+  if (wireframemode)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  va->Unbind();
 }
 
 void Chunk::Serialize(std::ostream &os) const {
@@ -703,7 +667,7 @@ void Chunk::Serialize(std::ostream &os) const {
   os.write(reinterpret_cast<const char *>(&m_chunkPos.x), sizeof(m_chunkPos.x));
   os.write(reinterpret_cast<const char *>(&m_chunkPos.y), sizeof(m_chunkPos.y));
   os.write(reinterpret_cast<const char *>(&m_chunkPos.z), sizeof(m_chunkPos.z));
-  os.write(reinterpret_cast<const char *>(&m_blocks), sizeof(m_blocks));
+  os.write(reinterpret_cast<const char *>(&m_blocks), sizeof(uint32_t));
 }
 
 bool Chunk::Deserialize(std::istream &is) {
@@ -723,7 +687,7 @@ bool Chunk::Deserialize(std::istream &is) {
     return false;
   if (!is.read(reinterpret_cast<char *>(&m_chunkPos.z), sizeof(m_chunkPos.z)))
     return false;
-  if (!is.read(reinterpret_cast<char *>(&m_blocks), sizeof(m_blocks)))
+  if (!is.read(reinterpret_cast<char *>(&m_blocks), sizeof(uint32_t)))
     return false;
   return true;
 }

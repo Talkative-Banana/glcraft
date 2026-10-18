@@ -567,7 +567,7 @@ void World::save_model(std::shared_ptr<Chunk> chunk, std::string name) {
           if (blk.is_ref())
             continue;
           save_model.write(reinterpret_cast<char *>(&blk.blmask),
-                           sizeof(GLuint));
+                           sizeof(uint32_t));
         }
       }
     }
@@ -608,7 +608,7 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
           continue;
         Block block;
         input_model_bin_file.read(reinterpret_cast<char *>(&block),
-                                  sizeof(block));
+                                  sizeof(uint32_t));
         // if (!block.isSolid()) continue;
         glm::dvec3 ptr = {pos.x + i * BLOCK_SIZE, pos.y + j * BLOCK_SIZE,
                           pos.z + k * BLOCK_SIZE}; // 63 1 63

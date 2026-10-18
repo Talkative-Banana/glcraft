@@ -1,9 +1,6 @@
 #include "Biome.h"
-
-#include <fstream>
-
-#include "Renderer.h"
 #include "World.h"
+#include <fstream>
 
 extern std::unique_ptr<World> world;
 

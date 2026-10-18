@@ -26,6 +26,8 @@ void main() {
    } else {
       dark = 0.4;
    }
-   outColor = vec4(texColor.rgb * isoscale * aoFactor * dark, texColor.a);
-   outColor = mix(vec4(skyColor, 1.0), outColor, visibility);
+   vec3 color = texColor.rgb * isoscale * aoFactor * dark;
+   color = mix(skyColor, color, visibility);
+   outColor = vec4(color, texColor.a); 
+
 }

@@ -52,6 +52,7 @@ int openGLInit();
 const char * setGLSLVersion();
 GLuint createShader(const char* filename, GLenum type);
 unsigned int createProgram(const char *vshader_filename, const char* fshader_filename);
+unsigned int createProgram(const char *vshader_filename, const char* fshader_filename, const char* gshader_filename);
 char * getShaderCode(const char*);
 
 void cleanup(GLFWwindow* );

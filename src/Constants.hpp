@@ -52,7 +52,7 @@ constexpr static int RIGHT_FACE = 1 << 20;
 constexpr static int TOP_FACE = 1 << 21;
 constexpr static int BOTTOM_FACE = 1 << 22;
 constexpr static int FACE_MASK_BITS = 6;
-constexpr static int TYPE_MASK_BITS = 5;
+constexpr static int TYPE_MASK_BITS = 9;
 constexpr static int FACE_MASK = ((1 << FACE_MASK_BITS) - 1) << 17;
 constexpr static int TYPE_MASK = ((1 << TYPE_MASK_BITS) - 1) << 23;
 constexpr static int WALKING_SPEED = 20.0f;
@@ -160,6 +160,7 @@ const std::string BlizzardPath = "./assets/audio/blizzard.ogg";
 
 const std::string ShaderProgramVS = "./shaders/vshaderWorld.vs";
 const std::string ShaderProgramFS = "./shaders/fshaderWorld.fs";
+const std::string ShaderProgramGS = "./shaders/gshaderWorld.gs";
 
 const std::string ShaderProgram2VS = "./shaders/vshaderAsset.vs";
 const std::string ShaderProgram2FS = "./shaders/fshaderAsset.fs";

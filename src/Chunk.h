@@ -5,33 +5,30 @@
 
 #include "Block.h"
 #include "Constants.hpp"
-#include "IndexBuffer.h"
 #include "Utils.h"
 #include "VertexArray.h"
+#include <cstdlib>
 
 extern GLint chunkpos_uniform;
 extern GLuint wireframemode;
 
 class Chunk {
 public:
-  GLboolean m_displayChunk = false, m_dirtyBit = false;
-  GLuint m_id{}, m_count{}, m_cntBlocks{}, m_saveId{}, m_type{};
-  GLuint m_countTrans{}, m_cntBlocksTrans{};
+  bool m_displayChunk = false, m_dirtyBit = false;
+  uint32_t m_id{}, m_cntBlocks{}, m_saveId{}, m_type{}, m_cntBlocksTrans{};
   glm::ivec3 m_biomePos{0}, m_chunkPos{0};
 
   std::array<
       std::array<std::array<Block, CHUNK_BLOCK_COUNT>, CHUNK_BLOCK_COUNT>,
       CHUNK_BLOCK_COUNT>
       m_blocks;
-  std::vector<GLuint> m_cubeVertices, m_cubeVerticesTrans;
-  std::vector<GLuint> m_cubeIndices, m_cubeIndicesTrans;
+  std::vector<uint32_t> m_cubeVertices, m_cubeVerticesTrans;
 
   std::unique_ptr<VertexArray> m_chunkVa, m_chunkVaTrans;
   std::unique_ptr<VertexBuffer> m_chunkVb, m_chunkVbTrans;
-  std::unique_ptr<IndexBuffer> m_chunkIb, m_chunkIbTrans;
 
   Chunk();
-  Chunk(uint, glm::ivec3, glm::ivec3, GLboolean, int);
+  Chunk(uint32_t, glm::ivec3, glm::ivec3, bool, int);
 
   void Render(int, bool,
               std::shared_ptr<Chunk>, // left
@@ -42,17 +39,17 @@ public:
               std::shared_ptr<Chunk>  // bottom
   );
 
-  void Setup_Landscape(GLint, GLint);
-  GLuint RenderFace(int, int, int);
-  inline GLboolean isSolid(int, int, int);
-  inline GLboolean isTransparent(int, int, int);
-  inline GLboolean isSameKind(int, int, int, int, int, int);
+  void Setup_Landscape(uint32_t, uint32_t);
+  uint32_t RenderFace(int, int, int);
+  inline bool isSolid(int, int, int);
+  inline bool isTransparent(int, int, int);
+  inline bool isSameKind(int, int, int, int, int, int);
   void Draw(OBJ_TYPE, glm::dvec3);
   void Serialize(std::ostream &) const;
   bool Deserialize(std::istream &);
   void SetupVertexObjects();
   void UpdateVertexObjects();
-  void RecycleChunk(uint, glm::ivec3, glm::ivec3, GLboolean, int);
+  void RecycleChunk(uint, glm::ivec3, glm::ivec3, bool, int);
   static void SetupNoise(uint64_t seed) {
     // Set random seed for mountains
     s_mountainTerrain.SetSeed(seed);
