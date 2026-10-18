@@ -399,7 +399,7 @@ void World::MarkBiomesReadyForPass1() {
         }
       }
       auto neighbors = neighborBiomes(biome->m_biomePos);
-      auto check = [](std::weak_ptr<Biome> bptr) {
+      auto check = [count](std::weak_ptr<Biome> bptr) {
         auto sbptr = bptr.lock();
         if (!sbptr)
           return false;
