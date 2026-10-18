@@ -8,16 +8,17 @@ constexpr static double BLOCK_SIZE = 2.0;      // BLOCK LENGTH
 constexpr static double HALF_BLOCK_SIZE = 1.0; // HALF_BLOCK LENGTH
 constexpr static double NEAR_PLANE = 0.01f;
 constexpr static double FAR_PLANE = 1000.0f;
-constexpr static int TOTAL_STEPS = 32;
+constexpr static uint64_t TOTAL_STEPS = 32;
 constexpr static double STEP_SIZE = 1.0;
-constexpr static int CHUNK_COUNTX = 4;
+constexpr static uint64_t CHUNK_COUNTX = 4;
 constexpr static uint64_t BIOME_COUNTX = 8192;
-constexpr static int CHUNK_COUNTZ = 4;
+constexpr static uint64_t CHUNK_COUNTZ = 4;
 constexpr static uint64_t BIOME_COUNTZ = 8192;
 constexpr static uint64_t BIOME_COUNTY = 8192;
-constexpr static int CHUNK_BLOCK_COUNT = 32;
-constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
-constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
+constexpr static uint64_t CHUNK_BLOCK_COUNT = 32;
+constexpr static uint64_t BIOME_SIZE =
+    BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
+constexpr static uint64_t RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
 // Maximum # biomes that can be addressed in a frame to avoid freezing
 constexpr static int MAX_PROCESS_BIOME_IN_FRAME = 16;
 
@@ -25,8 +26,8 @@ constexpr static int BIOME_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 constexpr static int BIOME_LENGTH = CHUNK_COUNTX * BIOME_HEIGHT;
 constexpr static int BIOME_WIDTH = CHUNK_COUNTZ * BIOME_HEIGHT;
 
-constexpr static int CHUNK_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
-constexpr static int CHUNK_LENGTH = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
+constexpr static uint64_t CHUNK_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
+constexpr static uint64_t CHUNK_LENGTH = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 
 constexpr static double OFFSET = 0.01f;
 constexpr static double PLAYER_HEIGHT = 2 * BLOCK_SIZE;
@@ -37,27 +38,27 @@ constexpr double JUMP_HEIGHT = 1.25 * BLOCK_SIZE;
 const double JUMP_SPEED = std::sqrt(2.0 * -GRAVITY_ACCEL * JUMP_HEIGHT);
 constexpr double TERMINAL_VEL = -60.0 * BLOCK_SIZE; // -120 units/s
 constexpr double PLAYER_RADIUS = 0.3 * BLOCK_SIZE;  // 0.6 units
-constexpr static int PLAYER_COUNT = 128;
-constexpr static int MODEL_TYPES = 4;
-constexpr static int BIOME_TYPES = 4;
-constexpr static int BIOME_BLOCK_COUNT = 6;
+constexpr static uint64_t PLAYER_COUNT = 128;
+constexpr static uint64_t MODEL_TYPES = 4;
+constexpr static uint64_t BIOME_TYPES = 4;
+constexpr static uint64_t BIOME_BLOCK_COUNT = 6;
 
-constexpr static int BLOCK_POSX = 31 << 10;
-constexpr static int BLOCK_POSY = 31 << 5;
-constexpr static int BLOCK_POSZ = 31;
-constexpr static int BACK_FACE = 1 << 17;
-constexpr static int FRONT_FACE = 1 << 18;
-constexpr static int LEFT_FACE = 1 << 19;
-constexpr static int RIGHT_FACE = 1 << 20;
-constexpr static int TOP_FACE = 1 << 21;
-constexpr static int BOTTOM_FACE = 1 << 22;
-constexpr static int FACE_MASK_BITS = 6;
-constexpr static int TYPE_MASK_BITS = 9;
-constexpr static int FACE_MASK = ((1 << FACE_MASK_BITS) - 1) << 17;
-constexpr static int TYPE_MASK = ((1 << TYPE_MASK_BITS) - 1) << 23;
-constexpr static int WALKING_SPEED = 20.0f;
-constexpr static int RUNNING_SPEED = 30.0f;
-constexpr static int SMUGED_SPEED = 10.0f;
+constexpr static uint64_t BLOCK_POSX = 31ull << 10;
+constexpr static uint64_t BLOCK_POSY = 31ull << 5;
+constexpr static uint64_t BLOCK_POSZ = 31ull;
+constexpr static uint64_t BACK_FACE = 1ull << 17;
+constexpr static uint64_t FRONT_FACE = 1ull << 18;
+constexpr static uint64_t LEFT_FACE = 1ull << 19;
+constexpr static uint64_t RIGHT_FACE = 1ull << 20;
+constexpr static uint64_t TOP_FACE = 1ull << 21;
+constexpr static uint64_t BOTTOM_FACE = 1ull << 22;
+constexpr static uint64_t FACE_MASK_BITS = 6ull;
+constexpr static uint64_t TYPE_MASK_BITS = 9ull;
+constexpr static uint64_t FACE_MASK = ((1ull << FACE_MASK_BITS) - 1) << 17;
+constexpr static uint64_t TYPE_MASK = ((1ull << TYPE_MASK_BITS) - 1) << 23;
+constexpr static float WALKING_SPEED = 20.0f;
+constexpr static float RUNNING_SPEED = 30.0f;
+constexpr static float SMUGED_SPEED = 10.0f;
 
 constexpr static int IMGUI_TEXT_CAPACITY = 256;
 // Non const
@@ -145,7 +146,8 @@ struct PlayerState {
 
 struct WorldState {
   glm::ivec3 blockpos;
-  GLuint blk, model_idx;
+  uint64_t blk;
+  GLuint model_idx;
 };
 
 struct State {

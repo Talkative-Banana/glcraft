@@ -326,15 +326,19 @@ void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // remove all expired
   bool isRemoved = false;
   for (auto it = m_renderQueue.begin(); it != m_renderQueue.end();) {
-    auto sbptr = it->second.lock();
-    auto pos = sbptr->m_biomePos;
-    auto isPresent = m_biomes.get(pos.x / BIOME_LENGTH, pos.y / BIOME_HEIGHT,
-                                  pos.z / BIOME_LENGTH);
-    if (isPresent == nullptr) {
+    if (auto sbptr = it->second.lock()) {
+      auto pos = sbptr->m_biomePos;
+      auto isPresent = m_biomes.get(pos.x / BIOME_LENGTH, pos.y / BIOME_HEIGHT,
+                                    pos.z / BIOME_LENGTH);
+      if (isPresent == nullptr) {
+        it = m_renderQueue.erase(it);
+        isRemoved = true;
+      } else {
+        ++it;
+      }
+    } else {
       it = m_renderQueue.erase(it);
       isRemoved = true;
-    } else {
-      ++it;
     }
   }
 

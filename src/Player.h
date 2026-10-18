@@ -76,7 +76,7 @@ private:
   GLuint m_shaderProgram, m_shaderProgram2;
   uint64_t m_meshhandle;
   Inventory m_inventory;
-  BLOCK_TYPE m_insideBlock;
+  BLOCK_TYPE m_insideBlock{};
   std::unique_ptr<Client> m_client = nullptr;
   bool collides(const glm::dvec3 &) const;
   static glm::dvec3 snapToCenter(const glm::dvec3 &);

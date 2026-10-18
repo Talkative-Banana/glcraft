@@ -1,7 +1,7 @@
 #include "Block.h"
 
 Block::Block(const glm::ivec3 &pos, bool solid, BLOCK_TYPE bltype) {
-  blmask = (static_cast<uint32_t>(bltype) << 23) | (pos.x << 10) |
+  blmask = (static_cast<uint64_t>(bltype) << 23) | (pos.x << 10) |
            (pos.y << 5) | (pos.z);
   if (solid)
     blmask |= (1 << 15);
@@ -59,6 +59,6 @@ void Block::remove() {
 
 void Block::add(BLOCK_TYPE bltype) {
   blmask |= (3 << 15); // add solid and visble bit
-  blmask &= ~(TYPE_MASK);
-  blmask |= (static_cast<int>(bltype) << 23);
+  blmask &= ~static_cast<uint64_t>(TYPE_MASK);
+  blmask |= (static_cast<uint64_t>(bltype) << 23);
 }
