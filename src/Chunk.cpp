@@ -168,8 +168,8 @@ GLuint Chunk::RenderFace(int x, int y, int z) {
 }
 
 void Chunk::Setup_Landscape(GLint X, GLint Z) {
-  // Early return
-  if (m_chunkPos.y != ((BIOME_COUNTY - 1) * CHUNK_HEIGHT)) {
+  // Early return => chunks/biomes below surface are all solid (for now)
+  if (m_chunkPos.y < (((BIOME_COUNTY)*CHUNK_HEIGHT) / 2.0) - CHUNK_HEIGHT) {
     for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
       for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
         for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
@@ -177,6 +177,21 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
           auto &biome_bltypes = BIOME_BLOCK_TYPES[m_type];
           BLOCK_TYPE &bltype = biome_bltypes[3];
           m_blocks[z][y][x] = Block(std::move(ofs), true, bltype);
+        }
+      }
+    }
+    return;
+  }
+
+  // Early return => chunks/biomes above surface are all empty (for now)
+  if (m_chunkPos.y > (((BIOME_COUNTY)*CHUNK_HEIGHT) / 2.0) - CHUNK_HEIGHT) {
+    for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
+      for (int z = 0; z < CHUNK_BLOCK_COUNT; z++) {
+        for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
+          glm::ivec3 ofs = {z, y, x};
+          auto &biome_bltypes = BIOME_BLOCK_TYPES[m_type];
+          BLOCK_TYPE &bltype = biome_bltypes[3];
+          m_blocks[z][y][x] = Block(std::move(ofs), false, bltype);
         }
       }
     }
@@ -236,9 +251,9 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
       unsigned char blue = static_cast<unsigned char>(normalized * 255.0 + 0.5);
       int height = std::max(2, static_cast<int>((blue / 255.0f) * 32.0f));
 
+      auto &biome_bltypes = BIOME_BLOCK_TYPES[m_type];
       for (int y = 0; y < CHUNK_BLOCK_COUNT; y++) {
         glm::ivec3 ofs = {z, y, x};
-        auto &biome_bltypes = BIOME_BLOCK_TYPES[m_type];
         BLOCK_TYPE bltype;
         if (y == height - 1) {
           if (y <= 10) {
@@ -264,7 +279,8 @@ void Chunk::Setup_Landscape(GLint X, GLint Z) {
 
 void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                    std::shared_ptr<Chunk> front, std::shared_ptr<Chunk> right,
-                   std::shared_ptr<Chunk> back) {
+                   std::shared_ptr<Chunk> back, std::shared_ptr<Chunk> top,
+                   std::shared_ptr<Chunk> bottom) {
   // Rerendering
   // if (!displaychunk) return;
   // Render OPAQUE blocks
@@ -368,6 +384,8 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                 // Remove right face from current block
                 blk1.blmask &= ~RIGHT_FACE;
               }
+            } else {
+              // No update needed middle block
             }
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
@@ -385,6 +403,27 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
+            } else {
+              // No update needed middle block
+            }
+            if (j == 0 && bottom) {
+              auto &blk1 = m_blocks[i][0][k];
+              auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
+                // Remove back face from current block
+                blk1.blmask &= ~BOTTOM_FACE;
+              }
+            } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
+              auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
+              auto &blk2 = top->m_blocks[i][0][k];
+              if ((blk1.is_solid()) &&
+                  (blk2.is_solid() && !blk2.is_transparent())) {
+                // Remove front face from current block
+                blk1.blmask &= ~TOP_FACE;
+              }
+            } else {
+              // No update needed middle block
             }
             mask = (m_blocks[i][j][k].blmask >> 17) & 63;
           }
@@ -471,6 +510,8 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                 // Remove right face from current block
                 blk1.blmask &= ~RIGHT_FACE;
               }
+            } else {
+              // No update needed middle block
             }
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
@@ -485,6 +526,23 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               if ((blk1.is_solid()) && (blk2.is_solid())) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
+              }
+            } else {
+              // No update needed middle block
+            }
+            if (j == 0 && bottom) {
+              auto &blk1 = m_blocks[i][0][k];
+              auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove back face from current block
+                blk1.blmask &= ~BOTTOM_FACE;
+              }
+            } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
+              auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
+              auto &blk2 = top->m_blocks[i][0][k];
+              if ((blk1.is_solid()) && (blk2.is_solid())) {
+                // Remove front face from current block
+                blk1.blmask &= ~TOP_FACE;
               }
             } else {
               // No update needed middle block

@@ -34,10 +34,14 @@ public:
   Chunk(uint, glm::ivec3, glm::ivec3, GLboolean, int);
 
   void Render(int, bool,
-              std::shared_ptr<Chunk>,  // left
-              std::shared_ptr<Chunk>,  // forward
-              std::shared_ptr<Chunk>,  // right
-              std::shared_ptr<Chunk>); // back
+              std::shared_ptr<Chunk>, // left
+              std::shared_ptr<Chunk>, // forward
+              std::shared_ptr<Chunk>, // right
+              std::shared_ptr<Chunk>, // back
+              std::shared_ptr<Chunk>, // top
+              std::shared_ptr<Chunk>  // bottom
+  );
+
   void Setup_Landscape(GLint, GLint);
   GLuint RenderFace(int, int, int);
   inline GLboolean isSolid(int, int, int);

@@ -166,7 +166,7 @@ public:
   void MarkBiomesReadyForBoundaryRemoval();
 
   void RefreshChunks(glm::ivec3, bool = false, bool = false, bool = false,
-                     bool = false);
+                     bool = false, bool = false, bool = false);
 
   void handleNetworkRequest(WorldState &);
   std::shared_ptr<std::string> handle_client_input(const std::string &);

@@ -514,7 +514,7 @@ void Game::run() {
     auto t8 = tick();
     world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
 
-    if (ms(t0, t8) > 20.0) { // only print frames that hitch
+    if (ms(t0, t8) > 16.0) { // only print frames that hitch
       printf("enq=%.1f p1=%.1f bind1=%.1f p2+bind2=%.1f upd=%.1f "
              "draw+swap=%.1f draw1=%.1f draw2=%.1f\n",
              ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5),

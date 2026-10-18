@@ -179,14 +179,6 @@ void main() {
 	uint diag  = ((ac & 2u) != 0u) ? 1u : 0u;   // bit 1
 	uint side2 = ((ac & 4u) != 0u) ? 1u : 0u;   // bit 2
 
-	uint occ;
-	if ((side1 != 0u) && (side2 != 0u)) {
-		// both neighbors present → darkest (ignore diagonal)
-		occ = 3u;
-	} else {
-		occ = side1 + side2 + diag;
-	}
-	aoFactor = 1.0f - (occ * 0.25f);  // 1.0, 0.75, 0.5, 0.25
 	vec3 pos = vec3(side * positionX, side * positionY, side * positionZ);
 	vec3 centercord = Center(pos, centeroff);
 	gl_Position = vProjection * vView * vModel * vec4(pos + chunkpos, 1.0);
@@ -201,6 +193,16 @@ void main() {
 
 	NormalDir = _NormalDir;
 
+	uint occ = 0u;
+	if(_NormalDir.y != 0) { // prevents shading on sides and bottom
+		if ((side1 != 0u) && (side2 != 0u)) {
+			// both neighbors present → darkest (ignore diagonal)
+			occ = 3u;
+		} else {
+			occ = side1 + side2 + diag;
+		}
+	}
+	aoFactor = 1.0f - (occ * 0.25f);  // 1.0, 0.75, 0.5, 0.25
 	setup_textures(_NormalDir, vVertex, centeroff);
 	// figure out which 2D coords to use based on face
 	if (_NormalDir.z != 0) {

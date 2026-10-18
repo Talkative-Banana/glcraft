@@ -88,122 +88,129 @@ void Player::handleNetworkRequest(PlayerState &pt) {
   }
 }
 
-void Player::handle_input(float dt) {
+bool Player::collides(const glm::dvec3 &p) const {
+  if (!world)
+    return false;
 
+  // Shrink the box slightly so resting exactly on a surface or against a wall
+  // doesn't count as overlapping it.
+  constexpr double EPS = 1e-4;
+
+  // m_position is the eye/top of the body; feet are PLAYER_HEIGHT below.
+  const double minX = p.x - PLAYER_RADIUS + EPS;
+  const double maxX = p.x + PLAYER_RADIUS - EPS;
+  const double minY = p.y - PLAYER_HEIGHT + EPS;
+  const double maxY = p.y - EPS;
+  const double minZ = p.z - PLAYER_RADIUS + EPS;
+  const double maxZ = p.z + PLAYER_RADIUS - EPS;
+
+  // Range of block cells the box overlaps.
+  const int x0 = (int)std::floor(minX / BLOCK_SIZE);
+  const int x1 = (int)std::floor(maxX / BLOCK_SIZE);
+  const int y0 = (int)std::floor(minY / BLOCK_SIZE);
+  const int y1 = (int)std::floor(maxY / BLOCK_SIZE);
+  const int z0 = (int)std::floor(minZ / BLOCK_SIZE);
+  const int z1 = (int)std::floor(maxZ / BLOCK_SIZE);
+
+  for (int ix = x0; ix <= x1; ++ix)
+    for (int iy = y0; iy <= y1; ++iy)
+      for (int iz = z0; iz <= z1; ++iz) {
+        // isStandable takes block centers, as in your original code
+        const glm::dvec3 center((ix + 0.5) * BLOCK_SIZE,
+                                (iy + 0.5) * BLOCK_SIZE,
+                                (iz + 0.5) * BLOCK_SIZE);
+        if (world->isStandable(center))
+          return true;
+      }
+
+  return false;
+}
+
+glm::dvec3 Player::snapToCenter(const glm::dvec3 &p) {
+  return glm::floor(p / BLOCK_SIZE) * BLOCK_SIZE + glm::dvec3(HALF_BLOCK_SIZE);
+}
+
+void Player::handle_input(float dtRaw) {
+  // avoid tunnelling on lag spikes
+  const double dt = std::min<double>(dtRaw, 0.05);
   bool position_updated = false;
-  BLOCK_TYPE legblock = BLOCK_TYPE::GRASS_BLOCK;
-  // Gravity
-  glm::dvec3 v = glm::floor(m_position / BLOCK_SIZE) * BLOCK_SIZE +
-                 glm::dvec3(HALF_BLOCK_SIZE);
-  if (m_enableGravity) {
-    bool adjusted = false;
-    if (world && (!(world->isStandable(v - glm::dvec3(0, PLAYER_HEIGHT, 0)))) &&
-        (v.y > 1.0f)) {
-      v.y -= BLOCK_SIZE;
-      adjusted = true;
-    }
 
-    float height = v.y + BLOCK_SIZE - OFFSET;
-    // Case 2: If we're inside a block -> snap up
-    if (world && world->isStandable(v - glm::dvec3(0, PLAYER_HEIGHT, 0)) &&
-        (v.y < height)) {
-      v.y += BLOCK_SIZE; // step up until clear
-      adjusted = true;
-      auto blk =
-          world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0) +
-                                     glm::dvec3(0, 2 * BLOCK_SIZE, 0));
-      if (blk)
-        m_insideBlock = blk->get_type();
-
-      auto legblk =
-          world->get_block_by_center(v - glm::dvec3(0, PLAYER_HEIGHT, 0));
-      if (legblk)
-        legblock = legblk->get_type();
-    }
-
-    if (adjusted) {
-      m_position.y = v.y;
-      position_updated = true;
-    }
+  // Block at the feet decides speed, block at the head feeds InsideBlock()
+  if (world) {
+    auto feetBlk = world->get_block_by_center(
+        snapToCenter(m_position - glm::dvec3(0, PLAYER_HEIGHT - 0.01, 0)));
+    auto headBlk = world->get_block_by_center(snapToCenter(m_position));
+    if (headBlk)
+      m_insideBlock = headBlk->get_type();
+    bool inWater = feetBlk && feetBlk->get_type() == BLOCK_TYPE::WATER_BLOCK;
+    m_speed = inWater ? SMUGED_SPEED : WALKING_SPEED;
   }
 
-  auto toBlockCenter = [](glm::dvec3 pos) {
-    glm::ivec3 block = glm::floor(pos / BLOCK_SIZE); // which block
-    return (glm::dvec3(block) + 0.5) * BLOCK_SIZE -
-           glm::dvec3(0, BLOCK_SIZE, 0); // center of that block
-  };
+  // Horizontal wish direction, normalized so diagonals aren't faster
+  glm::dvec3 fwd = glm::normalize(glm::dvec3(m_forward.x, 0.0, m_forward.z));
+  glm::dvec3 right = glm::normalize(glm::cross(m_forward, m_up));
+  glm::dvec3 wish(0.0);
+  if (Input::IsKeyPressed(GLFW_KEY_W))
+    wish += fwd;
+  if (Input::IsKeyPressed(GLFW_KEY_S))
+    wish -= fwd;
+  if (Input::IsKeyPressed(GLFW_KEY_D))
+    wish += right;
+  if (Input::IsKeyPressed(GLFW_KEY_A))
+    wish -= right;
+  if (glm::length(wish) > 0.0)
+    wish = glm::normalize(wish);
+  const glm::dvec3 delta = wish * m_speed * dt;
 
-  glm::dvec3 planarvec =
-      glm::normalize(glm::dvec3(m_forward.x, 0.0, m_forward.z));
-
-  if (legblock == BLOCK_TYPE::WATER_BLOCK)
-    m_speed = SMUGED_SPEED;
-  else
-    m_speed = WALKING_SPEED;
-
-  if (Input::IsKeyPressed(GLFW_KEY_W)) {
-    glm::dvec3 nextPos = m_position + planarvec * m_speed * (double)(dt);
-    glm::dvec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
-    if (!world->isStandable(blockCenter_h2) &&
-            !world->isStandable(blockCenter_h3) ||
-        !m_enableGravity) {
-      m_position = nextPos;
-      position_updated = true;
-    }
-  } else if (Input::IsKeyPressed(GLFW_KEY_S)) {
-    glm::dvec3 nextPos = m_position - planarvec * m_speed * (double)(dt);
-    glm::dvec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::dvec3 blockCenter_h3 = blockCenter_h2 + glm::dvec3(0, BLOCK_SIZE, 0);
-    if (!world->isStandable(blockCenter_h2) &&
-            !world->isStandable(blockCenter_h3) ||
-        !m_enableGravity) {
-      m_position = nextPos;
-      position_updated = true;
-    }
-  }
-
-  if (Input::IsKeyPressed(GLFW_KEY_A)) {
-    // Check if obstructed by block
-    glm::dvec3 nextPos =
-        m_position - m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
-    glm::ivec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
-    if (!world->isStandable(blockCenter_h2) &&
-            !world->isStandable(blockCenter_h3) ||
-        !m_enableGravity) {
-      m_position = nextPos;
-      position_updated = true;
-    }
-  } else if (Input::IsKeyPressed(GLFW_KEY_D)) {
-    // Check if obstructed by block
-    glm::dvec3 nextPos =
-        m_position + m_speed * dt * glm::normalize(glm::cross(m_forward, m_up));
-    glm::ivec3 blockCenter_h2 = toBlockCenter(nextPos);
-    glm::ivec3 blockCenter_h3 = blockCenter_h2 + glm::ivec3(0, BLOCK_SIZE, 0);
-    if (!world->isStandable(blockCenter_h2) &&
-            !world->isStandable(blockCenter_h3) ||
-        !m_enableGravity) {
-      m_position = nextPos;
-      position_updated = true;
-    }
-  }
-
-  // Floating only possible in case gravity is not available
   if (!m_enableGravity) {
-    if (Input::IsKeyPressed(GLFW_KEY_SPACE)) {
-      m_position = m_position + m_up * m_speed * double(dt);
-      position_updated = true;
-    } else if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT)) {
-      m_position = m_position - m_up * m_speed * double(dt);
-      position_updated = true;
-    }
+    m_position += delta;
+    if (Input::IsKeyPressed(GLFW_KEY_SPACE))
+      m_position += m_up * m_speed * dt;
+    if (Input::IsKeyPressed(GLFW_KEY_LEFT_SHIFT))
+      m_position -= m_up * m_speed * dt;
+    position_updated = true;
   } else {
-    // Jump if gravity enabled
-    if (Input::WasKeyPressed(GLFW_KEY_SPACE)) {
-      m_position = m_position + m_up * m_speed * double(dt) * 100.0;
-      position_updated = true;
+    // Horizontal, one axis at a time => wall sliding
+    for (int axis : {0, 2}) {
+      glm::dvec3 next = m_position;
+      next[axis] += delta[axis];
+      if (!collides(next)) {
+        m_position = next;
+        position_updated = true;
+      }
     }
+
+    // Jump
+    if (m_onGround && Input::IsKeyPressed(GLFW_KEY_SPACE)) {
+      m_velocity.y = JUMP_SPEED;
+      m_onGround = false;
+    }
+
+    // Gravity, substepped (your existing loop is fine)
+    m_velocity.y = std::max(m_velocity.y + GRAVITY_ACCEL * dt, TERMINAL_VEL);
+    const double totalDy = m_velocity.y * dt;
+    const int steps =
+        std::max(1, (int)std::ceil(std::abs(totalDy) / (BLOCK_SIZE * 0.5)));
+    const double stepDy = totalDy / steps;
+
+    m_onGround = false;
+    for (int i = 0; i < steps; ++i) {
+      glm::dvec3 next = m_position;
+      next.y += stepDy;
+      if (!collides(next)) {
+        m_position = next;
+      } else {
+        if (m_velocity.y < 0.0) {
+          double feetY = next.y - PLAYER_HEIGHT;
+          m_position.y = (std::floor(feetY / BLOCK_SIZE) + 1.0) * BLOCK_SIZE +
+                         PLAYER_HEIGHT;
+          m_onGround = true;
+        }
+        m_velocity.y = 0.0; // also handles head bumps
+        break;
+      }
+    }
+    position_updated = true;
   }
 
   auto [x, y] = Input::GetMousePosition();
@@ -335,7 +342,7 @@ void Player::handle_input(float dt) {
                                     projectionT);
 
       if (ray.did_hit(world)) {
-        std::cout << "[SHIFT] Ray hit a block with center: " << ray.m_hitcords.x
+        std::cout << "[CTRL] Ray hit a block with center: " << ray.m_hitcords.x
                   << " " << ray.m_hitcords.y << " " << ray.m_hitcords.z << '\n';
         auto chunk = world->get_chunk_by_center(ray.m_hitcords);
 
@@ -429,7 +436,9 @@ void Player::handle_stats() {
     ImGui::Text("Block Selected: %s", BLOCK_ARRAY[m_blType].c_str());
     glm::vec3 playerPos = m_cameracontroller->GetCamera()->GetPosition();
     glm::vec3 playerOri = m_cameracontroller->GetCamera()->GetOrientation();
-    playerPos.y -= (BIOME_COUNTY - 1) * BIOME_HEIGHT;
+    playerPos.x -= ((BIOME_COUNTX)*CHUNK_LENGTH / 2.0);
+    playerPos.z -= ((BIOME_COUNTZ)*CHUNK_LENGTH / 2.0);
+    playerPos.y -= ((BIOME_COUNTY)*CHUNK_HEIGHT / 2.0) + PLAYER_HEIGHT;
     ImGui::Text("Player %d position: (%.2f, %.2f, %.2f)", activePlayer,
                 playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Player %d orientation: (%.2f, %.2f, %.2f)", activePlayer,

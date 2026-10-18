@@ -14,7 +14,7 @@ public:
   // ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^
   // |||||||| |||||||| |||||||| ||||||||
   // ooootttt tmmmmmmv sxxxxxyy yyyzzzzz
-  //             rlfb
+  //           btrlfb
   uint32_t blmask;
   static glm::ivec3 get_pos(GLuint);
   static constexpr std::array<std::array<unsigned int, 6>, 6> faceindices = {

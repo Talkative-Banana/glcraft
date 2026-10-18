@@ -1,3 +1,4 @@
+#pragma once
 #include <array>
 #include <memory>
 
@@ -11,7 +12,7 @@
 #include "Utils.h"
 #include "World.h"
 #include <boost/asio.hpp>
-#pragma once
+#include <cmath>
 
 extern std::unique_ptr<Window> _window;
 extern std::unique_ptr<World> world;
@@ -54,17 +55,19 @@ public:
   BLOCK_TYPE InsideBlock();
 
 private:
-  glm::dvec3 m_position = glm::dvec3(BIOME_COUNTX * CHUNK_LENGTH / 2.0,
-                                     (BIOME_COUNTY + 1) * CHUNK_HEIGHT,
-                                     BIOME_COUNTX *CHUNK_LENGTH / 2.0);
+  glm::dvec3 m_position =
+      glm::dvec3(BIOME_COUNTX * CHUNK_LENGTH / 2.0,
+                 ((BIOME_COUNTY * CHUNK_HEIGHT / 2.0)) + CHUNK_HEIGHT,
+                 BIOME_COUNTZ *CHUNK_LENGTH / 2.0);
 
   glm::dvec3 m_forward = glm::dvec3(0.0, 0.0, 1.0);
   glm::dvec3 m_velocity = glm::dvec3(0.0, 0.0, 0.0);
   glm::dvec3 m_up = glm::dvec3(0.0, 1.0, 0.0);
+  bool m_onGround = false;
   double m_speed = WALKING_SPEED;
   double m_sensitivity = 0.002f;
   glm::dvec2 m_mousePos = {0.0f, 0.0f};
-  bool m_enableGravity = 0;
+  bool m_enableGravity = false;
   char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
   char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};
   int m_displayW, m_displayH;
@@ -75,4 +78,6 @@ private:
   Inventory m_inventory;
   BLOCK_TYPE m_insideBlock;
   std::unique_ptr<Client> m_client = nullptr;
+  bool collides(const glm::dvec3 &) const;
+  static glm::dvec3 snapToCenter(const glm::dvec3 &);
 };

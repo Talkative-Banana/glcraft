@@ -19,7 +19,7 @@ constexpr static int CHUNK_BLOCK_COUNT = 32;
 constexpr static int BIOME_SIZE = BLOCK_SIZE * CHUNK_BLOCK_COUNT * CHUNK_COUNTX;
 constexpr static int RENDER_DISTANCE = BIOME_SIZE * 2; // 2 BIOME
 // Maximum # biomes that can be addressed in a frame to avoid freezing
-constexpr static int MAX_PROCESS_BIOME_IN_FRAME = 1;
+constexpr static int MAX_PROCESS_BIOME_IN_FRAME = 16;
 
 constexpr static int BIOME_HEIGHT = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 constexpr static int BIOME_LENGTH = CHUNK_COUNTX * BIOME_HEIGHT;
@@ -30,7 +30,13 @@ constexpr static int CHUNK_LENGTH = CHUNK_BLOCK_COUNT * BLOCK_SIZE;
 
 constexpr static double OFFSET = 0.01f;
 constexpr static double PLAYER_HEIGHT = 2 * BLOCK_SIZE;
-constexpr static double GRAVITY = 0.98f;
+constexpr double GRAVITY_ACCEL = -32.0 * BLOCK_SIZE; // -64 units/s^2
+// 2.5 units, clears a 2-unit block
+constexpr double JUMP_HEIGHT = 1.25 * BLOCK_SIZE;
+// ~17.9 units/s
+const double JUMP_SPEED = std::sqrt(2.0 * -GRAVITY_ACCEL * JUMP_HEIGHT);
+constexpr double TERMINAL_VEL = -60.0 * BLOCK_SIZE; // -120 units/s
+constexpr double PLAYER_RADIUS = 0.3 * BLOCK_SIZE;  // 0.6 units
 constexpr static int PLAYER_COUNT = 128;
 constexpr static int MODEL_TYPES = 4;
 constexpr static int BIOME_TYPES = 4;
@@ -43,6 +49,8 @@ constexpr static int BACK_FACE = 1 << 17;
 constexpr static int FRONT_FACE = 1 << 18;
 constexpr static int LEFT_FACE = 1 << 19;
 constexpr static int RIGHT_FACE = 1 << 20;
+constexpr static int TOP_FACE = 1 << 21;
+constexpr static int BOTTOM_FACE = 1 << 22;
 constexpr static int FACE_MASK_BITS = 6;
 constexpr static int TYPE_MASK_BITS = 5;
 constexpr static int FACE_MASK = ((1 << FACE_MASK_BITS) - 1) << 17;

@@ -32,7 +32,8 @@ void Biome::setup_chunks(bool firstRun) {
       }
       auto _chunk = m_chunks[i][j];
       if (firstRun) {
-        _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr);
+        _chunk->Render(1, firstRun, nullptr, nullptr, nullptr, nullptr, nullptr,
+                       nullptr);
       } else {
         if (i == 0 || i == CHUNK_COUNTX - 1 || j == 0 ||
             j == CHUNK_COUNTZ - 1) {
@@ -40,8 +41,8 @@ void Biome::setup_chunks(bool firstRun) {
           // get the center of chunks 1st block
           glm::ivec3 p = _chunk->m_chunkPos + glm::ivec3(HALF_BLOCK_SIZE);
           auto get_neighbors =
-              [](glm::ivec3 vec) -> std::array<std::weak_ptr<Chunk>, 4> {
-            std::weak_ptr<Chunk> left, front, right, back;
+              [](glm::ivec3 vec) -> std::array<std::weak_ptr<Chunk>, 6> {
+            std::weak_ptr<Chunk> left, front, right, back, top, bottom;
             left = world->get_chunk_by_center(
                 vec + glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
             front = world->get_chunk_by_center(
@@ -50,16 +51,29 @@ void Biome::setup_chunks(bool firstRun) {
                 vec - glm::ivec3(static_cast<int>(CHUNK_LENGTH), 0, 0));
             back = world->get_chunk_by_center(
                 vec - glm::ivec3(0, 0, static_cast<int>(CHUNK_LENGTH)));
-            return {left, front, right, back};
+            top = world->get_chunk_by_center(
+                vec + glm::ivec3(0, static_cast<int>(CHUNK_HEIGHT), 0));
+            bottom = world->get_chunk_by_center(
+                vec - glm::ivec3(0, static_cast<int>(CHUNK_HEIGHT), 0));
+            return {left, front, right, back, top, bottom};
           };
 
           auto __chunks = get_neighbors(p);
-          _chunk->Render(1, firstRun, __chunks[0].lock(), __chunks[1].lock(),
-                         __chunks[2].lock(), __chunks[3].lock());
+          _chunk->Render(1, firstRun, __chunks[0].lock(),
+                         __chunks[1].lock(),                      // left front
+                         __chunks[2].lock(), __chunks[3].lock(),  // right back
+                         __chunks[4].lock(), __chunks[5].lock()); // top bottom
         } else {
           // Within current chunk
+          std::weak_ptr<Chunk> top, bottom;
+          glm::ivec3 p = _chunk->m_chunkPos + glm::ivec3(HALF_BLOCK_SIZE);
+          top = world->get_chunk_by_center(
+              p + glm::ivec3(0, static_cast<int>(CHUNK_HEIGHT), 0));
+          bottom = world->get_chunk_by_center(
+              p - glm::ivec3(0, static_cast<int>(CHUNK_HEIGHT), 0));
           _chunk->Render(1, firstRun, m_chunks[i + 1][j], m_chunks[i][j + 1],
-                         m_chunks[i - 1][j], m_chunks[i][j - 1]);
+                         m_chunks[i - 1][j], m_chunks[i][j - 1], top.lock(),
+                         bottom.lock());
         }
       }
       if (m_RenderIter.load() == BIOMESTATUS::SETUP) {
