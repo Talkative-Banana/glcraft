@@ -233,8 +233,7 @@ Game::Game(std::string savePath)
 
   ImGuiIO &io = ImGui::GetIO(); // Create IO
   m_shaderProgram =
-      createProgram(ShaderProgramVS.c_str(), ShaderProgramFS.c_str(),
-                    ShaderProgramGS.c_str());
+      createProgram(ShaderProgramVS.c_str(), ShaderProgramFS.c_str());
   m_shaderProgram2 =
       createProgram(ShaderProgram2VS.c_str(), ShaderProgram2FS.c_str());
   m_shaderProgramUI =

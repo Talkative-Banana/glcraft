@@ -162,7 +162,6 @@ const std::string BlizzardPath = "./assets/audio/blizzard.ogg";
 
 const std::string ShaderProgramVS = "./shaders/vshaderWorld.vs";
 const std::string ShaderProgramFS = "./shaders/fshaderWorld.fs";
-const std::string ShaderProgramGS = "./shaders/gshaderWorld.gs";
 
 const std::string ShaderProgram2VS = "./shaders/vshaderAsset.vs";
 const std::string ShaderProgram2FS = "./shaders/fshaderAsset.fs";

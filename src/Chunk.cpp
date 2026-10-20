@@ -596,7 +596,7 @@ void Chunk::UpdateVertexObjects() {
 #ifdef BUILD_SERVER
   return;
 #endif
-  m_chunkVa->Bind(); // the element-buffer binding lives in the VAO
+  m_chunkVa->Bind();
   m_chunkVb->Upload(m_cubeVertices.data(),
                     m_cubeVertices.size() * sizeof(uint32_t));
   m_chunkVa->Unbind();
@@ -620,6 +620,8 @@ void Chunk::SetupVertexObjects() {
   layout.Push(GL_UNSIGNED_INT, 2);
   m_chunkVb = std::make_unique<VertexBuffer>(0);
   m_chunkVa->AddBuffer(*(m_chunkVb), layout);
+  // One packed block record per instance; vertices come from gl_VertexID.
+  GLCall(glVertexAttribDivisor(0, 1));
   m_chunkVa->Unbind();
 
   // TRANSPARENT PASS
@@ -629,6 +631,7 @@ void Chunk::SetupVertexObjects() {
   layouttrans.Push(GL_UNSIGNED_INT, 2);
   m_chunkVbTrans = std::make_unique<VertexBuffer>(0);
   m_chunkVaTrans->AddBuffer(*(m_chunkVbTrans), layouttrans);
+  GLCall(glVertexAttribDivisor(0, 1));
   m_chunkVaTrans->Unbind();
 }
 
@@ -637,7 +640,7 @@ void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
     return;
 
   const bool opaque = (type == OBJ_TYPE::OPAQUE_);
-  // visible blocks = points
+  // Each visible block is an instance of six faces with two triangles each.
   const uint32_t count = opaque ? m_cntBlocks : m_cntBlocksTrans;
   if (count == 0)
     return;
@@ -650,7 +653,7 @@ void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   if (wireframemode)
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-  glDrawArrays(GL_POINTS, 0, count);
+  glDrawArraysInstanced(GL_TRIANGLES, 0, 36, static_cast<GLsizei>(count));
 
   if (wireframemode)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
