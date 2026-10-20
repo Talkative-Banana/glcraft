@@ -58,7 +58,7 @@ constexpr static uint64_t FACE_MASK_BITS = 6ull;
 constexpr static uint64_t TYPE_MASK_BITS = 9ull;
 constexpr static uint64_t FACE_MASK = ((1ull << FACE_MASK_BITS) - 1) << 17;
 constexpr static uint64_t TYPE_MASK = ((1ull << TYPE_MASK_BITS) - 1) << 23;
-constexpr static float WALKING_SPEED = 200.0f;
+constexpr static float WALKING_SPEED = 20.0f;
 constexpr static float RUNNING_SPEED = 30.0f;
 constexpr static float SMUGED_SPEED = 10.0f;
 
