@@ -9,7 +9,7 @@ Block::Block(const glm::ivec3 &pos, bool solid, BLOCK_TYPE bltype) {
 
 Block::Block() : blmask(0) {}
 
-BLOCK_TYPE Block::get_type() {
+BLOCK_TYPE Block::get_type() const {
   return static_cast<BLOCK_TYPE>((blmask & TYPE_MASK) >> 23);
 }
 
@@ -20,14 +20,14 @@ glm::ivec3 Block::get_pos(GLuint _blmask) {
   return glm::ivec3(posx, posy, posz);
 }
 
-glm::ivec3 Block::get_pos() {
+glm::ivec3 Block::get_pos() const {
   GLuint posx = blmask & BLOCK_POSX;
   GLuint posy = blmask & BLOCK_POSY;
   GLuint posz = blmask & BLOCK_POSZ;
   return glm::ivec3(posx, posy, posz);
 }
 
-bool Block::is_transparent() {
+bool Block::is_transparent() const {
   bool transparent = (get_type() == BLOCK_TYPE::WATER_BLOCK) ||
                      (get_type() == BLOCK_TYPE::GLASS_BLOCK);
   return transparent;

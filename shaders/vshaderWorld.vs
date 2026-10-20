@@ -67,12 +67,12 @@ const ivec3 NORMALS[6] = ivec3[6](
 
 // Four corners per face, matching the block face-mask order.
 const ivec3 CORNERS[24] = ivec3[24](
-  ivec3(0,0,0), ivec3(0,1,0), ivec3(1,1,0), ivec3(1,0,0),   // back
-  ivec3(0,0,1), ivec3(0,1,1), ivec3(1,1,1), ivec3(1,0,1),                  // front
-  ivec3(0,0,0), ivec3(0,1,0), ivec3(0,1,1), ivec3(0,0,1),                  // left
-  ivec3(1,0,1), ivec3(1,1,1), ivec3(1,1,0), ivec3(1,0,0),                  // right
-  ivec3(0,1,1), ivec3(0,1,0), ivec3(1,1,0), ivec3(1,1,1),                  // top
-  ivec3(0,0,0), ivec3(0,0,1), ivec3(1,0,1), ivec3(1,0,0)                   // bottom
+  ivec3(0,0,0), ivec3(0,1,0), ivec3(1,1,0), ivec3(1,0,0),  // back
+  ivec3(0,0,1), ivec3(0,1,1), ivec3(1,1,1), ivec3(1,0,1),  // front
+  ivec3(0,0,0), ivec3(0,1,0), ivec3(0,1,1), ivec3(0,0,1),  // left
+  ivec3(1,0,1), ivec3(1,1,1), ivec3(1,1,0), ivec3(1,0,0),  // right
+  ivec3(0,1,1), ivec3(0,1,0), ivec3(1,1,0), ivec3(1,1,1),  // top
+  ivec3(0,0,0), ivec3(0,0,1), ivec3(1,0,1), ivec3(1,0,0)   // bottom
 );
 
 // Shader lookup only: the draw call has no element/index buffer.

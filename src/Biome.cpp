@@ -107,6 +107,15 @@ Biome::Biome(int t, glm::ivec3 pos, GLboolean display) {
 }
 
 void Biome::RecycleBiome(int t, glm::ivec3 pos, GLboolean display) {
+  // Join the running workers
+  if (m_worker1.joinable()) {
+    m_worker1.join();
+  }
+
+  // Join the running workers
+  if (m_worker2.joinable()) {
+    m_worker2.join();
+  }
   m_type = t;
   m_biomePos = pos;
   m_displayBiome = display;
@@ -275,7 +284,7 @@ void Biome::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
     constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
     bool t_setupCompleted = m_chunksFinished == count;
     // check if can be removed
-    if (world->m_biomes.isPresent(m_id)) {
+    if (world->m_biomes.isPresent(m_id) && t_setupCompleted) {
       // Removing chunk
       m_Run++;
       world->m_biomes.set(bps.x, bps.y, bps.z, false);

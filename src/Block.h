@@ -16,12 +16,12 @@ public:
   void remove();
   bool is_ref();
   bool is_removable();
-  bool is_transparent();
-  BLOCK_TYPE get_type();
-  glm::ivec3 get_pos();
+  bool is_transparent() const;
+  BLOCK_TYPE get_type() const;
+  glm::ivec3 get_pos() const;
 
-  inline bool is_solid() { return blmask & (1 << 15); }
-  inline bool is_standable() {
+  inline bool is_solid() const { return blmask & (1 << 15); }
+  inline bool is_standable() const {
     return is_solid() && get_type() != BLOCK_TYPE::WATER_BLOCK;
   }
 

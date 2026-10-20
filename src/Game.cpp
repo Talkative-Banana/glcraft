@@ -390,13 +390,17 @@ void Game::run() {
     last = current;
     // handle player
     auto &player = players.at(activePlayer);
+
+#if defined(BUILD_CLIENT) || defined(BUILD_LOCAL)
+    player->update(dt);
+#endif
+
     auto playerpos = player->m_cameracontroller->GetCamera()->GetPosition();
     auto playerdir = player->m_cameracontroller->GetCamera()->GetOrientation();
     glm::dmat4 playervp =
         player->m_cameracontroller->GetCamera()->GetProjectionViewMatrix();
 
 #if defined(BUILD_CLIENT) || defined(BUILD_LOCAL)
-    player->update(dt);
     sf::Listener::setPosition(
         {float(playerpos.x), float(playerpos.y), float(playerpos.z)});
     sf::Listener::setDirection(

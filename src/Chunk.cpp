@@ -272,7 +272,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   // if (!displaychunk) return;
   // Render OPAQUE blocks
 
-  static const glm::ivec3 neighborOffsetsIdx[8] = {
+  static constexpr glm::ivec3 neighborOffsetsIdx[8] = {
       {0, 1, -1},  // b0
       {-1, 1, -1}, // b1   543
       {-1, 1, 0},  // b2   6 2
@@ -356,16 +356,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (i == 0 && right) {
               auto &blk1 = m_blocks[0][j][k];
               auto &blk2 = right->m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove left face from current block
                 blk1.blmask &= ~LEFT_FACE;
               }
             } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
               auto &blk1 = m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
               auto &blk2 = left->m_blocks[0][j][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove right face from current block
                 blk1.blmask &= ~RIGHT_FACE;
               }
@@ -375,16 +373,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
               auto &blk2 = back->m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove back face from current block
                 blk1.blmask &= ~BACK_FACE;
               }
             } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
               auto &blk1 = m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
               auto &blk2 = front->m_blocks[i][j][0];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
@@ -394,16 +390,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (j == 0 && bottom) {
               auto &blk1 = m_blocks[i][0][k];
               auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove back face from current block
                 blk1.blmask &= ~BOTTOM_FACE;
               }
             } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
               auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
               auto &blk2 = top->m_blocks[i][0][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove front face from current block
                 blk1.blmask &= ~TOP_FACE;
               }
@@ -486,7 +480,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (i == 0 && right) {
               auto &blk1 = m_blocks[0][j][k];
               auto &blk2 = right->m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove left face from current block
                 blk1.blmask &= ~LEFT_FACE;
               }
@@ -503,14 +497,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
               auto &blk2 = back->m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove back face from current block
                 blk1.blmask &= ~BACK_FACE;
               }
             } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
               auto &blk1 = m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
               auto &blk2 = front->m_blocks[i][j][0];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
@@ -520,14 +514,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (j == 0 && bottom) {
               auto &blk1 = m_blocks[i][0][k];
               auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove back face from current block
                 blk1.blmask &= ~BOTTOM_FACE;
               }
             } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
               auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
               auto &blk2 = top->m_blocks[i][0][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove front face from current block
                 blk1.blmask &= ~TOP_FACE;
               }
@@ -584,15 +578,17 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
     }
   }
 
-  // firstRun is called by worker threads (cant make opengl calls from here)
-  // !firstRun is called by main threads
-  if (!firstRun)
+  // Both setup passes run on workers; their uploads happen in World's
+  // main-thread binding passes. Only synchronous edits (setup == 0) upload
+  // here.
+  if (!firstRun && setup == 0)
     UpdateVertexObjects();
 }
 
 void Chunk::UpdateVertexObjects() {
   // Return early in case of server as we dont want to perform any graphics
   // operations there
+  AssertMainThread();
 #ifdef BUILD_SERVER
   return;
 #endif
@@ -610,6 +606,7 @@ void Chunk::UpdateVertexObjects() {
 void Chunk::SetupVertexObjects() {
   // Return early in case of server as we dont want to perform any graphic
   // operations there
+  AssertMainThread();
 #ifdef BUILD_SERVER
   return;
 #endif
@@ -636,6 +633,7 @@ void Chunk::SetupVertexObjects() {
 }
 
 void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
+  AssertMainThread();
   if (!m_displayChunk)
     return;
 

@@ -3,6 +3,7 @@
 #include <noise/noise.h>
 #include <noiseutils.h>
 
+#include "AssertThread.h"
 #include "Block.h"
 #include "Constants.hpp"
 #include "Utils.h"

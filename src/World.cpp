@@ -214,18 +214,22 @@ void World::EnqueueVisibleBiomes(glm::dvec3 playerpos) {
   uint64_t player_i = playerpos.x / BIOME_LENGTH;
 
   uint64_t mink = player_k < 2 ? 0 : player_k - 2;
-  uint64_t mini = player_i < 2 ? 0 : player_i - 2;
-  uint64_t minj = player_j < 2 ? 0 : player_j - 2;
+  uint64_t mini =
+      player_i < NUM_BIOMES_TO_TRAVERSE ? 0 : player_i - NUM_BIOMES_TO_TRAVERSE;
+  uint64_t minj =
+      player_j < NUM_BIOMES_TO_TRAVERSE ? 0 : player_j - NUM_BIOMES_TO_TRAVERSE;
 
   uint64_t maxk =
       player_k >= BIOME_COUNTY - 2 ? BIOME_COUNTY - 1 : player_k + 2;
-  uint64_t maxi =
-      player_i >= BIOME_COUNTX - 2 ? BIOME_COUNTX - 1 : player_i + 2;
-  uint64_t maxj =
-      player_j >= BIOME_COUNTZ - 2 ? BIOME_COUNTZ - 1 : player_j + 2;
+  uint64_t maxi = player_i >= BIOME_COUNTX - NUM_BIOMES_TO_TRAVERSE
+                      ? BIOME_COUNTX - 1
+                      : player_i + NUM_BIOMES_TO_TRAVERSE;
+  uint64_t maxj = player_j >= BIOME_COUNTZ - NUM_BIOMES_TO_TRAVERSE
+                      ? BIOME_COUNTZ - 1
+                      : player_j + NUM_BIOMES_TO_TRAVERSE;
 
   int iterations = 0;
-  for (uint64_t k = mink + 1; k <= maxk; k++) {
+  for (uint64_t k = mink; k <= maxk; k++) {
     for (uint64_t i = mini; i <= maxi; i++) {
       for (uint64_t j = minj; j <= maxj; j++) {
         uint64_t idx = k * (BIOME_COUNTX * BIOME_COUNTZ) + BIOME_COUNTX * i + j;
@@ -303,9 +307,9 @@ void World::SetupBiomesPass2() {
 void World::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   // Do not render all the biomes just what world wants to using its
   // render_queue
+  constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
   for (auto [_, b_weak] : m_renderQueue) {
     if (auto biome = b_weak.lock()) {
-      constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
       if (biome->m_chunksSetup.load(std::memory_order_acquire) == count) {
         biome->Draw(type, cameraPos);
       }
@@ -315,9 +319,9 @@ void World::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
 
 void World::Update_queue(glm::dvec3 playerpos, glm::dmat4 VP) {
   // Check for all the biomes in update_queue
+  constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
   for (auto [_, b_weak] : m_renderQueue) {
     if (auto biome = b_weak.lock()) {
-      constexpr auto count = CHUNK_COUNTX * CHUNK_COUNTZ;
       if (biome->m_chunksSetup.load(std::memory_order_acquire) == count) {
         biome->Update_queue(playerpos, VP);
       }
@@ -370,10 +374,10 @@ void World::MarkBiomesReadyForPass1() {
   uint32_t m_bindQueueSize = m_bindQueue.size();
   while (m_bindQueueSize-- && (iterations < MAX_PROCESS_BIOME_IN_FRAME)) {
     auto [run, w_biome] = m_bindQueue.front();
-    // If biome is null return early
+    // Recycled objects remain alive, but entries from their old run are stale.
     auto biome = w_biome.lock();
 
-    if (!biome) {
+    if (!biome || biome->m_Run.load() != run) {
       m_bindQueue.pop();
       continue;
     }
@@ -395,7 +399,8 @@ void World::MarkBiomesReadyForPass1() {
         for (int j = 0; j < CHUNK_COUNTZ; j++) {
           auto chunk = biome->m_chunks[i][j];
           // Setup and update vaos for pass 1
-          if (biome->m_Run == 0) {
+          // A biome can be removed before its first GPU initialization.
+          if (!chunk->m_chunkVa || !chunk->m_chunkVaTrans) {
             chunk->SetupVertexObjects();
           }
           chunk->UpdateVertexObjects();
@@ -437,8 +442,8 @@ void World::MarkBiomesReadyForPass2() {
     auto [run, w_biome] = m_bindQueue.front();
 
     auto biome = w_biome.lock();
-    // If biome is null return early
-    if (!biome) {
+    // Discard work queued before this biome was removed.
+    if (!biome || biome->m_Run.load() != run) {
       m_bindQueue.pop();
       continue;
     }
@@ -499,8 +504,8 @@ void World::MarkBiomesReadyForBoundaryRemoval() {
     auto [run, w_biome] = m_waitingQueue.front();
 
     auto biome = w_biome.lock();
-    // If biome is null return early
-    if (!biome) {
+    // An old waiting entry must never change a recycled biome's state.
+    if (!biome || biome->m_Run.load() != run) {
       m_waitingQueue.pop();
       continue;
     }

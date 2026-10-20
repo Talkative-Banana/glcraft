@@ -443,6 +443,12 @@ void Player::handle_stats() {
                 playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Player %d orientation: (%.2f, %.2f, %.2f)", activePlayer,
                 playerOri.x, playerOri.y, playerOri.z);
+    if (ImGui::InputInt("Render Distance", &NUM_BIOMES_TO_TRAVERSE, 1, 5)) {
+      NUM_BIOMES_TO_TRAVERSE = std::clamp(NUM_BIOMES_TO_TRAVERSE, 2, 100);
+      FAR_PLANE = 1000.0 * NUM_BIOMES_TO_TRAVERSE;
+      RENDER_DISTANCE = BIOME_SIZE * NUM_BIOMES_TO_TRAVERSE;
+      m_cameracontroller->GetCamera()->RecalculateProjectionMatrix();
+    }
   }
 
   // Enable Physics
