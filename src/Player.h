@@ -67,7 +67,7 @@ private:
   double m_speed = WALKING_SPEED;
   double m_sensitivity = 0.002f;
   glm::dvec2 m_mousePos = {0.0f, 0.0f};
-  bool m_enableGravity = true;
+  bool m_enableGravity = false;
   char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
   char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};
   int m_displayW, m_displayH;

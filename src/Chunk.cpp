@@ -35,7 +35,7 @@ Chunk::Chunk(uint32_t _id, glm::ivec3 _biomepos, glm::ivec3 position,
     m_dirtyBit = false;
   }
 
-  // Reserve for vectors
+  // Reserve for mesh staging vectors.
   m_cubeVertices.reserve(8'000);
   m_cubeVerticesTrans.reserve(2'000);
 }
@@ -268,6 +268,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                    std::shared_ptr<Chunk> front, std::shared_ptr<Chunk> right,
                    std::shared_ptr<Chunk> back, std::shared_ptr<Chunk> top,
                    std::shared_ptr<Chunk> bottom) {
+  std::vector<uint32_t> opaqueVertices;
+  std::vector<uint32_t> transparentVertices;
+  opaqueVertices.reserve(8'000);
+  transparentVertices.reserve(2'000);
+  opaqueVertices.clear();
+  transparentVertices.clear();
+  uint32_t opaqueCount = 0;
+  uint32_t transparentCount = 0;
   // Rerendering
   // if (!displaychunk) return;
   // Render OPAQUE blocks
@@ -332,9 +340,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   };
 
   {
-    m_cubeVertices.clear();
-    m_cntBlocks = 0;
-
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
         for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
@@ -443,10 +448,10 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           }
           // if any of the face is visible
           if (m_blocks[i][j][k].Render(mask, ac)) {
-            m_cntBlocks++;
-            m_cubeVertices.push_back(
+            opaqueCount++;
+            opaqueVertices.push_back(
                 static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
-            m_cubeVertices.push_back(
+            opaqueVertices.push_back(
                 static_cast<uint32_t>(m_blocks[i][j][k].blmask));
           }
         }
@@ -456,9 +461,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
   // Render transparent blocks
   {
-    m_cubeVerticesTrans.clear();
-    m_cntBlocksTrans = 0;
-
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
         for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
@@ -567,15 +569,23 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
           }
           // if any of the face is visible
           if (m_blocks[i][j][k].Render(mask, ac)) {
-            m_cntBlocksTrans++;
-            m_cubeVerticesTrans.push_back(
+            transparentCount++;
+            transparentVertices.push_back(
                 static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
-            m_cubeVerticesTrans.push_back(
+            transparentVertices.push_back(
                 static_cast<uint32_t>(m_blocks[i][j][k].blmask));
           }
         }
       }
     }
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(*m_meshMutex);
+    m_cubeVertices.swap(opaqueVertices);
+    m_cubeVerticesTrans.swap(transparentVertices);
+    m_pendingCntBlocks = opaqueCount;
+    m_pendingCntBlocksTrans = transparentCount;
   }
 
   // Both setup passes run on workers; their uploads happen in World's
@@ -592,6 +602,7 @@ void Chunk::UpdateVertexObjects() {
 #ifdef BUILD_SERVER
   return;
 #endif
+  std::lock_guard<std::mutex> lock(*m_meshMutex);
   m_chunkVa->Bind();
   m_chunkVb->Upload(m_cubeVertices.data(),
                     m_cubeVertices.size() * sizeof(uint32_t));
@@ -601,6 +612,9 @@ void Chunk::UpdateVertexObjects() {
   m_chunkVbTrans->Upload(m_cubeVerticesTrans.data(),
                          m_cubeVerticesTrans.size() * sizeof(uint32_t));
   m_chunkVaTrans->Unbind();
+  // Publish counts only after both corresponding GPU buffers are uploaded.
+  m_cntBlocks = m_pendingCntBlocks;
+  m_cntBlocksTrans = m_pendingCntBlocksTrans;
 }
 
 void Chunk::SetupVertexObjects() {
@@ -636,6 +650,8 @@ void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
   AssertMainThread();
   if (!m_displayChunk)
     return;
+
+  std::lock_guard<std::mutex> lock(*m_meshMutex);
 
   const bool opaque = (type == OBJ_TYPE::OPAQUE_);
   // Each visible block is an instance of six faces with two triangles each.

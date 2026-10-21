@@ -1,7 +1,7 @@
 #pragma once
+#include <array>
 #include <memory>
 #include <noise/noise.h>
-#include <noiseutils.h>
 
 #include "AssertThread.h"
 #include "Block.h"
@@ -9,6 +9,7 @@
 #include "Utils.h"
 #include "VertexArray.h"
 #include <cstdlib>
+#include <mutex>
 
 extern GLint chunkpos_uniform;
 extern GLuint wireframemode;
@@ -24,6 +25,9 @@ public:
       CHUNK_BLOCK_COUNT>
       m_blocks;
   std::vector<uint32_t> m_cubeVertices, m_cubeVerticesTrans;
+  uint32_t m_pendingCntBlocks{}, m_pendingCntBlocksTrans{};
+  // Protect the short publication, upload, and draw handoffs.
+  std::shared_ptr<std::mutex> m_meshMutex = std::make_shared<std::mutex>();
 
   std::unique_ptr<VertexArray> m_chunkVa, m_chunkVaTrans;
   std::unique_ptr<VertexBuffer> m_chunkVb, m_chunkVbTrans;
