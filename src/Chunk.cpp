@@ -326,9 +326,13 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
       }
     }
 
-    // TODO: Remove it if not needed [just here for optimisation]
     if (!validY && validX && validZ) {
-      return nullptr;
+      if (newPos.y == -1 && bottom) {
+        return &bottom->m_blocks[newPos.x][CHUNK_BLOCK_COUNT - 1][newPos.z];
+      }
+      if (newPos.y == CHUNK_BLOCK_COUNT && top) {
+        return &top->m_blocks[newPos.x][0][newPos.z];
+      }
     }
 
     glm::ivec3 block_pos =

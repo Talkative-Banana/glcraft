@@ -180,7 +180,7 @@ void Game::bindUniforms() {
 
 uint32_t Game::allocatePlayerId() {
   static std::mt19937 rng{std::random_device{}()};
-  static std::uniform_int_distribution<int> dist(1, PLAYER_COUNT);
+  static std::uniform_int_distribution<int> dist(1, PLAYER_COUNT - 1);
   return dist(rng);
 }
 
