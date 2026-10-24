@@ -14,7 +14,8 @@ public:
   [[nodiscard]] uint64_t loadMeshObject(const char *modelpath,
                                         unsigned int shaderProgram,
                                         double scale, double angle,
-                                        glm::dvec3 pos, glm::dvec3 axis);
+                                        glm::dvec3 pos, glm::dvec3 axis,
+                                        const char *texturePath = nullptr);
 
   std::weak_ptr<Mesh> get_mesh(uint64_t handle) {
     auto it = m_assets.find(handle);

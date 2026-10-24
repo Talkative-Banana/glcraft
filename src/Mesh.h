@@ -1,5 +1,4 @@
 #pragma once
-#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -10,6 +9,7 @@
 #include "VertexArray.h"
 #include "VertexBuffer.h"
 #include "VertexBufferLayout.h"
+#include "Texture.h"
 #include "string.h"
 
 extern GLint vModel_uniform, vView_uniform, vProjection_uniform, side_uniform,
@@ -19,9 +19,13 @@ extern glm::dmat4 modelT, viewT, projectionT;
 class Mesh {
 public:
   Mesh(std::vector<AssetVertex> &&vertex, unsigned int _shaderprogram,
-       double _scale, double _angle, glm::dvec3 _pos, glm::dvec3 _axis)
+       double _scale, double _angle, glm::dvec3 _pos, glm::dvec3 _axis,
+       const char *texturePath = nullptr)
       : m_vertex(vertex), shaderProgram(_shaderprogram), scale(_scale),
-        angle_of_rot(_angle), pos(_pos), axis_of_rot(_axis) {};
+        angle_of_rot(_angle), pos(_pos), axis_of_rot(_axis) {
+    if (texturePath)
+      assetTexture = std::make_unique<Texture>(texturePath);
+  }
   Mesh(const Mesh &) = delete;
   Mesh &operator=(const Mesh &) = delete;
   Mesh(Mesh &&) noexcept = default;
@@ -41,7 +45,14 @@ private:
   unsigned int shaderProgram;
   std::shared_ptr<VertexArray> vao;
   std::shared_ptr<VertexBuffer> vbo;
+  std::unique_ptr<Texture> assetTexture;
   std::vector<AssetVertex> m_vertex;
+  int modelUniform = -1;
+  int viewUniform = -1;
+  int projectionUniform = -1;
+  int assetTextureUniform = -1;
+  bool uniformsCached = false;
+  void cacheUniformLocations();
   void setupModelTransformationCube(glm::dvec3);
   void setupViewTransformation(std::unique_ptr<CameraController> &occ);
   void setupProjectionTransformation(std::unique_ptr<CameraController> &occ);

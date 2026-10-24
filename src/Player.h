@@ -41,7 +41,7 @@ public:
   std::shared_ptr<std::string> handle_client_input(const std::string &);
   void update(float);
   void handle_stats();
-  void handleNetworkRequest(PlayerState &);
+  void handleNetworkRequest(PlayerState &, double timestamp);
   void handle_transformations();
   void setupModelTransformationCube(unsigned int &);
   void setupModelTransformationAxis(unsigned int &, double, glm::dvec3);
@@ -67,6 +67,7 @@ private:
   double m_speed = WALKING_SPEED;
   double m_sensitivity = 0.002f;
   glm::dvec2 m_mousePos = {0.0f, 0.0f};
+  bool m_mouseInitialized = false;
   bool m_enableGravity = false;
   char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
   char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};

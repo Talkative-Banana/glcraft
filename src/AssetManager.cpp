@@ -8,7 +8,8 @@ FILE *AssetManager::LoadModel(const char *path) {
 uint64_t AssetManager::loadMeshObject(const char *modelpath,
                                       unsigned int shaderProgram, double scale,
                                       double angle, glm::dvec3 pos,
-                                      glm::dvec3 axis) {
+                                      glm::dvec3 axis,
+                                      const char *texturePath) {
   std::vector<int> vertex_indices, uv_indices, normal_indices;
   std::vector<glm::vec3> temp_vertices;
   std::vector<glm::vec2> temp_uvs;
@@ -94,8 +95,7 @@ uint64_t AssetManager::loadMeshObject(const char *modelpath,
   fclose(file);
 
   std::vector<float> shape_vertices(vertex_indices.size() * 3),
-      vertex_normals(normal_indices.size() * 3),
-      uv_normals(uv_indices.size() * 3);
+      vertex_normals(normal_indices.size() * 3);
 
   // vertex_indices => consecutive three triangle coords
   for (size_t i = 0; i < vertex_indices.size(); i++) {
@@ -132,15 +132,21 @@ uint64_t AssetManager::loadMeshObject(const char *modelpath,
   std::vector<AssetVertex> vertices;
 
   for (int i = 0; i < vertex_indices.size(); i++) {
+    const int uv_index = i < uv_indices.size() ? uv_indices[i] : 0;
+    const glm::vec2 uv =
+        uv_index > 0 && uv_index <= static_cast<int>(temp_uvs.size())
+            ? temp_uvs[uv_index - 1]
+            : glm::vec2(shape_vertices[i * 3], shape_vertices[i * 3 + 2]);
     vertices.push_back({{shape_vertices[i * 3], shape_vertices[i * 3 + 1],
                          shape_vertices[i * 3 + 2]},
                         {vertex_normals[i * 3], vertex_normals[i * 3 + 1],
-                         vertex_normals[i * 3 + 2]}});
+                         vertex_normals[i * 3 + 2]},
+                        uv});
   }
 
   static glm::uint64 handle = 1;
   std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>(
-      std::move(vertices), shaderProgram, scale, angle, pos, axis);
+      std::move(vertices), shaderProgram, scale, angle, pos, axis, texturePath);
   m_assets.emplace(++handle, mesh);
 
   return handle;

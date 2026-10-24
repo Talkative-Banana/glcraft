@@ -2,6 +2,7 @@
 
 layout(location = 0) in vec3 vVertex;   // position in model space
 layout(location = 1) in vec3 vNormal;   // normal in model space
+layout(location = 2) in vec2 vUV;
 
 uniform mat4 vModel;
 uniform mat4 vView;
@@ -10,10 +11,11 @@ uniform mat4 vProjection;
 out vec3 n;  // normal in world space
 out vec3 e;  // eye vector in world space
 out vec3 l;  // light vector in world space
+out vec2 assetUV;
 
 void main() {
-    // final clip-space position
     gl_Position = vProjection * vView * vModel * vec4(vVertex, 1.0);
+    assetUV = vUV;
 
     // position in camera space
     vec3 lightPos = vec3(vModel * vec4(vVertex, 1.0));

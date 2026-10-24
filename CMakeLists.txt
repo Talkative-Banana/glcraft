@@ -109,7 +109,6 @@ target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/depends/imgui")
 set(GLCRAFT_SOURCES
   src/Main.cpp
   src/Utils.cpp
-  src/Renderer.cpp
   src/IndexBuffer.cpp
   src/VertexBuffer.cpp
   src/VertexArray.cpp

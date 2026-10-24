@@ -628,7 +628,7 @@ void World::load_model(glm::ivec3 pos, std::string model, bool refresh_chunk) {
           std::cout << "Chunk is null or deleted\n";
           return;
         }
-        GLuint preserve_mask = ((1 << 15) - 1);
+        GLuint preserve_mask = ((1u << 15) - 1);
         // binary: 0000...01111111111111111 (15 bits set)
         GLuint overwrite_mask = ~preserve_mask;
 
@@ -715,6 +715,7 @@ int World::getSeed() { return m_seed; }
 
 // Client side
 void World::handleNetworkRequest(WorldState &wst) {
+  AssertMainThread();
   if (wst.model_idx) {
     load_model(wst.blockpos, "models/" + MODEL_ARRAY[wst.model_idx] + ".bin");
   } else if (auto block = get_block_by_center(wst.blockpos)) {

@@ -21,6 +21,7 @@ std::unique_ptr<AssetManager> asset_manager;
 extern std::mutex m;
 extern std::queue<glm::ivec3> refreshq;
 std::vector<WorldState> client_operations;
+std::mutex client_operations_mutex;
 std::vector<std::string> world_operations;
 // void createAxesLine(unsigned int &, unsigned int &);
 ImVec4 clearColor = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -193,19 +194,21 @@ void Game::updatePlayer(const std::string &msg) {
     PlayerState pst = std::get<PlayerState>(st._data);
     if ((st.id == activePlayer) && (!st.enforce))
       return; // do not update my state unless explicitly asked by server
-    players[st.id]->handleNetworkRequest(pst);
+    players[st.id]->handleNetworkRequest(pst, st.ts);
   } else if (std::holds_alternative<WorldState>(st._data)) {
     WorldState wst = std::get<WorldState>(st._data);
     if ((st.id == activePlayer) && (st.enforce)) {
       return; // do not update my world state alreay did
     }
-    if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
+    if (wst.model_idx != 0) {
+      // Model loading also remeshes chunks, so defer it to the main thread.
+      std::lock_guard<std::mutex> lock(client_operations_mutex);
+      client_operations.push_back(wst);
+    } else if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
       if (chunk && chunk->m_chunkVa) {
-        // check if block within render distance
         world->handleNetworkRequest(wst);
       } else {
-        // if not will apply change when block within render distance
-        std::cout << "Skipping update chunk not loaded yet\n";
+        std::lock_guard<std::mutex> lock(client_operations_mutex);
         client_operations.push_back(wst);
       }
     }
@@ -417,53 +420,46 @@ void Game::run() {
       }
     }
 
-    for (size_t i = 0; i < client_operations.size();) {
-      auto &wst = client_operations[i];
-      auto chunk = world->get_chunk_by_center(wst.blockpos);
-
-      if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock()) {
-        if (chunk && chunk->m_chunkVa) {
-          world->handleNetworkRequest(wst);
-
-          std::swap(client_operations[i], client_operations.back());
-          client_operations.pop_back();
-        } else {
-          ++i;
-        }
+    std::vector<WorldState> pendingOperations;
+    {
+      std::lock_guard<std::mutex> lock(client_operations_mutex);
+      pendingOperations.swap(client_operations);
+    }
+    std::vector<WorldState> deferredOperations;
+    for (auto &wst : pendingOperations) {
+      if (auto chunk = world->get_chunk_by_center(wst.blockpos).lock();
+          chunk && chunk->m_chunkVa) {
+        world->handleNetworkRequest(wst);
+      } else {
+        deferredOperations.push_back(std::move(wst));
       }
     }
+    if (!deferredOperations.empty()) {
+      std::lock_guard<std::mutex> lock(client_operations_mutex);
+      client_operations.insert(client_operations.begin(),
+                               deferredOperations.begin(),
+                               deferredOperations.end());
+    }
 #endif
-    using clk = std::chrono::steady_clock;
-    auto tick = [] { return clk::now(); };
-    auto ms = [](auto a, auto b) {
-      return std::chrono::duration<double, std::milli>(b - a).count();
-    };
 
     // World Calculations
-    auto t0 = tick();
     world->EnqueueVisibleBiomes(playerpos);
 
     // Setup biomes [first pass]
-    auto t1 = tick();
     world->SetupBiomesPass1();
 
     // Do Binding for [first pass]
-    auto t2 = tick();
     world->MarkBiomesReadyForPass1();
 
     // Setup biomes [second pass]
-    auto t3 = tick();
     world->SetupBiomesPass2();
 
     // Do Binding for second pass
-    auto t4 = tick();
     world->MarkBiomesReadyForPass2();
 
     // Mark all the waiting biomes ready
-    auto t5 = tick();
     world->MarkBiomesReadyForBoundaryRemoval();
 
-    auto t6 = tick();
     world->Update_queue(playerpos, playervp);
     // glBindVertexArray(cube_VAO);
 
@@ -507,7 +503,6 @@ void Game::run() {
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
-    auto t7 = tick();
     world->Draw(OBJ_TYPE::OPAQUE_, playerpos);
 
     // TRANSPARENT PASS
@@ -515,15 +510,7 @@ void Game::run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
-    auto t8 = tick();
     world->Draw(OBJ_TYPE::TRANSPARENT_, playerpos);
-
-    if (ms(t0, t8) > 16.0) { // only print frames that hitch
-      printf("enq=%.1f p1=%.1f bind1=%.1f p2+bind2=%.1f upd=%.1f "
-             "draw+swap=%.1f draw1=%.1f draw2=%.1f\n",
-             ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5),
-             ms(t5, t6), ms(t6, t7), ms(t7, t8));
-    }
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glDisable(GL_CULL_FACE);
