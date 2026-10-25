@@ -28,10 +28,8 @@ jobs:
             libxi-dev \
             libxcursor-dev \
             libxinerama-dev \
-            libglew-dev \
-            libglfw3-dev \
-            libglm-dev \
-            libsfml-dev
+            libxext-dev \
+            libxfixes-dev
 
       - name: Configure
         run: |

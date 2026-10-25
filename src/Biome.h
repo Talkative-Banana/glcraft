@@ -2,15 +2,11 @@
 #include <assert.h>
 #include <atomic>
 #include <memory>
-#include <mutex>
-#include <queue>
 #include <thread>
 #include <unordered_map>
 
 #include "Chunk.h"
 #include "Constants.hpp"
-#include "IndexBuffer.h"
-#include "VertexArray.h"
 
 class Biome {
 private:
@@ -31,7 +27,6 @@ public:
   std::atomic<BIOMESTATUS> m_RenderIter{BIOMESTATUS::IDLE};
   std::array<std::array<std::shared_ptr<Chunk>, CHUNK_COUNTZ>, CHUNK_COUNTX>
       m_chunks;
-  int m_hello = 0;
   std::unordered_map<uint64_t, std::weak_ptr<Chunk>> m_renderQueue;
   Biome(int, glm::ivec3, GLboolean);
   ~Biome();

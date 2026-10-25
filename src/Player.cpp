@@ -55,7 +55,7 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram,
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->setup();
     meshes.push_back(l_mesh);
-  }
+ }
 }
 
 Player::Player(const uint64_t id, const uint64_t shaderProgram2)
@@ -72,14 +72,12 @@ Player::Player(const uint64_t id, const uint64_t shaderProgram2)
   }
 }
 
-void Player::handleNetworkRequest(PlayerState &pt) {
-  // Update from client
+void Player::handleNetworkRequest(PlayerState &pt, double timestamp) {
+  (void)timestamp;
   m_position = pt.pos;
   m_forward = pt.fwd;
   m_velocity = pt.vel;
   m_up = pt.up;
-
-  // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->pos = m_position;
@@ -145,7 +143,6 @@ void Player::handle_input(float dtRaw) {
     bool inWater = feetBlk && feetBlk->get_type() == BLOCK_TYPE::WATER_BLOCK;
     m_speed = inWater ? SMUGED_SPEED : WALKING_SPEED;
   }
-
   // Horizontal wish direction, normalized so diagonals aren't faster
   glm::dvec3 fwd = glm::normalize(glm::dvec3(m_forward.x, 0.0, m_forward.z));
   glm::dvec3 right = glm::normalize(glm::cross(m_forward, m_up));
@@ -214,13 +211,18 @@ void Player::handle_input(float dtRaw) {
   }
 
   auto [x, y] = Input::GetMousePosition();
+  if (!m_mouseInitialized) {
+    m_mousePos = glm::dvec2(x, y);
+    m_mouseInitialized = true;
+  }
   double rotx = m_sensitivity * (double)(y - m_mousePos.y);
   double roty = m_sensitivity * (double)(x - m_mousePos.x);
   m_mousePos = glm::vec2(x, y);
 
   ImGuiIO &io = ImGui::GetIO();
-  if (!io.WantCaptureMouse) {
-    if (Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+  if (!io.WantCaptureMouse &&
+      Input::IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) &&
+      (rotx != 0.0 || roty != 0.0)) {
       glm::dvec3 right = glm::normalize(glm::cross(m_forward, m_up));
 
       // glm::quat qx = glm::normalize(
@@ -233,18 +235,25 @@ void Player::handle_input(float dtRaw) {
       glm::dquat qy = glm::angleAxis(-roty, m_up);
       glm::dquat rotation = glm::normalize(qy * qx);
       m_forward = glm::normalize(rotation * m_forward);
+      if (std::abs(m_forward.y) > 0.995) {
+        glm::dvec3 horizontal = glm::normalize(
+            glm::dvec3(m_forward.x, 0.0, m_forward.z));
+        constexpr double maxPitchY = 0.995;
+        const double horizontalLength =
+            std::sqrt(1.0 - maxPitchY * maxPitchY);
+        m_forward = glm::dvec3(horizontal.x * horizontalLength,
+                               std::copysign(maxPitchY, m_forward.y),
+                               horizontal.z * horizontalLength);
+      }
       position_updated = true;
-    }
   }
 
-  // Update the camera as well
   m_cameracontroller->UpdateCamera(m_position, m_forward);
   if (auto l_mesh = asset_manager->get_mesh(m_meshhandle).lock()) {
     l_mesh->pos = m_position;
   } else {
     std::cerr << "Mesh not found\n";
   }
-
   // default initialize to indicate no updates
   WorldState ws{};
   bool world_updated = false;
@@ -443,6 +452,12 @@ void Player::handle_stats() {
                 playerPos.x, playerPos.y, playerPos.z);
     ImGui::Text("Player %d orientation: (%.2f, %.2f, %.2f)", activePlayer,
                 playerOri.x, playerOri.y, playerOri.z);
+    if (ImGui::InputInt("Render Distance", &NUM_BIOMES_TO_TRAVERSE, 1, 5)) {
+      NUM_BIOMES_TO_TRAVERSE = std::clamp(NUM_BIOMES_TO_TRAVERSE, 2, 100);
+      FAR_PLANE = 1000.0 * NUM_BIOMES_TO_TRAVERSE;
+      RENDER_DISTANCE = BIOME_SIZE * NUM_BIOMES_TO_TRAVERSE;
+      m_cameracontroller->GetCamera()->RecalculateProjectionMatrix();
+    }
   }
 
   // Enable Physics
@@ -639,9 +654,9 @@ void Player::handle_transformations() {
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
 
-  // Render the mesh
   for (auto mesh : meshes) {
-    mesh->render(m_cameracontroller, m_position);
+    mesh->render(m_cameracontroller,
+                 m_cameracontroller->GetCamera()->GetPosition());
   }
 
   setupModelTransformationCube(m_shaderProgram);

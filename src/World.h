@@ -139,8 +139,8 @@ private:
 
 public:
   BiomeArray m_biomes;
-  std::unordered_map<uint, Chunk> m_loadMap;
-  std::unordered_map<uint, std::weak_ptr<Chunk>> m_saveMap;
+  std::unordered_map<uint32_t, Chunk> m_loadMap;
+  std::unordered_map<uint32_t, std::weak_ptr<Chunk>> m_saveMap;
   World(int, const glm::ivec3 &);
   ~World();
   void EnqueueVisibleBiomes(glm::dvec3);

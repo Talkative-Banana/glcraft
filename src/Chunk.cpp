@@ -1,29 +1,21 @@
 #include "Chunk.h"
-
-#include <cstdlib>
-#include <random>
-#include <string>
-
-#include "Renderer.h"
 #include "World.h"
 
 extern std::unique_ptr<World> world;
 
 Chunk::Chunk() {}
 
-Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
-             GLboolean display, int _type) {
+Chunk::Chunk(uint32_t _id, glm::ivec3 _biomepos, glm::ivec3 position,
+             bool display, int _type) {
   // Check if the chunk needs to be loaded from disk
   m_id = _id;
-  m_count = 0;
-  m_countTrans = 0;
   m_type = _type;
   m_biomePos = _biomepos;
   m_displayChunk = display;
   int i = abs(_biomepos.x / (BIOME_LENGTH));
   int j = abs(_biomepos.z / (BIOME_LENGTH));
   int k = abs(_biomepos.y) / (BIOME_HEIGHT);
-  uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
+  uint32_t biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   m_saveId =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
@@ -43,27 +35,22 @@ Chunk::Chunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
     m_dirtyBit = false;
   }
 
-  // Reserve for vectors
-  m_cubeIndices.reserve(16'000);
-  m_cubeIndicesTrans.reserve(4'000);
-
+  // Reserve for mesh staging vectors.
   m_cubeVertices.reserve(8'000);
   m_cubeVerticesTrans.reserve(2'000);
 }
 
-void Chunk::RecycleChunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
-                         GLboolean display, int _type) {
+void Chunk::RecycleChunk(uint32_t _id, glm::ivec3 _biomepos,
+                         glm::ivec3 position, bool display, int _type) {
   // Check if the chunk needs to be loaded from disk
   m_id = _id;
-  m_count = 0;
-  m_countTrans = 0;
   m_type = _type;
   m_biomePos = _biomepos;
   m_displayChunk = display;
   int i = abs(_biomepos.x / (BIOME_LENGTH));
   int j = abs(_biomepos.z / (BIOME_LENGTH));
   int k = abs(_biomepos.y) / (BIOME_HEIGHT);
-  uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
+  uint32_t biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   m_saveId =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
@@ -84,7 +71,7 @@ void Chunk::RecycleChunk(uint _id, glm::ivec3 _biomepos, glm::ivec3 position,
   }
 }
 
-inline GLboolean Chunk::isSolid(int x, int y, int z) {
+inline bool Chunk::isSolid(int x, int y, int z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -94,7 +81,7 @@ inline GLboolean Chunk::isSolid(int x, int y, int z) {
   return false;
 }
 
-inline GLboolean Chunk::isTransparent(int x, int y, int z) {
+inline bool Chunk::isTransparent(int x, int y, int z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -104,7 +91,7 @@ inline GLboolean Chunk::isTransparent(int x, int y, int z) {
   return false;
 }
 
-inline GLboolean Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
+inline bool Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
   if ((x >= 0) && (x < CHUNK_BLOCK_COUNT) && (y >= 0) &&
       (y < CHUNK_BLOCK_COUNT) && (z >= 0) && (z < CHUNK_BLOCK_COUNT)) {
 
@@ -118,7 +105,7 @@ inline GLboolean Chunk::isSameKind(int x, int y, int z, int X, int Y, int Z) {
 // k blue i red j green
 // ctrl x -> red facing me
 
-GLuint Chunk::RenderFace(int x, int y, int z) {
+uint32_t Chunk::RenderFace(int x, int y, int z) {
   // 1 -> back face
   // 2 -> front face
   // 3 -> left face
@@ -126,7 +113,7 @@ GLuint Chunk::RenderFace(int x, int y, int z) {
   // 5 -> top face
   // 6 -> bottom face
 
-  GLuint mask = 0;
+  uint32_t mask = 0;
 
   // Back face (z - 1)
   // No Need to draw back face if block behind is solid
@@ -167,7 +154,7 @@ GLuint Chunk::RenderFace(int x, int y, int z) {
   return mask;
 }
 
-void Chunk::Setup_Landscape(GLint X, GLint Z) {
+void Chunk::Setup_Landscape(uint32_t X, uint32_t Z) {
   // Early return => chunks/biomes below surface are all solid (for now)
   if (m_chunkPos.y < (((BIOME_COUNTY)*CHUNK_HEIGHT) / 2.0) - CHUNK_HEIGHT) {
     for (int x = 0; x < CHUNK_BLOCK_COUNT; x++) {
@@ -281,11 +268,19 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
                    std::shared_ptr<Chunk> front, std::shared_ptr<Chunk> right,
                    std::shared_ptr<Chunk> back, std::shared_ptr<Chunk> top,
                    std::shared_ptr<Chunk> bottom) {
+  std::vector<uint32_t> opaqueVertices;
+  std::vector<uint32_t> transparentVertices;
+  opaqueVertices.reserve(8'000);
+  transparentVertices.reserve(2'000);
+  opaqueVertices.clear();
+  transparentVertices.clear();
+  uint32_t opaqueCount = 0;
+  uint32_t transparentCount = 0;
   // Rerendering
   // if (!displaychunk) return;
   // Render OPAQUE blocks
 
-  static const glm::ivec3 neighborOffsetsIdx[8] = {
+  static constexpr glm::ivec3 neighborOffsetsIdx[8] = {
       {0, 1, -1},  // b0
       {-1, 1, -1}, // b1   543
       {-1, 1, 0},  // b2   6 2
@@ -331,9 +326,13 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
       }
     }
 
-    // TODO: Remove it if not needed [just here for optimisation]
     if (!validY && validX && validZ) {
-      return nullptr;
+      if (newPos.y == -1 && bottom) {
+        return &bottom->m_blocks[newPos.x][CHUNK_BLOCK_COUNT - 1][newPos.z];
+      }
+      if (newPos.y == CHUNK_BLOCK_COUNT && top) {
+        return &top->m_blocks[newPos.x][0][newPos.z];
+      }
     }
 
     glm::ivec3 block_pos =
@@ -345,11 +344,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
   };
 
   {
-    m_cubeVertices.clear();
-    m_cubeIndices.clear();
-    m_count = 0, m_cntBlocks = 0;
-    GLuint idx = 0;
-
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
         for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
@@ -359,7 +353,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             // break;  // unsolid blocks
             continue;
           }
-          GLuint mask = 0;
+          uint32_t mask = 0;
           if (firstRun) {
             // If its first run just save the mask
             mask = Chunk::RenderFace(i, j, k);
@@ -371,16 +365,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (i == 0 && right) {
               auto &blk1 = m_blocks[0][j][k];
               auto &blk2 = right->m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove left face from current block
                 blk1.blmask &= ~LEFT_FACE;
               }
             } else if (i == CHUNK_BLOCK_COUNT - 1 && left) {
               auto &blk1 = m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
               auto &blk2 = left->m_blocks[0][j][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove right face from current block
                 blk1.blmask &= ~RIGHT_FACE;
               }
@@ -390,16 +382,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
               auto &blk2 = back->m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove back face from current block
                 blk1.blmask &= ~BACK_FACE;
               }
             } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
               auto &blk1 = m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
               auto &blk2 = front->m_blocks[i][j][0];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
@@ -409,16 +399,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (j == 0 && bottom) {
               auto &blk1 = m_blocks[i][0][k];
               auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove back face from current block
                 blk1.blmask &= ~BOTTOM_FACE;
               }
             } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
               auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
               auto &blk2 = top->m_blocks[i][0][k];
-              if ((blk1.is_solid()) &&
-                  (blk2.is_solid() && !blk2.is_transparent())) {
+              if ((blk2.is_solid() && !blk2.is_transparent())) {
                 // Remove front face from current block
                 blk1.blmask &= ~TOP_FACE;
               }
@@ -428,7 +416,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (m_blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          GLuint ac = 0;
+          uint32_t ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
           isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
@@ -462,10 +450,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndices,
-                                              m_cubeVertices);
-          m_cntBlocks += cnt;
-          idx += 24 * (cnt != 0), m_count += (cnt != 0);
+          // if any of the face is visible
+          if (m_blocks[i][j][k].Render(mask, ac)) {
+            opaqueCount++;
+            opaqueVertices.push_back(
+                static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
+            opaqueVertices.push_back(
+                static_cast<uint32_t>(m_blocks[i][j][k].blmask));
+          }
         }
       }
     }
@@ -473,11 +465,6 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
 
   // Render transparent blocks
   {
-    m_cubeVerticesTrans.clear();
-    m_cubeIndicesTrans.clear();
-    m_countTrans = 0, m_cntBlocksTrans = 0;
-    GLuint idx = 0;
-
     for (int i = 0; i < CHUNK_BLOCK_COUNT; i++) {
       for (int k = 0; k < CHUNK_BLOCK_COUNT; k++) {
         for (int j = 0; j < CHUNK_BLOCK_COUNT; j++) {
@@ -487,7 +474,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             // break;  // unsolid blocks
             continue;
           }
-          GLuint mask = 0;
+          uint32_t mask = 0;
           if (firstRun) {
             // If its first run just save the mask
             mask = Chunk::RenderFace(i, j, k);
@@ -499,7 +486,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (i == 0 && right) {
               auto &blk1 = m_blocks[0][j][k];
               auto &blk2 = right->m_blocks[CHUNK_BLOCK_COUNT - 1][j][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove left face from current block
                 blk1.blmask &= ~LEFT_FACE;
               }
@@ -516,14 +503,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (k == 0 && back) {
               auto &blk1 = m_blocks[i][j][0];
               auto &blk2 = back->m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove back face from current block
                 blk1.blmask &= ~BACK_FACE;
               }
             } else if (k == CHUNK_BLOCK_COUNT - 1 && front) {
               auto &blk1 = m_blocks[i][j][CHUNK_BLOCK_COUNT - 1];
               auto &blk2 = front->m_blocks[i][j][0];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove front face from current block
                 blk1.blmask &= ~FRONT_FACE;
               }
@@ -533,14 +520,14 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             if (j == 0 && bottom) {
               auto &blk1 = m_blocks[i][0][k];
               auto &blk2 = bottom->m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove back face from current block
                 blk1.blmask &= ~BOTTOM_FACE;
               }
             } else if (j == CHUNK_BLOCK_COUNT - 1 && top) {
               auto &blk1 = m_blocks[i][CHUNK_BLOCK_COUNT - 1][k];
               auto &blk2 = top->m_blocks[i][0][k];
-              if ((blk1.is_solid()) && (blk2.is_solid())) {
+              if (blk2.is_solid()) {
                 // Remove front face from current block
                 blk1.blmask &= ~TOP_FACE;
               }
@@ -550,7 +537,7 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
             mask = (m_blocks[i][j][k].blmask >> 17) & 63;
           }
 
-          GLuint ac = 0;
+          uint32_t ac = 0;
           bool isBoundary = false;
           isBoundary |= i == 0 || i == CHUNK_BLOCK_COUNT - 1;
           isBoundary |= j == 0 || j == CHUNK_BLOCK_COUNT - 1;
@@ -584,45 +571,60 @@ void Chunk::Render(int setup, bool firstRun, std::shared_ptr<Chunk> left,
               ac |= (1u << 8);
             }
           }
-          auto cnt = m_blocks[i][j][k].Render(mask, ac, idx, m_cubeIndicesTrans,
-                                              m_cubeVerticesTrans);
-          m_cntBlocksTrans += cnt;
-          idx += 24 * (cnt != 0), m_countTrans += (cnt != 0);
+          // if any of the face is visible
+          if (m_blocks[i][j][k].Render(mask, ac)) {
+            transparentCount++;
+            transparentVertices.push_back(
+                static_cast<uint32_t>((m_blocks[i][j][k].blmask) >> 32));
+            transparentVertices.push_back(
+                static_cast<uint32_t>(m_blocks[i][j][k].blmask));
+          }
         }
       }
     }
   }
 
-  // firstRun is called by worker threads (cant make opengl calls from here)
-  // !firstRun is called by main threads
-  if (!firstRun)
+  {
+    std::lock_guard<std::mutex> lock(*m_meshMutex);
+    m_cubeVertices.swap(opaqueVertices);
+    m_cubeVerticesTrans.swap(transparentVertices);
+    m_pendingCntBlocks = opaqueCount;
+    m_pendingCntBlocksTrans = transparentCount;
+  }
+
+  // Both setup passes run on workers; their uploads happen in World's
+  // main-thread binding passes. Only synchronous edits (setup == 0) upload
+  // here.
+  if (!firstRun && setup == 0)
     UpdateVertexObjects();
 }
 
 void Chunk::UpdateVertexObjects() {
   // Return early in case of server as we dont want to perform any graphics
   // operations there
+  AssertMainThread();
 #ifdef BUILD_SERVER
   return;
 #endif
-  m_chunkVa->Bind(); // the element-buffer binding lives in the VAO
+  std::lock_guard<std::mutex> lock(*m_meshMutex);
+  m_chunkVa->Bind();
   m_chunkVb->Upload(m_cubeVertices.data(),
-                    m_cubeVertices.size() * sizeof(GLuint));
-  m_chunkIb->Upload(m_cubeIndices.data(),
-                    m_cubeIndices.size() * sizeof(GLuint));
+                    m_cubeVertices.size() * sizeof(uint32_t));
   m_chunkVa->Unbind();
 
   m_chunkVaTrans->Bind();
   m_chunkVbTrans->Upload(m_cubeVerticesTrans.data(),
-                         m_cubeVerticesTrans.size() * sizeof(GLuint));
-  m_chunkIbTrans->Upload(m_cubeIndicesTrans.data(),
-                         m_cubeIndicesTrans.size() * sizeof(GLuint));
+                         m_cubeVerticesTrans.size() * sizeof(uint32_t));
   m_chunkVaTrans->Unbind();
+  // Publish counts only after both corresponding GPU buffers are uploaded.
+  m_cntBlocks = m_pendingCntBlocks;
+  m_cntBlocksTrans = m_pendingCntBlocksTrans;
 }
 
 void Chunk::SetupVertexObjects() {
   // Return early in case of server as we dont want to perform any graphic
   // operations there
+  AssertMainThread();
 #ifdef BUILD_SERVER
   return;
 #endif
@@ -630,68 +632,51 @@ void Chunk::SetupVertexObjects() {
   m_chunkVa = std::make_unique<VertexArray>();
   m_chunkVa->Bind();
   VertexBufferLayout layout;
-  layout.Push(GL_UNSIGNED_INT, 1);
+  layout.Push(GL_UNSIGNED_INT, 2);
   m_chunkVb = std::make_unique<VertexBuffer>(0);
   m_chunkVa->AddBuffer(*(m_chunkVb), layout);
-  m_chunkIb = std::make_unique<IndexBuffer>(nullptr, 0);
-  m_chunkIb->Bind();
+  // One packed block record per instance; vertices come from gl_VertexID.
+  GLCall(glVertexAttribDivisor(0, 1));
   m_chunkVa->Unbind();
 
   // TRANSPARENT PASS
   m_chunkVaTrans = std::make_unique<VertexArray>();
   m_chunkVaTrans->Bind();
   VertexBufferLayout layouttrans;
-  layouttrans.Push(GL_UNSIGNED_INT, 1);
+  layouttrans.Push(GL_UNSIGNED_INT, 2);
   m_chunkVbTrans = std::make_unique<VertexBuffer>(0);
   m_chunkVaTrans->AddBuffer(*(m_chunkVbTrans), layouttrans);
-  m_chunkIbTrans = std::make_unique<IndexBuffer>(nullptr, 0);
-
-  m_chunkIbTrans->Bind();
+  GLCall(glVertexAttribDivisor(0, 1));
   m_chunkVaTrans->Unbind();
 }
 
 void Chunk::Draw(OBJ_TYPE type, glm::dvec3 cameraPos) {
+  AssertMainThread();
   if (!m_displayChunk)
     return;
 
-  if (type == OBJ_TYPE::OPAQUE_) {
-    if (m_cntBlocks == 0) {
-      return;
-    }
-    m_chunkVa->Bind();
-    glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
-                m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
-    if (wireframemode) {
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, m_cntBlocks, GL_UNSIGNED_INT, nullptr);
-    } else {
-      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
-      // 12 * Total Number of attributes
-      glDrawElements(GL_TRIANGLES, m_cntBlocks, GL_UNSIGNED_INT, nullptr);
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-    }
-    m_chunkVa->Unbind();
-  } else if (type == OBJ_TYPE::TRANSPARENT_) {
-    if (m_cntBlocksTrans == 0) {
-      return;
-    }
-    m_chunkVaTrans->Bind();
-    glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
-                m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
+  std::lock_guard<std::mutex> lock(*m_meshMutex);
 
-    if (wireframemode) {
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      glDrawElements(GL_LINES, m_cntBlocksTrans, GL_UNSIGNED_INT, nullptr);
-    } else {
-      // glUniform4f(vColor_uniform, 0.5, 0.5, 0.5, 1.0);
-      // 12 * Total Number of attributes
-      glDrawElements(GL_TRIANGLES, m_cntBlocksTrans, GL_UNSIGNED_INT, nullptr);
-      // glUniform4f(vColor_uniform, 0.0, 0.0, 0.0, 1.0);
-      // glDrawElements(GL_LINES, cntblocks * 12 * 1, GL_UNSIGNED_INT, nullptr);
-    }
-    m_chunkVaTrans->Unbind();
-  }
+  const bool opaque = (type == OBJ_TYPE::OPAQUE_);
+  // Each visible block is an instance of six faces with two triangles each.
+  const uint32_t count = opaque ? m_cntBlocks : m_cntBlocksTrans;
+  if (count == 0)
+    return;
+
+  auto &va = opaque ? m_chunkVa : m_chunkVaTrans;
+  va->Bind();
+  glUniform3f(chunkpos_uniform, m_chunkPos.x - cameraPos.x,
+              m_chunkPos.y - cameraPos.y, m_chunkPos.z - cameraPos.z);
+
+  if (wireframemode)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+  glDrawArraysInstanced(GL_TRIANGLES, 0, 36, static_cast<GLsizei>(count));
+
+  if (wireframemode)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  va->Unbind();
 }
 
 void Chunk::Serialize(std::ostream &os) const {
@@ -703,7 +688,7 @@ void Chunk::Serialize(std::ostream &os) const {
   os.write(reinterpret_cast<const char *>(&m_chunkPos.x), sizeof(m_chunkPos.x));
   os.write(reinterpret_cast<const char *>(&m_chunkPos.y), sizeof(m_chunkPos.y));
   os.write(reinterpret_cast<const char *>(&m_chunkPos.z), sizeof(m_chunkPos.z));
-  os.write(reinterpret_cast<const char *>(&m_blocks), sizeof(m_blocks));
+  os.write(reinterpret_cast<const char *>(&m_blocks), sizeof(uint32_t));
 }
 
 bool Chunk::Deserialize(std::istream &is) {
@@ -723,7 +708,7 @@ bool Chunk::Deserialize(std::istream &is) {
     return false;
   if (!is.read(reinterpret_cast<char *>(&m_chunkPos.z), sizeof(m_chunkPos.z)))
     return false;
-  if (!is.read(reinterpret_cast<char *>(&m_blocks), sizeof(m_blocks)))
+  if (!is.read(reinterpret_cast<char *>(&m_blocks), sizeof(uint32_t)))
     return false;
   return true;
 }

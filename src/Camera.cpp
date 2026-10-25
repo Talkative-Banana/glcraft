@@ -10,6 +10,13 @@ Camera::Camera(double left, double right, double bottom, double top)
   m_ViewProjectionRenderMatrix = m_ProjectionMatrix * m_ViewRotateMatrix;
 }
 
+void Camera::RecalculateProjectionMatrix() {
+  m_ProjectionMatrix = glm::perspective(glm::radians(double(m_VerticalFOV)),
+                                        m_AspectRatio, NEAR_PLANE, FAR_PLANE);
+  m_ViewProjectionMatrix = m_ProjectionMatrix * m_ViewMatrix;
+  m_ViewProjectionRenderMatrix = m_ProjectionMatrix * m_ViewRotateMatrix;
+}
+
 void Camera::RecalculateViewMatrix() {
 
   m_ViewMatrix =
@@ -29,9 +36,7 @@ void Camera::RecalculateViewRenderMatrix() {
 
 void Camera::SetAspectRatio(double aspectratio) {
   m_AspectRatio = aspectratio;
-  m_ProjectionMatrix =
-      glm::perspective(glm::radians(double(m_VerticalFOV)), double(aspectratio),
-                       NEAR_PLANE, FAR_PLANE);
+  RecalculateProjectionMatrix();
 }
 
 // Compute horizontal FOV based on aspect ratio

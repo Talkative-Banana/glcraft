@@ -156,6 +156,39 @@ unsigned int createProgram(const char* vshader_filename, const char* fshader_fil
   return program;
 }
 
+unsigned int createProgram(const char *vshader_filename,
+                           const char *fshader_filename,
+                           const char *gshader_filename) {
+  // Create shader objects
+  GLuint vs, fs, gs;
+  if ((vs = createShader(vshader_filename, GL_VERTEX_SHADER)) == 0)
+    return 0;
+  if ((fs = createShader(fshader_filename, GL_FRAGMENT_SHADER)) == 0)
+    return 0;
+  if ((gs = createShader(gshader_filename, GL_GEOMETRY_SHADER)) == 0)
+    return 0;
+
+  // Creare program object and link shader objects
+  GLuint program = glCreateProgram();
+  glAttachShader(program, vs);
+  glAttachShader(program, fs);
+  glAttachShader(program, gs);
+  glLinkProgram(program);
+  GLint link_ok;
+  glGetProgramiv(program, GL_LINK_STATUS, &link_ok);
+  if (!link_ok) {
+    // fprintf(stderr, "glLinkProgram error:");
+    // printLog(program);
+    std::cout << "Linking error " << std::endl;
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    glDeleteShader(gs);
+    glDeleteProgram(program);
+    return 0;
+  }
+  return program;
+}
+
 char* getShaderCode(const char* filename) {
   FILE* input = fopen(filename, "rb");
   if (input == NULL) return NULL;

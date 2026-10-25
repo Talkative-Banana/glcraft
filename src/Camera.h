@@ -64,4 +64,6 @@ public:
   void SetAspectRatio(double aspectratio);
 
   double GetHorizontalFOV() const;
+
+  void RecalculateProjectionMatrix();
 };

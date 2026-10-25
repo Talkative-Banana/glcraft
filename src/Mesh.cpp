@@ -9,7 +9,19 @@ void Mesh::setup() {
   VertexBufferLayout Layout;
   Layout.Push(GL_FLOAT, 3); // positions
   Layout.Push(GL_FLOAT, 3); // normals
+  Layout.Push(GL_FLOAT, 2); // texture coordinates
   vao->AddBuffer(*vbo, Layout);
+  cacheUniformLocations();
+}
+
+void Mesh::cacheUniformLocations() {
+  if (uniformsCached)
+    return;
+  modelUniform = glGetUniformLocation(shaderProgram, "vModel");
+  viewUniform = glGetUniformLocation(shaderProgram, "vView");
+  projectionUniform = glGetUniformLocation(shaderProgram, "vProjection");
+  assetTextureUniform = glGetUniformLocation(shaderProgram, "assetTexture");
+  uniformsCached = true;
 }
 
 void Mesh::setupModelTransformationCube(glm::dvec3 cameraPos) {
@@ -22,14 +34,13 @@ void Mesh::setupModelTransformationCube(glm::dvec3 cameraPos) {
                        glm::normalize(axis_of_rot));
 
   // Pass on the modelling matrix to the vertex shader
-  vModel_uniform = glGetUniformLocation(shaderProgram, "vModel");
-  if (vModel_uniform == -1) {
+  if (modelUniform == -1) {
     fprintf(stderr, "Could not bind location: vModel\n");
     exit(0);
   }
 
   glm::mat4 modelTf = glm::mat4(modelT);
-  glUniformMatrix4fv(vModel_uniform, 1, GL_FALSE, glm::value_ptr(modelTf));
+  glUniformMatrix4fv(modelUniform, 1, GL_FALSE, glm::value_ptr(modelTf));
 }
 
 void Mesh::setupViewTransformation(std::unique_ptr<CameraController> &occ) {
@@ -39,14 +50,13 @@ void Mesh::setupViewTransformation(std::unique_ptr<CameraController> &occ) {
   viewT = occ->GetCamera()->GetViewRenderMatrix();
 
   // Pass-on the viewing matrix to the vertex shader
-  vView_uniform = glGetUniformLocation(shaderProgram, "vView");
-  if (vView_uniform == -1) {
+  if (viewUniform == -1) {
     fprintf(stderr, "Could not bind location: vView\n");
     exit(0);
   }
 
   glm::mat4 viewTf = glm::mat4(viewT);
-  glUniformMatrix4fv(vView_uniform, 1, GL_FALSE, glm::value_ptr(viewTf));
+  glUniformMatrix4fv(viewUniform, 1, GL_FALSE, glm::value_ptr(viewTf));
 }
 
 void Mesh::setupProjectionTransformation(
@@ -55,23 +65,30 @@ void Mesh::setupProjectionTransformation(
   projectionT = occ->GetCamera()->GetProjectionMatrix();
 
   // Pass on the projection matrix to the vertex shader
-  vProjection_uniform = glGetUniformLocation(shaderProgram, "vProjection");
-  if (vProjection_uniform == -1) {
+  if (projectionUniform == -1) {
     fprintf(stderr, "Could not bind location: vProjection\n");
     exit(0);
   }
 
   glm::mat4 projectionTf = glm::mat4(projectionT);
-  glUniformMatrix4fv(vProjection_uniform, 1, GL_FALSE,
+  glUniformMatrix4fv(projectionUniform, 1, GL_FALSE,
                      glm::value_ptr(projectionTf));
 }
 
 void Mesh::render(std::unique_ptr<CameraController> &camera_controller,
                   glm::dvec3 cameraPos) {
+  cacheUniformLocations();
   glUseProgram(shaderProgram);
+  if (assetTexture) {
+    assetTexture->Bind(0);
+    if (assetTextureUniform >= 0)
+      glUniform1i(assetTextureUniform, 0);
+  }
   // Setup MVP matrix
   setupModelTransformationCube(cameraPos);
+
   setupViewTransformation(camera_controller);
+
   setupProjectionTransformation(camera_controller);
 
   vao->Bind();

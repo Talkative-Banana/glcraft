@@ -41,7 +41,7 @@ public:
   std::shared_ptr<std::string> handle_client_input(const std::string &);
   void update(float);
   void handle_stats();
-  void handleNetworkRequest(PlayerState &);
+  void handleNetworkRequest(PlayerState &, double timestamp);
   void handle_transformations();
   void setupModelTransformationCube(unsigned int &);
   void setupModelTransformationAxis(unsigned int &, double, glm::dvec3);
@@ -57,7 +57,7 @@ public:
 private:
   glm::dvec3 m_position =
       glm::dvec3(BIOME_COUNTX * CHUNK_LENGTH / 2.0,
-                 ((BIOME_COUNTY * CHUNK_HEIGHT / 2.0)) + CHUNK_HEIGHT,
+                 (BIOME_COUNTY * CHUNK_HEIGHT / 2.0) + PLAYER_HEIGHT,
                  BIOME_COUNTZ *CHUNK_LENGTH / 2.0);
 
   glm::dvec3 m_forward = glm::dvec3(0.0, 0.0, 1.0);
@@ -67,6 +67,7 @@ private:
   double m_speed = WALKING_SPEED;
   double m_sensitivity = 0.002f;
   glm::dvec2 m_mousePos = {0.0f, 0.0f};
+  bool m_mouseInitialized = false;
   bool m_enableGravity = false;
   char textKeyStatus[IMGUI_TEXT_CAPACITY] = {0};
   char textKeyDescription[IMGUI_TEXT_CAPACITY] = {0};
@@ -76,7 +77,7 @@ private:
   GLuint m_shaderProgram, m_shaderProgram2;
   uint64_t m_meshhandle;
   Inventory m_inventory;
-  BLOCK_TYPE m_insideBlock;
+  BLOCK_TYPE m_insideBlock{};
   std::unique_ptr<Client> m_client = nullptr;
   bool collides(const glm::dvec3 &) const;
   static glm::dvec3 snapToCenter(const glm::dvec3 &);
