@@ -54,7 +54,7 @@ public:
   bool Deserialize(std::istream &);
   void SetupVertexObjects();
   void UpdateVertexObjects();
-  void RecycleChunk(uint, glm::ivec3, glm::ivec3, bool, int);
+  void RecycleChunk(uint32_t, glm::ivec3, glm::ivec3, bool, int);
   static void SetupNoise(uint64_t seed) {
     // Set random seed for mountains
     s_mountainTerrain.SetSeed(seed);

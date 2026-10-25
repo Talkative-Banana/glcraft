@@ -15,7 +15,7 @@ Chunk::Chunk(uint32_t _id, glm::ivec3 _biomepos, glm::ivec3 position,
   int i = abs(_biomepos.x / (BIOME_LENGTH));
   int j = abs(_biomepos.z / (BIOME_LENGTH));
   int k = abs(_biomepos.y) / (BIOME_HEIGHT);
-  uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
+  uint32_t biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   m_saveId =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
@@ -50,7 +50,7 @@ void Chunk::RecycleChunk(uint32_t _id, glm::ivec3 _biomepos,
   int i = abs(_biomepos.x / (BIOME_LENGTH));
   int j = abs(_biomepos.z / (BIOME_LENGTH));
   int k = abs(_biomepos.y) / (BIOME_HEIGHT);
-  uint biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
+  uint32_t biome_uq_id = BIOME_COUNTZ * BIOME_COUNTX * k + BIOME_COUNTZ * j + i;
   m_saveId =
       (biome_uq_id << static_cast<int>(log2(CHUNK_COUNTZ * CHUNK_COUNTX))) +
       _id;
