@@ -105,6 +105,11 @@ add_library(imgui STATIC
   depends/imgui/imgui_impl_opengl3.cpp
 )
 target_include_directories(imgui PUBLIC "${PROJECT_SOURCE_DIR}/depends/imgui")
+# The ImGui backends include GLFW and use GLEW's OpenGL declarations. Keep
+# these dependencies on the backend library so its own sources compile on all
+# platforms, not only when consumed by an application target.
+target_link_libraries(imgui PRIVATE glfw libglew_static)
+target_compile_definitions(imgui PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
 set(GLCRAFT_SOURCES
   src/Main.cpp
